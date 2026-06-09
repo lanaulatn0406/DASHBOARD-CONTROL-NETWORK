@@ -106,6 +106,7 @@ body{background:#1F2229;color:#E2E8F0;font-family:'Segoe UI',system-ui,sans-seri
 .kr{display:grid;gap:12px;margin-bottom:16px}
 .kr4{grid-template-columns:repeat(4,1fr)}
 .kr3{grid-template-columns:repeat(3,1fr)}
+.kr2{grid-template-columns:repeat(2,1fr)}
 .kc{background:#272C35;border-radius:10px;padding:14px 16px;border:1px solid #3A4055;border-top:2px solid transparent}
 .kc.pl{border-top-color:#F59E0B}.kc.ga{border-top-color:#02C39A}
 .kc.pe{border-top-color:#E55C6C}.kc.ne{border-top-color:#5B9FE8}
@@ -135,7 +136,9 @@ body{background:#1F2229;color:#E2E8F0;font-family:'Segoe UI',system-ui,sans-seri
 .cleg-d{width:10px;height:10px;border-radius:50%;flex-shrink:0}
 .cleg-chip{background:#2D3240;padding:1px 6px;border-radius:8px;font-size:14px;margin-left:2px}
 /* gestor cards */
+.gd2{display:grid;grid-template-columns:repeat(2,1fr);gap:12px}
 .gd3{display:grid;grid-template-columns:repeat(3,1fr);gap:12px}
+.gd4{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
 .gc{background:#272C35;border-radius:10px;border:1px solid #3A4055;padding:14px;border-top-width:2px}
 .gc-hdr{display:flex;align-items:center;gap:8px;margin-bottom:12px;padding-bottom:10px;border-bottom:1px solid #3A4055}
 .gc-init{width:28px;height:28px;border-radius:6px;display:flex;align-items:center;justify-content:center;font-size:17px;font-weight:800;color:#fff;flex-shrink:0}
@@ -305,17 +308,58 @@ body{background:#1F2229;color:#E2E8F0;font-family:'Segoe UI',system-ui,sans-seri
 <div id="tp-re" class="tp ac">
   <div class="kr kr4">
     <div class="kc ne"><div class="kv" id="re-totReg">—</div><div class="kl">Total Registros Network</div><div class="ks" id="re-totSub">Cargando…</div></div>
-    <div class="kc pl"><div class="kv" id="re-plNrc">—</div><div class="kl">Pipeline NRC Total</div><div class="ks" id="re-plMrc">—</div></div>
-    <div class="kc ga"><div class="kv" id="re-gaNrc">—</div><div class="kl">NRC Ganado Total</div><div class="ks" id="re-gaMrc">—</div></div>
+    <div class="kc pl"><div class="kv" id="re-cntAb">—</div><div class="kl">Ofertas Abiertas</div><div class="ks">Pipeline activo</div></div>
+    <div class="kc ga"><div class="kv" id="re-cntGa">—</div><div class="kl">Ofertas Ganadas</div><div class="ks" id="re-cntGaSub">—</div></div>
     <div class="kc ne"><div class="kv" id="re-wr">—</div><div class="kl">Win Rate Promedio</div><div class="ks">Ponderado equipo</div></div>
   </div>
+  <div class="kr kr3" style="margin-bottom:12px">
+    <div style="display:flex;flex-direction:column;gap:12px">
+      <div class="kc" style="border-top:2px solid #F59E0B"><div class="kv" style="color:#F59E0B" id="re-pl-nrc">—</div><div class="kl">Pipeline NRC Total</div><div class="ks">Ops Abiertas · Pipeline</div></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <div class="kc" style="border-top:2px solid #60B4F0">
+          <div class="kv" style="color:#60B4F0;font-size:20px" id="re-sin-nrc">—</div>
+          <div class="kl" style="font-size:11px">SIN Inspección</div>
+          <div class="ks"><span id="re-sin-ops">—</span> ofertas</div>
+          <div style="color:#60B4F0;font-weight:700;font-size:13px;margin-top:4px" id="re-sin-pct">—</div>
+        </div>
+        <div class="kc" style="border-top:2px solid #4AE3B5">
+          <div class="kv" style="color:#4AE3B5;font-size:20px" id="re-con-nrc">—</div>
+          <div class="kl" style="font-size:11px">CON Inspección</div>
+          <div class="ks"><span id="re-con-ops">—</span> ofertas</div>
+          <div style="color:#4AE3B5;font-weight:700;font-size:13px;margin-top:4px" id="re-con-pct">—</div>
+        </div>
+      </div>
+    </div>
+    <div style="display:flex;flex-direction:column;gap:12px">
+      <div class="kc" style="border-top:2px solid #5B9FE8"><div class="kv" style="color:#5B9FE8" id="re-pl-mrc">—</div><div class="kl">Pipeline MRC Total</div><div class="ks">Ops Abiertas · Pipeline</div></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px">
+        <div class="kc" style="border-top:2px solid #60B4F0">
+          <div class="kv" style="color:#60B4F0;font-size:20px" id="re-sin-mrc">—</div>
+          <div class="kl" style="font-size:11px">SIN Inspección</div>
+          <div class="ks"><span id="re-sin-mrc-ops">—</span> ofertas</div>
+          <div style="color:#60B4F0;font-weight:700;font-size:13px;margin-top:4px" id="re-sin-mrc-pct">—</div>
+        </div>
+        <div class="kc" style="border-top:2px solid #4AE3B5">
+          <div class="kv" style="color:#4AE3B5;font-size:20px" id="re-con-mrc">—</div>
+          <div class="kl" style="font-size:11px">CON Inspección</div>
+          <div class="ks"><span id="re-con-mrc-ops">—</span> ofertas</div>
+          <div style="color:#4AE3B5;font-weight:700;font-size:13px;margin-top:4px" id="re-con-mrc-pct">—</div>
+        </div>
+      </div>
+    </div>
+    <div class="kc" style="border-top:2px solid #A78BFA;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;align-self:stretch">
+      <div style="font-size:13px;color:#A78BFA;font-weight:700;letter-spacing:.5px;margin-bottom:12px">PIPELINE TOTAL NETWORK</div>
+      <div class="kv" style="color:#A78BFA;font-size:48px;line-height:1" id="re-pl-tot">—</div>
+      <div style="font-size:12px;color:#64748B;margin-top:10px">NRC + MRC · Ops Abiertas</div>
+    </div>
+  </div>
   <div class="sttl" style="color:#94A3B8">📊 Distribución de Oportunidades</div>
-  <div style="display:flex;gap:16px;align-items:stretch;margin-bottom:16px">
-    <div class="kr kr3" style="flex:1;margin-bottom:0" id="re-dist-kpis"></div>
-    <div class="cbox" style="width:230px;flex-shrink:0">
+  <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin-bottom:16px">
+    <div id="re-dist-kpis" style="display:contents"></div>
+    <div class="cbox" style="display:flex;flex-direction:column;align-items:center;justify-content:center">
       <div class="cbox-t">Abiertas · Ganadas · Perdidas</div>
-      <canvas id="cReDistOps" height="180"></canvas>
-      <div class="cleg" id="re-dist-leg" style="margin-top:8px"></div>
+      <canvas id="cReDistOps" width="249" height="249" style="width:249px!important;height:249px!important;display:block"></canvas>
+      <div class="cleg" id="re-dist-leg" style="margin-top:8px;width:100%"></div>
     </div>
   </div>
   <div class="sttl" style="color:#F59E0B">Distribución PIPELINE por Tipo de Inspección</div>
@@ -390,11 +434,12 @@ body{background:#1F2229;color:#E2E8F0;font-family:'Segoe UI',system-ui,sans-seri
     <input type="date" class="fbar-date" id="ab-fhasta" onchange="applyF('ab')">
   </div>
   <div class="kr kr4" id="ab-kpis"></div>
+  <div style="margin-bottom:12px" id="ab-pipeline-summary"></div>
   <div class="tk-row" id="ab-tk-row"></div>
   <div class="sttl" style="color:#F59E0B">Distribución NRC / MRC</div>
   <div class="cg3" id="ab-charts"></div>
   <div class="sttl" style="color:#F59E0B">📐 Por Ing. de Diseño</div>
-  <div class="gd3" id="ab-gestores"></div>
+  <div class="gd2" id="ab-gestores"></div>
   <div class="sttl" style="color:#F59E0B">📋 Detalle de Oportunidades — con Seguimiento</div>
   <div class="ops-wrap">
     <div class="ops-hdr">
@@ -547,9 +592,9 @@ body{background:#1F2229;color:#E2E8F0;font-family:'Segoe UI',system-ui,sans-seri
 
   <!-- Gestor distribution -->
   <div class="sttl" style="color:#A78BFA">📐 Distribución por Ing. de Diseño</div>
-  <div style="display:flex;gap:16px;align-items:flex-start;margin-bottom:16px">
-    <div style="flex:1" id="pd-gestores"></div>
-    <div id="pd-dist-donut" style="background:#272C35;border:1px solid #3A4055;border-top:3px solid #A78BFA;border-radius:10px;padding:16px;width:260px;flex-shrink:0;display:flex;flex-direction:column;align-items:center"></div>
+  <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:16px;margin-bottom:24px">
+    <div id="pd-dist-grid" style="display:contents"></div>
+    <div class="cbox" id="pd-dist-donut" style="display:flex;flex-direction:column;align-items:center;justify-content:center"></div>
   </div>
 
   <!-- Revision alert: pendientes en "En Revisión Preventa" -->
@@ -800,11 +845,11 @@ function buildCharts(seg){
   const tot=a.tot.nrc,totM=a.tot.mrc;
   tCharts[seg+'Nr']=new Chart(document.getElementById(seg+'Nr'),{type:'doughnut',
     data:{labels:['SIN','CON'],datasets:[{data:[a.sin.nrc,a.con.nrc],backgroundColor:['#60B4F0','#4AE3B5'],borderWidth:0,hoverOffset:4}]},
-    options:{responsive:true,maintainAspectRatio:true,cutout:'68%',
+    options:{responsive:false,maintainAspectRatio:false,width:249,height:249,cutout:'68%',
       plugins:{legend:{display:false},centerText:{text:fM(tot)},datalabels:{color:'#E2E8F0',font:{size:9,weight:'bold'},formatter:v=>v>0?`${fK(v)}\n${pct(v,tot)}%`:''}}}});
   tCharts[seg+'Mr']=new Chart(document.getElementById(seg+'Mr'),{type:'doughnut',
     data:{labels:['SIN','CON'],datasets:[{data:[a.sin.mrc,a.con.mrc],backgroundColor:['#60B4F0','#4AE3B5'],borderWidth:0,hoverOffset:4}]},
-    options:{responsive:true,maintainAspectRatio:true,cutout:'68%',
+    options:{responsive:false,maintainAspectRatio:false,width:249,height:249,cutout:'68%',
       plugins:{legend:{display:false},centerText:{text:fM(totM)},datalabels:{color:'#E2E8F0',font:{size:9,weight:'bold'},formatter:v=>v>0?`${fK(v)}\n${pct(v,totM)}%`:''}}}});
   const keys=F[seg].g==='ALL'?['GH','CM','DA']:[F[seg].g];
   const nD=keys.map(k=>{const d=D[k][seg];let n=0;if(F[seg].t==='ALL'||F[seg].t==='SIN')n+=d.sin.nrc;if(F[seg].t==='ALL'||F[seg].t==='CON')n+=d.con.nrc;return n;});
@@ -835,19 +880,53 @@ function renderTab(seg){
     <div class="kc" style="border-top:2px solid ${col}"><div class="kv">${tot}</div><div class="kl">Total Ops</div>
       <div class="ks"><span class="chip sv">${a.sin.ops} SIN · ${pct(a.sin.ops,tot)}%</span> <span class="chip cv">${a.con.ops} CON · ${pct(a.con.ops,tot)}%</span></div></div>
     <div class="kc" style="border-top:2px solid ${col}"><div class="kv">${fM(a.tot.nrc)}</div><div class="kl">NRC Total</div>
-      <div class="ks"><span class="chip sv">SIN ${pct(a.sin.nrc,a.tot.nrc)}%</span> <span class="chip cv">CON ${pct(a.con.nrc,a.tot.nrc)}%</span></div></div>
+      <div style="display:flex;gap:8px;margin-top:8px">
+        <div class="chip sv" style="display:flex;flex-direction:column;align-items:center;gap:2px;flex:1">
+          <span style="font-size:13px;font-weight:800;color:#60B4F0">${fM(a.sin.nrc)}</span>
+          <span style="font-size:11px;color:#94A3B8">SIN · ${pct(a.sin.nrc,a.tot.nrc)}%</span>
+        </div>
+        <div class="chip cv" style="display:flex;flex-direction:column;align-items:center;gap:2px;flex:1">
+          <span style="font-size:13px;font-weight:800;color:#4AE3B5">${fM(a.con.nrc)}</span>
+          <span style="font-size:11px;color:#94A3B8">CON · ${pct(a.con.nrc,a.tot.nrc)}%</span>
+        </div>
+      </div></div>
     <div class="kc" style="border-top:2px solid ${col}"><div class="kv">${fM(a.tot.mrc)}</div><div class="kl">MRC Total</div>
-      <div class="ks"><span class="chip sv">SIN ${pct(a.sin.mrc,a.tot.mrc)}%</span> <span class="chip cv">CON ${pct(a.con.mrc,a.tot.mrc)}%</span></div></div>
+      <div style="display:flex;gap:8px;margin-top:8px">
+        <div class="chip sv" style="display:flex;flex-direction:column;align-items:center;gap:2px;flex:1">
+          <span style="font-size:13px;font-weight:800;color:#60B4F0">${fM(a.sin.mrc)}</span>
+          <span style="font-size:11px;color:#94A3B8">SIN · ${pct(a.sin.mrc,a.tot.mrc)}%</span>
+        </div>
+        <div class="chip cv" style="display:flex;flex-direction:column;align-items:center;gap:2px;flex:1">
+          <span style="font-size:13px;font-weight:800;color:#4AE3B5">${fM(a.con.mrc)}</span>
+          <span style="font-size:11px;color:#94A3B8">CON · ${pct(a.con.mrc,a.tot.mrc)}%</span>
+        </div>
+      </div></div>
     <div class="kc" style="border-top:2px solid ${col}"><div class="kv">${pct(a.con.ops,tot).toFixed(1)}%</div><div class="kl">% CON Inspección</div>
       <div class="ks">${a.con.ops} de ${tot} ops</div></div>`;
   buildTkRow(seg);
+  const pSum=document.getElementById(`${seg}-pipeline-summary`);
+  if(pSum){
+    const rawOps=seg==='pe'?[...OPS.pe,...getPeMovidas()]:OPS[seg].filter(o=>!isPerdida(o.id));
+    const filtOps=rawOps.filter(o=>(filt.g==='ALL'||o.gestor===filt.g)&&(filt.t==='ALL'||o.tipo===filt.t));
+    const tpVals=filtOps.filter(o=>o.tpTot!=null).map(o=>o.tpTot);
+    const avgTp=tpVals.length?(tpVals.reduce((s,v)=>s+v,0)/tpVals.length):0;
+    pSum.innerHTML=`
+      <div style="display:grid;grid-template-columns:1fr 3fr;gap:12px">
+        <div class="kc" style="border-top:2px solid #F59E0B">
+          <div class="kv" style="color:#F59E0B">${avgTp>0?avgTp.toFixed(1):'—'}</div>
+          <div class="kl">Promedio Tiempo Total Cotización</div>
+          <div class="ks">Días · sobre ${tpVals.length} registro${tpVals.length!==1?'s':''} con dato</div>
+        </div>
+        <div></div>
+      </div>`;
+  }
   const keys=filt.g==='ALL'?['GH','CM','DA']:[filt.g];
   document.getElementById(`${seg}-charts`).innerHTML=`
-    <div class="cbox"><div class="cbox-t">NRC · SIN vs CON</div><canvas id="${seg}Nr" height="210"></canvas>
+    <div class="cbox"><div class="cbox-t">NRC · SIN vs CON</div><canvas id="${seg}Nr" width="249" height="249" style="width:249px!important;height:249px!important;display:block"></canvas>
       <div class="cleg">
         <div class="cleg-i"><div class="cleg-d" style="background:#60B4F0"></div>SIN<span class="cleg-chip">${fM(a.sin.nrc)}</span><span class="cleg-chip">${pct(a.sin.nrc,a.tot.nrc)}%</span></div>
         <div class="cleg-i"><div class="cleg-d" style="background:#4AE3B5"></div>CON<span class="cleg-chip">${fM(a.con.nrc)}</span><span class="cleg-chip">${pct(a.con.nrc,a.tot.nrc)}%</span></div></div></div>
-    <div class="cbox"><div class="cbox-t">MRC · SIN vs CON</div><canvas id="${seg}Mr" height="210"></canvas>
+    <div class="cbox"><div class="cbox-t">MRC · SIN vs CON</div><canvas id="${seg}Mr" width="249" height="249" style="width:249px!important;height:249px!important;display:block"></canvas>
       <div class="cleg">
         <div class="cleg-i"><div class="cleg-d" style="background:#60B4F0"></div>SIN<span class="cleg-chip">${fM(a.sin.mrc)}</span><span class="cleg-chip">${pct(a.sin.mrc,a.tot.mrc)}%</span></div>
         <div class="cleg-i"><div class="cleg-d" style="background:#4AE3B5"></div>CON<span class="cleg-chip">${fM(a.con.mrc)}</span><span class="cleg-chip">${pct(a.con.mrc,a.tot.mrc)}%</span></div></div></div>
@@ -1080,10 +1159,24 @@ function buildRE(){
   const ab=aggF('ab',{g:'ALL',t:'ALL',q:''}),ga=aggF('ga',{g:'ALL',t:'ALL',q:''});
   document.getElementById('re-totReg').textContent=TOTAL_REGISTROS_NETWORK;
   document.getElementById('re-totSub').textContent=`Abiertas (Pipeline): ${OPS.ab.length} · Ganadas: ${OPS.ga.length} · Pendiente despachar cotización: ${TOTAL_REGISTROS_NETWORK - OPS.ab.length - OPS.ga.length}`;
-  document.getElementById('re-plNrc').textContent=fM(ab.tot.nrc);
-  document.getElementById('re-plMrc').textContent='MRC: '+fM(ab.tot.mrc);
-  document.getElementById('re-gaNrc').textContent=fM(ga.tot.nrc);
-  document.getElementById('re-gaMrc').textContent='MRC: '+fM(ga.tot.mrc);
+  document.getElementById('re-cntAb').textContent=OPS.ab.length;
+  document.getElementById('re-cntGa').textContent=OPS.ga.length;
+  document.getElementById('re-cntGaSub').textContent='Perdidas: '+OPS.pe.length;
+  document.getElementById('re-pl-nrc').textContent=fM(ab.tot.nrc);
+  document.getElementById('re-pl-mrc').textContent=fM(ab.tot.mrc);
+  document.getElementById('re-pl-tot').textContent=fM(ab.tot.nrc+ab.tot.mrc);
+  document.getElementById('re-sin-nrc').textContent=fM(ab.sin.nrc);
+  document.getElementById('re-sin-ops').textContent=ab.sin.ops;
+  document.getElementById('re-sin-pct').textContent=pct(ab.sin.nrc,ab.tot.nrc)+'% del NRC Total';
+  document.getElementById('re-con-nrc').textContent=fM(ab.con.nrc);
+  document.getElementById('re-con-ops').textContent=ab.con.ops;
+  document.getElementById('re-con-pct').textContent=pct(ab.con.nrc,ab.tot.nrc)+'% del NRC Total';
+  document.getElementById('re-sin-mrc').textContent=fM(ab.sin.mrc);
+  document.getElementById('re-sin-mrc-ops').textContent=ab.sin.ops;
+  document.getElementById('re-sin-mrc-pct').textContent=pct(ab.sin.mrc,ab.tot.mrc)+'% del MRC Total';
+  document.getElementById('re-con-mrc').textContent=fM(ab.con.mrc);
+  document.getElementById('re-con-mrc-ops').textContent=ab.con.ops;
+  document.getElementById('re-con-mrc-pct').textContent=pct(ab.con.mrc,ab.tot.mrc)+'% del MRC Total';
   const wrAvg=(D.GH.wr+D.CM.wr+D.DA.wr)/3;
   document.getElementById('re-wr').textContent=fP(wrAvg);
   /* ── Distribución de Oportunidades ── */
@@ -1134,9 +1227,9 @@ function buildRE(){
     if(reCharts.ops)reCharts.ops.destroy();
     reCharts.distOps=new Chart(document.getElementById('cReDistOps'),{type:'doughnut',
       data:{labels:['Abiertas','Ganadas','Perdidas'],datasets:[{data:[nAb,nGa,nPe],backgroundColor:['#F59E0B','#02C39A','#E55C6C'],borderWidth:0,hoverOffset:4}]},
-      options:{responsive:true,maintainAspectRatio:true,cutout:'68%',
-        plugins:{legend:{display:false},centerText:{text:String(nTot)},
-          datalabels:{color:'#E2E8F0',font:{size:10,weight:'bold'},formatter:(v,c)=>v>0?`${v}\n${pct(v,nTot)}%`:''}}}});
+      options:{responsive:false,maintainAspectRatio:false,width:249,height:249,cutout:'65%',
+        plugins:{legend:{display:false},centerText:{text:String(nTot),fontSize:16},
+          datalabels:{color:'#E2E8F0',font:{size:9,weight:'bold'},formatter:(v,c)=>v>0?`${pct(v,nTot)}%`:''}}}});
     reCharts.nrc=new Chart(document.getElementById('cReNrc'),{type:'bar',data:{labels:['G. Heredia','C. Mejía','D. Alcívar'],
       datasets:[{label:'Pipeline NRC',data:keys.map(k=>D[k].ab.sin.nrc+D[k].ab.con.nrc),backgroundColor:keys.map(k=>GC[k]+'88'),borderRadius:4},
         {label:'Ganado NRC',data:keys.map(k=>D[k].ga.sin.nrc+D[k].ga.con.nrc),backgroundColor:keys.map(k=>GC[k]),borderRadius:4}]},
@@ -1329,50 +1422,6 @@ function renderPd(){
       <div class="ks" style="font-size:10px">CON inspección: <strong style="color:#4AE3B5">${conC}</strong></div>
     </div>`;
 
-  // Donut en sección Distribución por Ing. de Diseño
-  document.getElementById('pd-dist-donut').innerHTML=`
-    <div style="font-size:12px;font-weight:700;color:#A78BFA;text-transform:uppercase;letter-spacing:.5px;margin-bottom:10px">Distribución por Ing. Preventa</div>
-    <canvas id="cPdDistGest" height="180" style="max-width:180px;width:100%"></canvas>
-    <div style="display:flex;flex-direction:column;gap:8px;margin-top:12px;width:100%">
-      <div style="display:flex;align-items:center;gap:7px;font-size:13px">
-        <div style="width:11px;height:11px;border-radius:50%;background:#5B9FE8;flex-shrink:0"></div>
-        <span style="color:#94A3B8;flex:1">GH · ${GL['GH'].split(' ')[0]}</span>
-        <span style="color:#E2E8F0;font-weight:800;font-size:16px">${cntGH}</span>
-        <span style="color:#5B9FE8;font-weight:700">${pct(cntGH,total)}%</span>
-      </div>
-      <div style="display:flex;align-items:center;gap:7px;font-size:13px">
-        <div style="width:11px;height:11px;border-radius:50%;background:#2DC48D;flex-shrink:0"></div>
-        <span style="color:#94A3B8;flex:1">CM · ${GL['CM'].split(' ')[0]}</span>
-        <span style="color:#E2E8F0;font-weight:800;font-size:16px">${cntCM}</span>
-        <span style="color:#2DC48D;font-weight:700">${pct(cntCM,total)}%</span>
-      </div>
-      <div style="display:flex;align-items:center;gap:7px;font-size:13px">
-        <div style="width:11px;height:11px;border-radius:50%;background:#E09D3A;flex-shrink:0"></div>
-        <span style="color:#94A3B8;flex:1">DA · ${GL['DA'].split(' ')[0]}</span>
-        <span style="color:#E2E8F0;font-weight:800;font-size:16px">${cntDA}</span>
-        <span style="color:#E09D3A;font-weight:700">${pct(cntDA,total)}%</span>
-      </div>
-    </div>`;
-
-  // Donut distribución por gestor (conteo de ops)
-  try{
-    if(tCharts['pdDistGest']){tCharts['pdDistGest'].destroy();delete tCharts['pdDistGest'];}
-    const cvsPd=document.getElementById('cPdDistGest');
-    if(cvsPd && document.getElementById('tp-pd').classList.contains('ac')){
-      tCharts['pdDistGest']=new Chart(cvsPd,{type:'doughnut',
-        data:{labels:['GH','CM','DA'],datasets:[{data:[cntGH,cntCM,cntDA],backgroundColor:['#5B9FE8','#2DC48D','#E09D3A'],borderWidth:0,hoverOffset:4}]},
-        options:{responsive:true,maintainAspectRatio:true,cutout:'68%',
-          plugins:{
-            legend:{display:false},
-            centerText:{text:String(total)},
-            datalabels:{color:'#fff',font:{size:12,weight:'bold'},formatter:(v,ctx)=>{
-              const tot=ctx.dataset.data.reduce((a,b)=>a+b,0);
-              return v>0&&tot>0?`${pct(v,tot)}%`:'';
-            }}
-          }}});
-    }
-  }catch(e){console.warn('PD chart error:',e);}
-
   // ── Gestor distribution cards ──
   let gestCrds='';
   ['GH','CM','DA'].forEach(gk=>{
@@ -1414,7 +1463,50 @@ function renderPd(){
         <div class="gc-val" style="color:#F59E0B">${gavgTp} días</div></div>
     </div>`;
   });
-  document.getElementById('pd-gestores').innerHTML=gestCrds||'<div style="color:#64748B;padding:16px">Sin datos para este filtro.</div>';
+  document.getElementById('pd-dist-grid').innerHTML=gestCrds||'';
+
+  document.getElementById('pd-dist-donut').innerHTML=`
+    <div class="cbox-t" style="color:#A78BFA">Dist. Ing. Preventa</div>
+    <canvas id="cPdDistGest" width="249" height="249" style="display:block;width:249px!important;height:249px!important"></canvas>
+    <div style="width:100%;display:flex;flex-direction:column;gap:8px;margin-top:10px">
+      <div style="display:flex;align-items:center;gap:8px">
+        <div style="width:11px;height:11px;border-radius:50%;background:#5B9FE8;flex-shrink:0"></div>
+        <span style="color:#94A3B8;flex:1;font-size:13px">GH · ${GL['GH']}</span>
+        <span style="color:#E2E8F0;font-weight:800;font-size:17px">${cntGH}</span>
+        <span style="color:#5B9FE8;font-weight:700;font-size:13px">${pct(cntGH,total)}%</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px">
+        <div style="width:11px;height:11px;border-radius:50%;background:#2DC48D;flex-shrink:0"></div>
+        <span style="color:#94A3B8;flex:1;font-size:13px">CM · ${GL['CM']}</span>
+        <span style="color:#E2E8F0;font-weight:800;font-size:17px">${cntCM}</span>
+        <span style="color:#2DC48D;font-weight:700;font-size:13px">${pct(cntCM,total)}%</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:8px">
+        <div style="width:11px;height:11px;border-radius:50%;background:#E09D3A;flex-shrink:0"></div>
+        <span style="color:#94A3B8;flex:1;font-size:13px">DA · ${GL['DA']}</span>
+        <span style="color:#E2E8F0;font-weight:800;font-size:17px">${cntDA}</span>
+        <span style="color:#E09D3A;font-weight:700;font-size:13px">${pct(cntDA,total)}%</span>
+      </div>
+    </div>`;
+
+  // Donut distribución por gestor — debe correr DESPUÉS de insertar el canvas en el DOM
+  try{
+    if(tCharts['pdDistGest']){tCharts['pdDistGest'].destroy();delete tCharts['pdDistGest'];}
+    const cvsPd=document.getElementById('cPdDistGest');
+    if(cvsPd && document.getElementById('tp-pd').classList.contains('ac')){
+      tCharts['pdDistGest']=new Chart(cvsPd,{type:'doughnut',
+        data:{labels:['GH','CM','DA'],datasets:[{data:[cntGH,cntCM,cntDA],backgroundColor:['#5B9FE8','#2DC48D','#E09D3A'],borderWidth:0,hoverOffset:4}]},
+        options:{responsive:false,maintainAspectRatio:false,width:249,height:249,cutout:'65%',
+          plugins:{
+            legend:{display:false},
+            centerText:{text:String(total)},
+            datalabels:{color:'#fff',font:{size:11,weight:'bold'},formatter:(v,ctx)=>{
+              const tot=ctx.dataset.data.reduce((a,b)=>a+b,0);
+              return v>0&&tot>0?`${pct(v,tot)}%`:'';
+            }}
+          }}});
+    }
+  }catch(e){console.warn('PD chart error:',e);}
 
   // ── Sección de alerta: pendientes "En Revisión Preventa" por gestor ──
   const enRevision = ops.filter(o=>(o.estado||'').trim().toUpperCase()==='EN REVISION PREVENTA TN');
