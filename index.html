@@ -170,6 +170,23 @@ body{background:#1F2229;color:#E2E8F0;font-family:'Segoe UI',system-ui,sans-seri
 .ops-scroll{overflow-x:auto}
 .ops-tbl{width:100%;border-collapse:collapse;min-width:1100px}
 .ops-tbl th{padding:8px 10px;font-size:14px;text-transform:uppercase;letter-spacing:.4px;color:#64748B;font-weight:700;text-align:left;border-bottom:1px solid #3A4055;white-space:nowrap}
+/* ── EXCLUSIONES ── */
+.excl-btn{opacity:0;transition:opacity .12s;background:none;border:1px solid transparent;cursor:pointer;color:#64748B;font-size:14px;padding:2px 6px;border-radius:4px;}
+.excl-btn:hover{color:#E55C6C;border-color:#E55C6C55;background:#E55C6C18;}
+.ops-tbl tr:hover .excl-btn{opacity:1;}
+.excl-wrap{position:relative;display:inline-block;}
+.excl-dd{position:absolute;right:0;top:100%;z-index:300;background:#1A2030;border:1px solid #3A4055;border-radius:7px;min-width:240px;box-shadow:0 6px 24px #000a;padding:4px 0;}
+.excl-dd button{display:block;width:100%;text-align:left;background:none;border:none;padding:9px 14px;color:#CBD5E1;font-size:13px;cursor:pointer;}
+.excl-dd button:hover{background:#E55C6C22;color:#E55C6C;}
+.excl-panel-wrap{margin:14px 0 4px;}
+.excl-panel{border:1px solid #E55C6C33;border-radius:8px;overflow:hidden;}
+.excl-phdr{background:#E55C6C12;padding:9px 16px;font-size:14px;font-weight:600;color:#E55C6C;cursor:pointer;display:flex;justify-content:space-between;align-items:center;user-select:none;}
+.excl-pbody{overflow-x:auto;}
+.excl-tbl{width:100%;border-collapse:collapse;font-size:14px;}
+.excl-tbl th{background:#1E2430;color:#64748B;padding:7px 10px;text-align:left;font-size:12px;text-transform:uppercase;letter-spacing:.5px;font-weight:700;}
+.excl-tbl td{padding:7px 10px;border-bottom:1px solid #2D324022;color:#94A3B8;}
+.excl-restore{background:none;border:1px solid #02C39A55;color:#02C39A;padding:3px 9px;border-radius:4px;cursor:pointer;font-size:12px;}
+.excl-restore:hover{background:#02C39A22;}
 .ops-tbl th.r{text-align:right}
 .ops-tbl td{padding:7px 10px;border-top:1px solid #3A405533;font-size:17px;vertical-align:middle}
 .ops-tbl tr:hover td{background:#2D324088}
@@ -455,6 +472,7 @@ body{background:#1F2229;color:#E2E8F0;font-family:'Segoe UI',system-ui,sans-seri
     </div>
     <div class="ops-scroll"><table class="ops-tbl" id="ab-ops-tbl"></table></div>
   </div>
+  <div id="excl-panel-ab"></div>
 </div>
 
 <!-- OPS GANADAS -->
@@ -506,6 +524,7 @@ body{background:#1F2229;color:#E2E8F0;font-family:'Segoe UI',system-ui,sans-seri
     </div>
     <div class="ops-scroll"><table class="ops-tbl" id="ga-ops-tbl"></table></div>
   </div>
+  <div id="excl-panel-ga"></div>
 </div>
 
 <!-- OPS PERDIDAS -->
@@ -557,6 +576,7 @@ body{background:#1F2229;color:#E2E8F0;font-family:'Segoe UI',system-ui,sans-seri
     </div>
     <div class="ops-scroll"><table class="ops-tbl" id="pe-ops-tbl"></table></div>
   </div>
+  <div id="excl-panel-pe"></div>
 </div>
 
 <!-- PENDIENTES DESPACHO -->
@@ -760,6 +780,7 @@ function buildD(){
       let ops = seg==='pe'?[...OPS.pe,...getPeMovidas()]:OPS[seg];
       ops = ops.filter(o=>o.gestor===g);
       if(seg!=='pe') ops = ops.filter(o=>!isPerdida(o.id));
+      ops = ops.filter(o=>!isExcluido(seg,o));
       const r={sin:{ops:0,nrc:0,mrc:0},con:{ops:0,nrc:0,mrc:0}};
       ops.forEach(o=>{
         const t=o.tipo==='CON'?'con':'sin';
@@ -770,9 +791,9 @@ function buildD(){
     const gaCount = OPS.ga.filter(o=>o.gestor===g).length;
     const peCount = getPeMovidas().filter(o=>o.gestor===g).length + OPS.pe.filter(o=>o.gestor===g).length;
     D[g].wr = gaCount+peCount>0 ? +(gaCount/(gaCount+peCount)*100).toFixed(2) : 0;
-    const mOps = OPS.ga.filter(o=>o.gestor===g&&o.margen);
+    const mOps = OPS.ga.filter(o=>o.gestor===g&&o.margen&&!isExcluido('ga',o));
     if(mOps.length){
-      const sum=mOps.reduce((a,o)=>{const m=parseFloat(String(o.margen).replace('%','').replace(',','.'))||0;return a+m;},0);
+      const sum=mOps.reduce((a,o)=>{const s=String(o.margen);const raw=parseFloat(s.replace('%','').replace(',','.'))||0;const m=s.includes('%')?raw:raw*100;return a+m;},0);
       D[g].margen=+(sum/mOps.length).toFixed(2);
     } else D[g].margen=0;
   });
@@ -873,11 +894,54 @@ function initFilterOptions(){
   });
 }
 
+/* ── EXCLUSIONES POR TAB ── */
+const EXCL_KEY=seg=>`nw_excl_${seg}_v8`;
+function getExcluidos(seg){try{return new Set(JSON.parse(localStorage.getItem(EXCL_KEY(seg))||'[]'));}catch{return new Set();}}
+function isExcluido(seg,o){const s=getExcluidos(seg);return s.has(String(o.id))||s.has('cli:'+String(o.cliente||'').trim());}
+function addExcl(seg,key){const s=getExcluidos(seg);s.add(key);localStorage.setItem(EXCL_KEY(seg),JSON.stringify([...s]));}
+function delExcl(seg,key){const s=getExcluidos(seg);s.delete(key);localStorage.setItem(EXCL_KEY(seg),JSON.stringify([...s]));}
+function onExclId(seg,id){addExcl(seg,String(id));closeExclDd();refreshExcl(seg);}
+function onExclCli(seg,cli){addExcl(seg,'cli:'+String(cli).trim());closeExclDd();refreshExcl(seg);}
+function onRestoreExcl(seg,key){delExcl(seg,key);refreshExcl(seg);}
+function closeExclDd(){document.querySelectorAll('.excl-dd').forEach(d=>d.remove());}
+function openExclDd(evt,seg,id,cli){
+  evt.stopPropagation();closeExclDd();
+  const btn=evt.currentTarget;
+  const dd=document.createElement('div');dd.className='excl-dd';
+  const safeId=String(id).replace(/'/g,"\\'");
+  const safeCli=String(cli||'').replace(/'/g,"\\'").replace(/\\/g,'\\\\');
+  dd.innerHTML=`<button onclick="onExclId('${seg}','${safeId}')">⊘ Excluir esta tarea (#${safeId})</button><button onclick="onExclCli('${seg}','${safeCli}')">⊘ Excluir cliente: ${esc(cli||'')}</button>`;
+  btn.closest('.excl-wrap').appendChild(dd);
+  setTimeout(()=>document.addEventListener('click',closeExclDd,{once:true}),10);
+}
+function refreshExcl(seg){buildD();updateBadges();renderTab(seg);renderExcluidosPanel(seg);}
+function renderExcluidosPanel(seg){
+  const el=document.getElementById(`excl-panel-${seg}`);if(!el)return;
+  const excl=[...getExcluidos(seg)];
+  if(!excl.length){el.innerHTML='';return;}
+  const allOps=seg==='pe'?[...OPS.pe,...getPeMovidas()]:OPS[seg];
+  let rows='';
+  excl.forEach(key=>{
+    if(key.startsWith('cli:')){
+      const cli=key.slice(4);
+      const cnt=allOps.filter(o=>(o.cliente||'').trim()===cli).length;
+      const safeKey=key.replace(/'/g,"\\'");
+      rows+=`<tr><td><span style="background:#E55C6C22;color:#E55C6C;padding:2px 7px;border-radius:4px;font-size:11px;font-weight:700">CLIENTE</span></td><td style="color:#E2E8F0;font-weight:500">${esc(cli)}</td><td style="color:#64748B">${cnt} registro${cnt!==1?'s':''}</td><td><button class="excl-restore" onclick="onRestoreExcl('${seg}','${safeKey}')">↩ Restaurar</button></td></tr>`;
+    } else {
+      const op=allOps.find(o=>String(o.id)===key);
+      const safeKey=key.replace(/'/g,"\\'");
+      rows+=`<tr><td><span style="background:#94A3B822;color:#94A3B8;padding:2px 7px;border-radius:4px;font-size:11px;font-weight:700">TAREA</span></td><td style="color:#E2E8F0;font-weight:500">${op?esc(op.cliente||'—'):'—'}</td><td style="color:#64748B">#${esc(key)}</td><td><button class="excl-restore" onclick="onRestoreExcl('${seg}','${safeKey}')">↩ Restaurar</button></td></tr>`;
+    }
+  });
+  el.innerHTML=`<div class="excl-panel-wrap"><div class="excl-panel"><div class="excl-phdr" onclick="const b=this.nextElementSibling;b.style.display=b.style.display==='none'?'':'none'">⊘ Excluidos del análisis &nbsp;<span style="background:#E55C6C;color:#fff;padding:1px 8px;border-radius:10px;font-size:12px">${excl.length}</span><span style="font-size:12px;color:#64748B;margin-left:auto">▾ ver / restaurar</span></div><div class="excl-pbody"><table class="excl-tbl"><thead><tr><th>Tipo</th><th>Cliente</th><th>Referencia</th><th>Acción</th></tr></thead><tbody>${rows}</tbody></table></div></div></div>`;
+}
+
 /* ── AGGREGATE desde OPS ── */
 function aggF(seg,filt){
   let allOps;
   if(seg==='pe'){allOps=[...OPS.pe,...getPeMovidas()];}
   else{allOps=OPS[seg].filter(o=>!isPerdida(o.id));}
+  allOps=allOps.filter(o=>!isExcluido(seg,o));
   const r={sin:{ops:0,nrc:0,mrc:0},con:{ops:0,nrc:0,mrc:0}};
   const dDesde=filt.desde?new Date(filt.desde):null;
   const dHasta=filt.hasta?(()=>{const d=new Date(filt.hasta);d.setHours(23,59,59,999);return d;})():null;
@@ -1075,6 +1139,7 @@ function renderOpsTable(seg,filt){
   }
   const dDesde2=filt.desde?new Date(filt.desde):null;
   const dHasta2=filt.hasta?(()=>{const d=new Date(filt.hasta);d.setHours(23,59,59,999);return d;})():null;
+  rows=rows.filter(o=>!isExcluido(seg,o));
   rows=rows.filter(o=>{
     if(seg!=='pe'&&isPerdida(o.id))return false;
     if(filt.g!=='ALL'&&o.gestor!==filt.g)return false;
@@ -1096,11 +1161,19 @@ function renderOpsTable(seg,filt){
     const gestores = filt.g==='ALL' ? ['GH','CM','DA'] : [filt.g];
     displayRows = [];
     gestores.forEach(g=>{
-      const gRows = rows.filter(o=>o.gestor===g).sort((a,b)=>(b.nrc||0)-(a.nrc||0));
+      const gRows = rows.filter(o=>o.gestor===g).sort((a,b)=>((b.nrc||0)+(b.mrc||0))-((a.nrc||0)+(a.mrc||0)));
       displayRows.push(...gRows.slice(0,20));
     });
     const total=rows.length;
     if(total>displayRows.length) limitMsg=` (Top 20 por gestor · ${total} totales — busca por #Tarea para ver más)`;
+  }
+  if(seg==='ga'){
+    const gestorOrder=['GH','CM','DA'];
+    displayRows=displayRows.slice().sort((a,b)=>{
+      const gi=gestorOrder.indexOf(a.gestor)-gestorOrder.indexOf(b.gestor);
+      if(gi!==0)return gi;
+      return((b.nrc||0)+(b.mrc||0))-((a.nrc||0)+(a.mrc||0));
+    });
   }
   document.getElementById(`${seg}-ops-cnt`).textContent=`${displayRows.length} registro${displayRows.length!==1?'s':''}${limitMsg}`;
   let html;
@@ -1108,19 +1181,25 @@ function renderOpsTable(seg,filt){
     const ESTADOS=seg==='ab'?[PERDIDA_KEY]:ESTADOS_GA;
     html=`<thead><tr>
       <th>#Tarea</th><th>Cliente</th><th>Gestor</th><th>Tipo</th>
-      <th class="r">NRC</th><th class="r">MRC</th><th>Asesor</th><th>%Prob</th>
+      <th class="r">NRC</th><th class="r">MRC</th><th class="r" style="color:#F59E0B">Monto Total Proyecto</th><th>Asesor</th><th>%Prob</th>
       <th style="min-width:300px">Seguimiento (Hoja)</th>
-      <th style="min-width:160px">Estado</th>
+      <th style="min-width:160px">Estado</th><th style="width:36px"></th>
     </tr></thead><tbody>`;
-    if(!displayRows.length){html+='<tr><td colspan="10" class="no-results">Sin resultados para los filtros aplicados.</td></tr>';}
+    if(!displayRows.length){html+='<tr><td colspan="12" class="no-results">Sin resultados para los filtros aplicados.</td></tr>';}
     else {
       let lastGestor='';
       displayRows.forEach(o=>{
-        // Separador visual entre gestores (solo en vista sin búsqueda)
+        const tot=(o.nrc||0)+(o.mrc||0);
+        // Separador visual entre gestores
         if(seg==='ab' && !q && filt.g==='ALL' && o.gestor!==lastGestor){
           lastGestor=o.gestor;
-          html+=`<tr><td colspan="10" style="background:${GC[o.gestor]}22;padding:6px 10px;font-size:15px;font-weight:700;color:${GC[o.gestor]};letter-spacing:.5px;text-transform:uppercase">
-            ● ${GL[o.gestor]} — Top 20 por NRC</td></tr>`;
+          html+=`<tr><td colspan="12" style="background:${GC[o.gestor]}22;padding:6px 10px;font-size:15px;font-weight:700;color:${GC[o.gestor]};letter-spacing:.5px;text-transform:uppercase">
+            ● ${GL[o.gestor]} — Top 20 por Total (NRC+MRC)</td></tr>`;
+        }
+        if(seg==='ga' && filt.g==='ALL' && o.gestor!==lastGestor){
+          lastGestor=o.gestor;
+          html+=`<tr><td colspan="12" style="background:${GC[o.gestor]}22;padding:6px 10px;font-size:15px;font-weight:700;color:${GC[o.gestor]};letter-spacing:.5px;text-transform:uppercase">
+            ● ${GL[o.gestor]}</td></tr>`;
         }
       const est=getTk(o.id,'estado', seg==='ab'?'':ESTADOS[0]);
       const perdida=isPerdida(o.id);
@@ -1129,6 +1208,8 @@ function renderOpsTable(seg,filt){
       const nm=q?hl(o.cliente||'',q):esc(o.cliente||'');
       const tr=q?hl(o.tarea||'',q):esc(o.tarea||'');
       const as=q?hl(o.asesor||'',q):esc(o.asesor||'—');
+      const safeId=String(o.id).replace(/'/g,"\\'");
+      const safeCli=String(o.cliente||'').replace(/'/g,"\\'").replace(/\\/g,'\\\\');
       html+=`<tr${perdida?' class="is-perdida"':''}>
         <td><span class="tarea-tag">${tr}</span></td>
         <td style="font-weight:600;color:#E2E8F0">${nm}</td>
@@ -1136,11 +1217,13 @@ function renderOpsTable(seg,filt){
         <td><span class="tipo-b t-${(o.tipo||'sin').toLowerCase()}">${o.tipo||'SIN'}</span></td>
         <td class="r nrc-val">${fM(o.nrc)}</td>
         <td class="r mrc-val">${fM(o.mrc)}</td>
+        <td class="r" style="font-weight:700;color:#F59E0B">${fM(tot)}</td>
         <td style="font-size:15px;color:#CBD5E1">${as}</td>
         <td><span class="prob-pill">${o.prob||'—'}</span></td>
         <td><span class="seg-note">${esc(o.seg||'—')}</span></td>
         <td>${perdida?`<span style="color:#E55C6C;font-size:15px;font-weight:600">❌ Cerrada — Perdida<br><span style="color:#64748B;font-size:14px">Ver en Ops Perdidas</span></span>`
           :`<select id="est-${o.id}" onchange="onEstado('${o.id}',this.value,'${seg}')">${opts}</select>`}</td>
+        <td style="padding:2px;text-align:center"><div class="excl-wrap"><button class="excl-btn" title="Excluir" onclick="openExclDd(event,'${seg}','${safeId}','${safeCli}')">⊘</button></div></td>
       </tr>`;
       });
     }
@@ -1148,9 +1231,9 @@ function renderOpsTable(seg,filt){
     html=`<thead><tr>
       <th>#Tarea</th><th>Cliente</th><th>Origen</th><th>Gestor</th><th>Tipo</th>
       <th class="r">NRC</th><th class="r">MRC</th><th>Asesor</th>
-      <th style="min-width:220px">Razón de Pérdida</th><th style="min-width:80px">Fecha</th>
+      <th style="min-width:220px">Razón de Pérdida</th><th style="min-width:80px">Fecha</th><th style="width:36px"></th>
     </tr></thead><tbody>`;
-    if(!rows.length){html+='<tr><td colspan="10" class="no-results">Sin registros de pérdidas.</td></tr>';}
+    if(!rows.length){html+='<tr><td colspan="11" class="no-results">Sin registros de pérdidas.</td></tr>';}
     else rows.forEach(o=>{
       const razon=getTk(o.id,'razon_perdida','');
       const fecha=getTk(o.id,'fecha_perdida','');
@@ -1159,6 +1242,8 @@ function renderOpsTable(seg,filt){
       const as=q?hl(o.asesor||'',q):esc(o.asesor||'—');
       const srcClass=o._src==='ab'?'from-ab':o._src==='ga'?'from-ga':'';
       const srcBadge=o._src==='ab'?`<span class="src-badge src-ab">📂 Pipeline</span>`:o._src==='ga'?`<span class="src-badge src-ga">✅ Ganadas</span>`:`<span class="src-badge src-pe">❌ Original</span>`;
+      const safeId=String(o.id).replace(/'/g,"\\'");
+      const safeCli=String(o.cliente||'').replace(/'/g,"\\'").replace(/\\/g,'\\\\');
       html+=`<tr${srcClass?' class="'+srcClass+'"':''}>
         <td><span class="tarea-tag">${tr}</span></td>
         <td style="font-weight:600;color:#E2E8F0">${nm}</td>
@@ -1170,6 +1255,7 @@ function renderOpsTable(seg,filt){
         <td style="font-size:15px;color:#CBD5E1">${as}</td>
         <td><input type="text" placeholder="Razón de pérdida…" value="${(razon||'').replace(/"/g,'&quot;')}" oninput="onRazonPe('${o.id}',this.value)"></td>
         <td style="font-size:15px;color:#64748B">${fecha||'—'}</td>
+        <td style="padding:2px;text-align:center"><div class="excl-wrap"><button class="excl-btn" title="Excluir" onclick="openExclDd(event,'${seg}','${safeId}','${safeCli}')">⊘</button></div></td>
       </tr>`;
     });
   }
@@ -1186,8 +1272,8 @@ function updateBadges(){
   ['ab','ga','pe'].forEach(seg=>{
     const el=document.getElementById(`tbadge-${seg}`);
     let n=0;
-    if(seg==='ab')n=OPS.ab.filter(o=>isPerdida(o.id)).length;
-    if(seg==='pe')n=getPeMovidas().length;
+    if(seg==='ab')n=OPS.ab.filter(o=>isPerdida(o.id)&&!isExcluido('ab',o)).length;
+    if(seg==='pe')n=getPeMovidas().filter(o=>!isExcluido('pe',o)).length;
     el.textContent=n;el.style.display=n>0?'flex':'none';
   });
   // Badge pendientes
@@ -1334,7 +1420,7 @@ function buildRE(){
 function buildTop10(){
   const HDR=`<thead><tr>
     <th>#</th><th>#Tarea</th><th>Cliente</th><th>Tipo</th>
-    <th class="r">NRC</th><th class="r">MRC</th><th class="r" style="color:#F59E0B">Total</th>
+    <th class="r">NRC</th><th class="r">MRC</th><th class="r" style="color:#F59E0B">Monto Total Proyecto</th>
     <th>Asesor</th><th>%Prob</th>
     <th style="min-width:320px">Seguimiento (Hoja)</th>
   </tr></thead>`;
@@ -1908,6 +1994,7 @@ async function initDashboard(){
     buildRE();
     buildTop10();
     ['ab','ga','pe'].forEach(seg=>renderTab(seg));
+    ['ab','ga','pe'].forEach(seg=>renderExcluidosPanel(seg));
     renderPd();
     renderGe();
     updateBadges();
