@@ -166,14 +166,20 @@ body{background:#1F2229;color:#E2E8F0;font-family:'Segoe UI',system-ui,sans-seri
 .ops-wrap{background:#272C35;border-radius:10px;border:1px solid #3A4055;overflow:hidden;margin-top:4px}
 .ops-hdr{background:#2D3240;padding:9px 14px;display:flex;align-items:center;justify-content:space-between;gap:8px}
 .ops-ttl{font-size:15px;font-weight:700;color:#94A3B8;text-transform:uppercase;letter-spacing:.5px}
-.ops-cnt{font-size:15px;color:#64748B;flex-shrink:0}
+.ops-cnt{font-size:15px;color:#64748B;flex-shrink:0;display:flex;align-items:center;gap:10px}
+.excl-all-btn{background:#E55C6C;color:#fff;border:none;border-radius:5px;padding:4px 11px;font-size:13px;font-weight:700;cursor:pointer;letter-spacing:.3px;white-space:nowrap;}
+.excl-all-btn:hover{background:#C94B5A;}
+.col-resizable{position:relative;overflow:visible;}
+.col-resize-handle{position:absolute;right:-3px;top:0;bottom:0;width:7px;cursor:col-resize;user-select:none;z-index:20;border-radius:3px;}
+.col-resize-handle::after{content:'';position:absolute;right:3px;top:20%;bottom:20%;width:2px;background:#5B9FE855;border-radius:1px;transition:background .15s;}
+.col-resize-handle:hover::after,.col-resize-handle.dragging::after{background:#5B9FE8CC;}
 .ops-scroll{overflow-x:auto}
-.ops-tbl{width:100%;border-collapse:collapse;min-width:1100px}
+.ops-tbl{width:100%;border-collapse:collapse;min-width:880px}
 .ops-tbl th{padding:8px 10px;font-size:14px;text-transform:uppercase;letter-spacing:.4px;color:#64748B;font-weight:700;text-align:left;border-bottom:1px solid #3A4055;white-space:nowrap}
 /* ── EXCLUSIONES ── */
-.excl-btn{opacity:0;transition:opacity .12s;background:none;border:1px solid transparent;cursor:pointer;color:#64748B;font-size:14px;padding:2px 6px;border-radius:4px;}
-.excl-btn:hover{color:#E55C6C;border-color:#E55C6C55;background:#E55C6C18;}
-.ops-tbl tr:hover .excl-btn{opacity:1;}
+.excl-btn{opacity:0;transition:opacity .15s,background .15s,transform .1s;background:none;border:1px solid transparent;cursor:pointer;color:#64748B;font-size:15px;padding:2px 7px;border-radius:4px;font-weight:700;}
+.excl-btn:hover{color:#E55C6C;border-color:#E55C6C;background:#fff;transform:scale(1.15);}
+.ops-tbl tr:hover .excl-btn,.t10 tr:hover .excl-btn{opacity:1;color:#E55C6C;border-color:#E55C6C88;background:#fff;}
 .excl-wrap{position:relative;display:inline-block;}
 .excl-dd{position:absolute;right:0;top:100%;z-index:300;background:#1A2030;border:1px solid #3A4055;border-radius:7px;min-width:240px;box-shadow:0 6px 24px #000a;padding:4px 0;}
 .excl-dd button{display:block;width:100%;text-align:left;background:none;border:none;padding:9px 14px;color:#CBD5E1;font-size:13px;cursor:pointer;}
@@ -218,7 +224,7 @@ body{background:#1F2229;color:#E2E8F0;font-family:'Segoe UI',system-ui,sans-seri
 .src-ga{background:#02C39A22;color:#02C39A;border:1px solid #02C39A44}
 .src-pe{background:#E55C6C22;color:#E55C6C;border:1px solid #E55C6C44}
 /* seg note */
-.seg-note{font-size:15px;color:#CBD5E1;max-width:340px;white-space:pre-wrap;word-break:break-word;display:block;line-height:1.5}
+.seg-note{font-size:15px;color:#CBD5E1;max-width:200px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:inline-block;vertical-align:middle;cursor:default}
 .prob-pill{padding:2px 7px;border-radius:8px;font-size:15px;font-weight:700;background:#3A4055;color:#CBD5E1}
 /* resumen */
 .rtbl{width:100%;border-collapse:collapse;background:#272C35;border-radius:10px;overflow:hidden;border:1px solid #3A4055}
@@ -896,6 +902,14 @@ function initFilterOptions(){
 
 /* ── EXCLUSIONES POR TAB ── */
 const EXCL_KEY=seg=>`nw_excl_${seg}_v8`;
+const _exclAllBuf={};
+function onExclAll(seg){
+  const ids=_exclAllBuf[seg]||[];
+  if(!ids.length)return;
+  if(!confirm(`¿Excluir los ${ids.length} registro${ids.length!==1?'s':''} del resultado actual?`))return;
+  ids.forEach(id=>addExcl(seg,String(id)));
+  refreshExcl(seg);
+}
 function getExcluidos(seg){try{return new Set(JSON.parse(localStorage.getItem(EXCL_KEY(seg))||'[]'));}catch{return new Set();}}
 function isExcluido(seg,o){const s=getExcluidos(seg);return s.has(String(o.id))||s.has('cli:'+String(o.cliente||'').trim());}
 function addExcl(seg,key){const s=getExcluidos(seg);s.add(key);localStorage.setItem(EXCL_KEY(seg),JSON.stringify([...s]));}
@@ -914,7 +928,7 @@ function openExclDd(evt,seg,id,cli){
   btn.closest('.excl-wrap').appendChild(dd);
   setTimeout(()=>document.addEventListener('click',closeExclDd,{once:true}),10);
 }
-function refreshExcl(seg){buildD();updateBadges();renderTab(seg);renderExcluidosPanel(seg);}
+function refreshExcl(seg){buildD();updateBadges();renderTab(seg);renderExcluidosPanel(seg);buildRE();buildTop10();}
 function renderExcluidosPanel(seg){
   const el=document.getElementById(`excl-panel-${seg}`);if(!el)return;
   const excl=[...getExcluidos(seg)];
@@ -1175,15 +1189,18 @@ function renderOpsTable(seg,filt){
       return((b.nrc||0)+(b.mrc||0))-((a.nrc||0)+(a.mrc||0));
     });
   }
-  document.getElementById(`${seg}-ops-cnt`).textContent=`${displayRows.length} registro${displayRows.length!==1?'s':''}${limitMsg}`;
+  _exclAllBuf[seg]=displayRows.map(o=>String(o.id));
+  const _hasFilter=(filt.g!=='ALL'||filt.t!=='ALL'||q!==''||filt.asesor!=='ALL'||filt.anio!=='ALL'||filt.mes_f!=='ALL'||filt.desde!==''||filt.hasta!=='');
+  const _exclAllHtml=(_hasFilter&&displayRows.length>0)?`<button class="excl-all-btn" onclick="onExclAll('${seg}')">⊘ Excluir todos (${displayRows.length})</button>`:'';
+  document.getElementById(`${seg}-ops-cnt`).innerHTML=`<span>${displayRows.length} registro${displayRows.length!==1?'s':''}${limitMsg}</span>${_exclAllHtml}`;
   let html;
   if(seg==='ab'||seg==='ga'){
     const ESTADOS=seg==='ab'?[PERDIDA_KEY]:ESTADOS_GA;
     html=`<thead><tr>
-      <th>#Tarea</th><th>Cliente</th><th>Gestor</th><th>Tipo</th>
+      <th>#Tarea</th><th class="col-resizable">Cliente</th><th>Gestor</th><th>Tipo</th>
       <th class="r">NRC</th><th class="r">MRC</th><th class="r" style="color:#F59E0B">Monto Total Proyecto</th><th>Asesor</th><th>%Prob</th>
-      <th style="min-width:300px">Seguimiento (Hoja)</th>
-      <th style="min-width:160px">Estado</th><th style="width:36px"></th>
+      <th class="col-resizable" style="width:180px">Seguimiento (Hoja)</th>
+      <th style="width:120px">Estado</th><th style="width:36px"></th>
     </tr></thead><tbody>`;
     if(!displayRows.length){html+='<tr><td colspan="12" class="no-results">Sin resultados para los filtros aplicados.</td></tr>';}
     else {
@@ -1220,7 +1237,7 @@ function renderOpsTable(seg,filt){
         <td class="r" style="font-weight:700;color:#F59E0B">${fM(tot)}</td>
         <td style="font-size:15px;color:#CBD5E1">${as}</td>
         <td><span class="prob-pill">${o.prob||'—'}</span></td>
-        <td><span class="seg-note">${esc(o.seg||'—')}</span></td>
+        <td><span class="seg-note" title="${esc(o.seg||'')}">${esc(o.seg||'—')}</span></td>
         <td>${perdida?`<span style="color:#E55C6C;font-size:15px;font-weight:600">❌ Cerrada — Perdida<br><span style="color:#64748B;font-size:14px">Ver en Ops Perdidas</span></span>`
           :`<select id="est-${o.id}" onchange="onEstado('${o.id}',this.value,'${seg}')">${opts}</select>`}</td>
         <td style="padding:2px;text-align:center"><div class="excl-wrap"><button class="excl-btn" title="Excluir" onclick="openExclDd(event,'${seg}','${safeId}','${safeCli}')">⊘</button></div></td>
@@ -1229,7 +1246,7 @@ function renderOpsTable(seg,filt){
     }
   } else {
     html=`<thead><tr>
-      <th>#Tarea</th><th>Cliente</th><th>Origen</th><th>Gestor</th><th>Tipo</th>
+      <th>#Tarea</th><th class="col-resizable">Cliente</th><th>Origen</th><th>Gestor</th><th>Tipo</th>
       <th class="r">NRC</th><th class="r">MRC</th><th>Asesor</th>
       <th style="min-width:220px">Razón de Pérdida</th><th style="min-width:80px">Fecha</th><th style="width:36px"></th>
     </tr></thead><tbody>`;
@@ -1261,9 +1278,45 @@ function renderOpsTable(seg,filt){
   }
   html+='</tbody>';
   document.getElementById(`${seg}-ops-tbl`).innerHTML=html;
+  initColResize(`${seg}-ops-tbl`);
   if(seg!=='pe') rows.filter(o=>!isPerdida(o.id)).forEach(o=>colorSelect(o.id));
 }
 
+function initColResize(tableId){
+  const tbl=document.getElementById(tableId);
+  if(!tbl)return;
+  tbl.querySelectorAll('th.col-resizable').forEach(th=>{
+    th.querySelector('.col-resize-handle')?.remove();
+    const handle=document.createElement('div');
+    handle.className='col-resize-handle';
+    th.appendChild(handle);
+    let startX,startW;
+    handle.addEventListener('mousedown',e=>{
+      startX=e.clientX;
+      startW=th.offsetWidth;
+      handle.classList.add('dragging');
+      document.body.style.cursor='col-resize';
+      document.body.style.userSelect='none';
+      const onMove=e=>{
+        const w=Math.max(60,startW+(e.clientX-startX));
+        th.style.width=w+'px';
+        th.style.minWidth=w+'px';
+        th.style.maxWidth=w+'px';
+      };
+      const onUp=()=>{
+        handle.classList.remove('dragging');
+        document.body.style.cursor='';
+        document.body.style.userSelect='';
+        document.removeEventListener('mousemove',onMove);
+        document.removeEventListener('mouseup',onUp);
+      };
+      document.addEventListener('mousemove',onMove);
+      document.addEventListener('mouseup',onUp);
+      e.preventDefault();
+      e.stopPropagation();
+    });
+  });
+}
 function esc(s){return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');}
 function hl(txt,q){if(!q||!txt)return esc(txt);return String(txt).replace(new RegExp(q.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'),'gi'),m=>`<span class="hl">${m}</span>`);}
 
@@ -1329,9 +1382,11 @@ function buildDistCard(label,color,opsArr){
 function buildRE(){
   const ab=aggF('ab',{g:'ALL',t:'ALL',q:''}),ga=aggF('ga',{g:'ALL',t:'ALL',q:''});
   document.getElementById('re-totReg').textContent=TOTAL_REGISTROS_NETWORK;
-  document.getElementById('re-totSub').textContent=`Abiertas (Pipeline): ${OPS.ab.length} · Ganadas: ${OPS.ga.length} · Pendiente despachar cotización: ${TOTAL_REGISTROS_NETWORK - OPS.ab.length - OPS.ga.length}`;
-  document.getElementById('re-cntAb').textContent=OPS.ab.length;
-  document.getElementById('re-cntGa').textContent=OPS.ga.length;
+  const _cntAb=OPS.ab.filter(o=>!isExcluido('ab',o)).length;
+  const _cntGa=OPS.ga.filter(o=>!isExcluido('ga',o)).length;
+  document.getElementById('re-totSub').textContent=`Abiertas (Pipeline): ${_cntAb} · Ganadas: ${_cntGa} · Pendiente despachar cotización: ${TOTAL_REGISTROS_NETWORK - _cntAb - _cntGa}`;
+  document.getElementById('re-cntAb').textContent=_cntAb;
+  document.getElementById('re-cntGa').textContent=_cntGa;
   document.getElementById('re-cntGaSub').textContent='Perdidas: '+OPS.pe.length;
   document.getElementById('re-pl-nrc').textContent=fM(ab.tot.nrc);
   document.getElementById('re-pl-mrc').textContent=fM(ab.tot.mrc);
@@ -1351,9 +1406,9 @@ function buildRE(){
   const wrAvg=(D.GH.wr+D.CM.wr+D.DA.wr)/3;
   document.getElementById('re-wr').textContent=fP(wrAvg);
   /* ── Distribución de Oportunidades ── */
-  const opsAb=OPS.ab.filter(o=>!isPerdida(o.id));
-  const opsGa=OPS.ga;
-  const opsPe=[...OPS.pe,...getPeMovidas()];
+  const opsAb=OPS.ab.filter(o=>!isPerdida(o.id)&&!isExcluido('ab',o));
+  const opsGa=OPS.ga.filter(o=>!isExcluido('ga',o));
+  const opsPe=[...OPS.pe,...getPeMovidas()].filter(o=>!isExcluido('pe',o));
   const nAb=opsAb.length, nGa=opsGa.length, nPe=opsPe.length, nTot=nAb+nGa+nPe;
   document.getElementById('re-dist-kpis').innerHTML=
     buildDistCard('Ops Abiertas · Pipeline','#F59E0B',opsAb)+
@@ -1419,36 +1474,45 @@ function buildRE(){
 /* ── TOP 10 ── */
 function buildTop10(){
   const HDR=`<thead><tr>
-    <th>#</th><th>#Tarea</th><th>Cliente</th><th>Tipo</th>
+    <th>#</th><th>#Tarea</th><th class="col-resizable" style="width:110px">Cliente</th><th>Tipo</th>
     <th class="r">NRC</th><th class="r">MRC</th><th class="r" style="color:#F59E0B">Monto Total Proyecto</th>
     <th>Asesor</th><th>%Prob</th>
-    <th style="min-width:320px">Seguimiento (Hoja)</th>
+    <th style="min-width:200px">Seguimiento (Hoja)</th>
+    <th style="width:36px"></th>
   </tr></thead>`;
   ['GH','CM','DA'].forEach(g=>{
-    const ops=OPS.ab.filter(o=>!isPerdida(o.id)&&o.gestor===g)
+    const ops=OPS.ab.filter(o=>!isPerdida(o.id)&&o.gestor===g&&!isExcluido('ab',o))
                     .sort((a,b)=>((b.nrc||0)+(b.mrc||0))-((a.nrc||0)+(a.mrc||0))).slice(0,10);
     let html=HDR+'<tbody>';
     if(!ops.length){
-      html+='<tr><td colspan="10" class="no-results">Sin oportunidades abiertas.</td></tr>';
+      html+='<tr><td colspan="11" class="no-results">Sin oportunidades abiertas.</td></tr>';
     } else {
       ops.forEach((o,i)=>{
         const total=(o.nrc||0)+(o.mrc||0);
+        const safeId=String(o.id).replace(/'/g,"\\'");
+        const safeCli=String(o.cliente||'').replace(/'/g,"\\'").replace(/\\/g,'\\\\');
         html+=`<tr>
           <td><span class="rk${i<3?' top3':''}">${i+1}</span></td>
           <td><span class="tarea-tag">${esc(o.tarea||'')}</span></td>
-          <td style="font-weight:600;color:#E2E8F0">${esc(o.cliente||'')}</td>
+          <td style="font-weight:600;color:#E2E8F0;max-width:110px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${esc(o.cliente||'')}">${esc(o.cliente||'')}</td>
           <td><span class="tipo-b t-${(o.tipo||'sin').toLowerCase()}">${o.tipo||'SIN'}</span></td>
           <td class="r" style="color:#94A3B8">${fM(o.nrc)}</td>
           <td class="r" style="color:#94A3B8">${fM(o.mrc)}</td>
           <td class="r" style="color:#F59E0B;font-weight:700">${fM(total)}</td>
           <td style="font-size:15px;color:#CBD5E1">${esc(o.asesor||'—')}</td>
           <td><span class="prob-pill">${o.prob||'—'}</span></td>
-          <td><span class="seg-note">${esc(o.seg||'—')}</span></td>
+          <td><span class="seg-note" title="${esc(o.seg||'')}">${esc(o.seg||'—')}</span></td>
+          <td style="padding:2px;text-align:center">
+            <div class="excl-wrap">
+              <button class="excl-btn" title="Excluir" onclick="openExclDd(event,'ab','${safeId}','${safeCli}')">⊘</button>
+            </div>
+          </td>
         </tr>`;
       });
     }
     html+='</tbody>';
     document.getElementById(`tbl-top10-${g}`).innerHTML=html;
+    initColResize(`tbl-top10-${g}`);
   });
 }
 
