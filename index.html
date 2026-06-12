@@ -671,7 +671,7 @@ body{background:#1F2229;color:#E2E8F0;font-family:'Segoe UI',system-ui,sans-seri
     <span class="fbar-lbl-sm">Estado:</span>
     <select id="ge-fest" onchange="renderGe()">
       <option value="ALL">Todos</option>
-      <option>PENDIENTE REVISIÓN COMERCIAL-TECNICO</option>
+      <option>PENDIENTE REVISION COMERCIAL-TECNICO</option>
       <option>NO OFERTADO DESCARTE PP/PRIVADO</option>
     </select>
     <span class="fbar-lbl-sm">Año:</span>
@@ -762,6 +762,7 @@ const PERDIDA_KEY = '❌ Cerrar como Perdida';
 /* Estados que indican que NO se generará oferta — excluidos de Pendientes, mostrados en tab Gestión Externa */
 const NO_OFERTA_ESTADOS = [
   'PENDIENTE REVISIÓN COMERCIAL-TECNICO',
+  'PENDIENTE REVISION COMERCIAL-TECNICO',
   'NO OFERTADO DESCARTE PP/PRIVADO'
 ];
 
@@ -1866,7 +1867,7 @@ function renderGe(){
   const cntDA  = ops.filter(o=>o.gestor==='DA').length;
 
   // Conteo por estado
-  const cntPRC = ops.filter(o=>(o.estado||'').toUpperCase().trim()==='PENDIENTE REVISIÓN COMERCIAL-TECNICO').length;
+  const cntPRC = ops.filter(o=>NO_OFERTA_ESTADOS.includes((o.estado||'').trim().toUpperCase())).length;
   const cntNOF = ops.filter(o=>(o.estado||'').toUpperCase().trim()==='NO OFERTADO DESCARTE PP/PRIVADO').length;
 
   // ── KPIs ──
@@ -1906,7 +1907,7 @@ function renderGe(){
     const gt=go.length;
     const gsin=go.filter(o=>o.tipo!=='CON').length;
     const gcon=go.filter(o=>o.tipo==='CON').length;
-    const gprc=go.filter(o=>(o.estado||'').toUpperCase().trim()==='PENDIENTE REVISIÓN COMERCIAL-TECNICO').length;
+    const gprc=go.filter(o=>NO_OFERTA_ESTADOS.includes((o.estado||'').trim().toUpperCase())).length;
     const gnof=go.filter(o=>(o.estado||'').toUpperCase().trim()==='NO OFERTADO DESCARTE PP/PRIVADO').length;
     const gpct=total?Math.round(gt/total*100):0;
     gestCrds+=`<div class="gc" style="border-top-color:${GC[gk]}">
