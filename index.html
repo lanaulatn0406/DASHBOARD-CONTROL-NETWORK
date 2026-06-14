@@ -1363,6 +1363,7 @@ function buildDistCard(label,color,opsArr){
         <div style="font-size:15px;color:#94A3B8">CON inspección: <strong style="color:#4AE3B5">${con}</strong></div>
         <div style="font-size:15px;color:#94A3B8">NRC: <strong style="color:#E2E8F0">${fM(nrc)}</strong></div>
         <div style="font-size:15px;color:#94A3B8">MRC: <strong style="color:#E2E8F0">${fM(mrc)}</strong></div>
+        <div style="grid-column:1/-1;font-size:15px;color:#94A3B8;margin-top:2px">Monto Total: <strong style="color:#F59E0B">${fM(nrc+mrc)}</strong></div>
       </div>
     </div>`;
   });
@@ -1370,9 +1371,10 @@ function buildDistCard(label,color,opsArr){
     <div style="text-align:center;margin-bottom:10px">
       <div style="font-size:2rem;font-weight:700;color:${color};line-height:1.1">${total}</div>
       <div style="font-size:15px;font-weight:700;color:#94A3B8;text-transform:uppercase;letter-spacing:.5px;margin-top:2px">${label}</div>
-      <div style="margin-top:5px;display:flex;justify-content:center;gap:10px">
+      <div style="margin-top:5px;display:flex;justify-content:center;gap:10px;flex-wrap:wrap">
         <span style="font-size:15px;color:#64748B">NRC: <strong style="color:#E2E8F0">${fM(totNrc)}</strong></span>
         <span style="font-size:15px;color:#64748B">MRC: <strong style="color:#E2E8F0">${fM(totMrc)}</strong></span>
+        <span style="font-size:15px;color:#64748B">Monto Total: <strong style="color:#F59E0B">${fM(totNrc+totMrc)}</strong></span>
       </div>
     </div>
     ${rows||'<div style="font-size:15px;color:#4A5568;padding:8px 0">Sin registros</div>'}
