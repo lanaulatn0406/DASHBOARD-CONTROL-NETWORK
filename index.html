@@ -1133,6 +1133,8 @@ function renderGestores(seg,totTab,col,filt){
         </div>
         <div class="gc-part"><span class="gc-part-l">% MRC equipo</span><span class="gc-part-v" style="color:${col}">${pM}%</span></div>
         <div class="wb"><div class="wf" style="width:${Math.min(pM,100)}%;background:${col}"></div></div></div>
+      <hr class="gc-div">
+      <div class="gc-blk"><div class="gc-lbl">🏷 Monto Total</div><div class="gc-val" style="color:#F59E0B">${fM(tN+tM)}</div></div>
     </div>`;
   });
   document.getElementById(`${seg}-gestores`).innerHTML=html||'<div style="color:#64748B;padding:16px">Sin datos para este filtro.</div>';
