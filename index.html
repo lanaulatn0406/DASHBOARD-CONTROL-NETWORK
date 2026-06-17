@@ -2081,10 +2081,10 @@ async function initDashboard(){
     document.getElementById('ld-spin').style.display='none';
     document.getElementById('ld-err').style.display='';
     document.getElementById('ld-err-msg').textContent=`Error al cargar datos: ${err.message}. Verifica que el Apps Script esté publicado y el token sea correcto.`;
-    console.error('[NW] loadData error:', err);
+    console.error('[NW] initDashboard error:', err);
   }
 }
-loadData();
+initDashboard();
 </script>
 </body>
 </html>
