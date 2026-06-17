@@ -767,7 +767,7 @@ const NO_OFERTA_ESTADOS = [
 ];
 
 /* ── DATOS DINÁMICOS ── */
-let OPS = {ab:[], ga:[], pe:[], pd:[]};
+let OPS = {ab:[], ga:[], pe:[], pd:[], per:[]};
 let TOTAL_REGISTROS_NETWORK = 0;   // Total filas con contenido en CM+GH+DA 2026
 let D   = {GH:{ab:{sin:{ops:0,nrc:0,mrc:0},con:{ops:0,nrc:0,mrc:0}},ga:{sin:{ops:0,nrc:0,mrc:0},con:{ops:0,nrc:0,mrc:0}},pe:{sin:{ops:0,nrc:0,mrc:0},con:{ops:0,nrc:0,mrc:0}},wr:0,margen:0},
             CM:{ab:{sin:{ops:0,nrc:0,mrc:0},con:{ops:0,nrc:0,mrc:0}},ga:{sin:{ops:0,nrc:0,mrc:0},con:{ops:0,nrc:0,mrc:0}},pe:{sin:{ops:0,nrc:0,mrc:0},con:{ops:0,nrc:0,mrc:0}},wr:0,margen:0},
@@ -778,7 +778,7 @@ const LS = 'nw_tk_v8';
 function loadTk(){try{return JSON.parse(localStorage.getItem(LS)||'{}')}catch{return{}}}
 function saveTkF(id,f,v){const d=loadTk();if(!d[id])d[id]={};d[id][f]=v;localStorage.setItem(LS,JSON.stringify(d));}
 function getTk(id,f,def){const d=loadTk();return d[id]&&d[id][f]!=null?d[id][f]:def;}
-function isPerdida(id){return getTk(id,'estado','')===PERDIDA_KEY;}
+function isPerdida(id){return getTk(id,'estado','')===PERDIDA_KEY||OPS.per.some(o=>String(o.id)===String(id));}
 
 /* ── BUILD D desde OPS ── */
 function buildD(){
@@ -796,7 +796,7 @@ function buildD(){
       D[g][seg]=r;
     });
     const gaCount = OPS.ga.filter(o=>o.gestor===g).length;
-    const peCount = getPeMovidas().filter(o=>o.gestor===g).length + OPS.pe.filter(o=>o.gestor===g).length;
+    const peCount = getPeMovidas().filter(o=>o.gestor===g).length + OPS.pe.filter(o=>o.gestor===g).length + OPS.per.filter(o=>o.gestor===g).length;
     D[g].wr = gaCount+peCount>0 ? +(gaCount/(gaCount+peCount)*100).toFixed(2) : 0;
     const mOps = OPS.ga.filter(o=>o.gestor===g&&o.margen&&!isExcluido('ga',o));
     if(mOps.length){
@@ -934,7 +934,7 @@ function renderExcluidosPanel(seg){
   const el=document.getElementById(`excl-panel-${seg}`);if(!el)return;
   const excl=[...getExcluidos(seg)];
   if(!excl.length){el.innerHTML='';return;}
-  const allOps=seg==='pe'?[...OPS.pe,...getPeMovidas()]:OPS[seg];
+  const allOps=seg==='pe'?[...OPS.pe,...getPeMovidas(),...OPS.per]:OPS[seg];
   let rows='';
   excl.forEach(key=>{
     if(key.startsWith('cli:')){
@@ -954,7 +954,7 @@ function renderExcluidosPanel(seg){
 /* ── AGGREGATE desde OPS ── */
 function aggF(seg,filt){
   let allOps;
-  if(seg==='pe'){allOps=[...OPS.pe,...getPeMovidas()];}
+  if(seg==='pe'){allOps=[...OPS.pe,...getPeMovidas(),...OPS.per];}
   else{allOps=OPS[seg].filter(o=>!isPerdida(o.id));}
   allOps=allOps.filter(o=>!isExcluido(seg,o));
   const r={sin:{ops:0,nrc:0,mrc:0},con:{ops:0,nrc:0,mrc:0}};
@@ -976,7 +976,7 @@ function aggF(seg,filt){
 
 /* ── TRACKING SUMMARY ── */
 function buildTkRow(seg){
-  const ops=[...OPS[seg],...(seg==='pe'?getPeMovidas():[])];
+  const ops=[...OPS[seg],...(seg==='pe'?[...getPeMovidas(),...OPS.per]:[])];
   const estados={};
   ops.forEach(o=>{
     if(seg!=='pe'&&isPerdida(o.id))return;
@@ -992,7 +992,10 @@ function buildTkRow(seg){
   if(!shown.length){html+='<span style="font-size:15px;color:#4A5568">Sin estados asignados aún</span>';}
   else{shown.forEach(e=>{html+=`<div class="tk-item"><div class="tk-dot" style="background:${dots[e]||'#94A3B8'}"></div><span class="tk-lbl">${e}</span><span class="tk-val">${estados[e]}</span></div>`;});}
   if(seg!=='pe'){const nPerd=OPS[seg].filter(o=>isPerdida(o.id)).length;if(nPerd>0)html+=`<div class="tk-item"><div class="tk-dot" style="background:#E55C6C"></div><span class="tk-lbl">Cerradas como Perdida</span><span class="tk-val">${nPerd}</span></div>`;}
-  if(seg==='pe'){const mov=getPeMovidas().length;if(mov>0)html+=`<div class="tk-item"><div class="tk-dot" style="background:#F59E0B"></div><span class="tk-lbl">Trasladadas desde Pipeline</span><span class="tk-val">${mov}</span></div>`;}
+  if(seg==='pe'){
+    const mov=getPeMovidas().length;if(mov>0)html+=`<div class="tk-item"><div class="tk-dot" style="background:#F59E0B"></div><span class="tk-lbl">Trasladadas desde Pipeline</span><span class="tk-val">${mov}</span></div>`;
+    const shp=OPS.per.length;if(shp>0)html+=`<div class="tk-item"><div class="tk-dot" style="background:#E55C6C"></div><span class="tk-lbl">Cerradas en Sheet</span><span class="tk-val">${shp}</span></div>`;
+  }
   document.getElementById(`${seg}-tk-row`).innerHTML=html;
 }
 
@@ -1066,7 +1069,7 @@ function renderTab(seg){
   buildTkRow(seg);
   const pSum=document.getElementById(`${seg}-pipeline-summary`);
   if(pSum){
-    const rawOps=seg==='pe'?[...OPS.pe,...getPeMovidas()]:OPS[seg].filter(o=>!isPerdida(o.id));
+    const rawOps=seg==='pe'?[...OPS.pe,...getPeMovidas(),...OPS.per]:OPS[seg].filter(o=>!isPerdida(o.id));
     const filtOps=rawOps.filter(o=>(filt.g==='ALL'||o.gestor===filt.g)&&(filt.t==='ALL'||o.tipo===filt.t));
     const tpVals=filtOps.filter(o=>o.tpTot!=null).map(o=>o.tpTot);
     const avgTp=tpVals.length?(tpVals.reduce((s,v)=>s+v,0)/tpVals.length):0;
@@ -1150,7 +1153,8 @@ function renderOpsTable(seg,filt){
   if(seg==='pe'){
     const orig=OPS.pe.map(o=>({...o,_src:'pe'}));
     const moved=getPeMovidas().map(o=>({...o,_src:OPS.ab.find(x=>x.id===o.id)?'ab':'ga'}));
-    rows=[...orig,...moved];
+    const sheet=OPS.per.map(o=>({...o,_src:'per'}));
+    rows=[...orig,...moved,...sheet];
   } else {
     rows=OPS[seg].map(o=>({...o,_src:seg}));
   }
@@ -1256,12 +1260,12 @@ function renderOpsTable(seg,filt){
     if(!rows.length){html+='<tr><td colspan="11" class="no-results">Sin registros de pérdidas.</td></tr>';}
     else rows.forEach(o=>{
       const razon=getTk(o.id,'razon_perdida','');
-      const fecha=getTk(o.id,'fecha_perdida','');
+      const fecha=getTk(o.id,'fecha_perdida','')||(o._src==='per'?(o.fechaPerd||o.fechaE||o.fechaA||''):'');
       const nm=q?hl(o.cliente||'',q):esc(o.cliente||'');
       const tr=q?hl(o.tarea||'',q):esc(o.tarea||'');
       const as=q?hl(o.asesor||'',q):esc(o.asesor||'—');
       const srcClass=o._src==='ab'?'from-ab':o._src==='ga'?'from-ga':'';
-      const srcBadge=o._src==='ab'?`<span class="src-badge src-ab">📂 Pipeline</span>`:o._src==='ga'?`<span class="src-badge src-ga">✅ Ganadas</span>`:`<span class="src-badge src-pe">❌ Original</span>`;
+      const srcBadge=o._src==='ab'?`<span class="src-badge src-ab">📂 Pipeline</span>`:o._src==='ga'?`<span class="src-badge src-ga">✅ Ganadas</span>`:o._src==='per'?`<span class="src-badge src-pe">📋 Sheet</span>`:`<span class="src-badge src-pe">❌ Original</span>`;
       const safeId=String(o.id).replace(/'/g,"\\'");
       const safeCli=String(o.cliente||'').replace(/'/g,"\\'").replace(/\\/g,'\\\\');
       html+=`<tr${srcClass?' class="'+srcClass+'"':''}>
@@ -1329,7 +1333,7 @@ function updateBadges(){
     const el=document.getElementById(`tbadge-${seg}`);
     let n=0;
     if(seg==='ab')n=OPS.ab.filter(o=>isPerdida(o.id)&&!isExcluido('ab',o)).length;
-    if(seg==='pe')n=getPeMovidas().filter(o=>!isExcluido('pe',o)).length;
+    if(seg==='pe')n=[...getPeMovidas(),...OPS.per].filter(o=>!isExcluido('pe',o)).length;
     el.textContent=n;el.style.display=n>0?'flex':'none';
   });
   // Badge pendientes
@@ -1387,12 +1391,12 @@ function buildDistCard(label,color,opsArr){
 function buildRE(){
   const ab=aggF('ab',{g:'ALL',t:'ALL',q:''}),ga=aggF('ga',{g:'ALL',t:'ALL',q:''});
   document.getElementById('re-totReg').textContent=TOTAL_REGISTROS_NETWORK;
-  const _cntAb=OPS.ab.filter(o=>!isExcluido('ab',o)).length;
+  const _cntAb=OPS.ab.filter(o=>!isPerdida(o.id)&&!isExcluido('ab',o)).length;
   const _cntGa=OPS.ga.filter(o=>!isExcluido('ga',o)).length;
   document.getElementById('re-totSub').textContent=`Abiertas (Pipeline): ${_cntAb} · Ganadas: ${_cntGa} · Pendiente despachar cotización: ${TOTAL_REGISTROS_NETWORK - _cntAb - _cntGa}`;
   document.getElementById('re-cntAb').textContent=_cntAb;
   document.getElementById('re-cntGa').textContent=_cntGa;
-  document.getElementById('re-cntGaSub').textContent='Perdidas: '+OPS.pe.length;
+  document.getElementById('re-cntGaSub').textContent='Perdidas: '+(getPeMovidas().length+OPS.per.length);
   document.getElementById('re-pl-nrc').textContent=fM(ab.tot.nrc);
   document.getElementById('re-pl-mrc').textContent=fM(ab.tot.mrc);
   document.getElementById('re-pl-tot').textContent=fM(ab.tot.nrc+ab.tot.mrc);
@@ -1413,7 +1417,7 @@ function buildRE(){
   /* ── Distribución de Oportunidades ── */
   const opsAb=OPS.ab.filter(o=>!isPerdida(o.id)&&!isExcluido('ab',o));
   const opsGa=OPS.ga.filter(o=>!isExcluido('ga',o));
-  const opsPe=[...OPS.pe,...getPeMovidas()].filter(o=>!isExcluido('pe',o));
+  const opsPe=[...OPS.pe,...getPeMovidas(),...OPS.per].filter(o=>!isExcluido('pe',o));
   const nAb=opsAb.length, nGa=opsGa.length, nPe=opsPe.length, nTot=nAb+nGa+nPe;
   document.getElementById('re-dist-kpis').innerHTML=
     buildDistCard('Ops Abiertas · Pipeline','#F59E0B',opsAb)+
@@ -2044,13 +2048,16 @@ async function initDashboard(){
     // Populate OPS
     OPS.ab = (data.abiertas   || []);
     OPS.ga = (data.ganadas    || []);
-    OPS.pd = (data.pendientes || []);  // Pendientes de despachar cotización
-    OPS.pe = [];  // Perdidas gestionadas desde el dashboard
+    OPS.pd  = (data.pendientes || []);  // Pendientes de despachar cotización
+    OPS.pe  = [];                        // Perdidas gestionadas desde el dashboard (localStorage)
+    OPS.per = (data.perdidas   || []);  // Perdidas desde Sheet (estado='PERDIDA')
     TOTAL_REGISTROS_NETWORK = data.totalRegistrosNetwork || 0;
     // Diagnóstico — eliminar cuando todo funcione
     console.log('[NW] Backend response keys:', Object.keys(data));
     console.log('[NW] pendientes en data:', data.pendientes !== undefined ? data.pendientes.length : 'NO EXISTE (backend viejo)');
+    console.log('[NW] perdidas en data:', data.perdidas !== undefined ? data.perdidas.length : 'NO EXISTE (backend viejo)');
     console.log('[NW] OPS.pd.length:', OPS.pd.length);
+    console.log('[NW] OPS.per.length:', OPS.per.length);
 
     document.getElementById('ld-msg').textContent='Calculando métricas…';
     buildD();
