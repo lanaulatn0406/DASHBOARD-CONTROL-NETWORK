@@ -1260,7 +1260,7 @@ function renderOpsTable(seg,filt){
     if(!rows.length){html+='<tr><td colspan="11" class="no-results">Sin registros de pérdidas.</td></tr>';}
     else rows.forEach(o=>{
       const razon=getTk(o.id,'razon_perdida','');
-      const fecha=getTk(o.id,'fecha_perdida','')||(o._src==='per'?(o.fechaPerd||o.fechaE||o.fechaA||''):'');
+      const fecha=o._src==='per'?(o.fechaPerd||getTk(o.id,'fecha_perdida','')||o.fechaE||o.fechaA||''):getTk(o.id,'fecha_perdida','');
       const nm=q?hl(o.cliente||'',q):esc(o.cliente||'');
       const tr=q?hl(o.tarea||'',q):esc(o.tarea||'');
       const as=q?hl(o.asesor||'',q):esc(o.asesor||'—');
