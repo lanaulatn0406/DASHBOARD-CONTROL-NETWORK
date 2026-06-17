@@ -2059,4 +2059,34 @@ async function initDashboard(){
     console.log('[NW] OPS.pd.length:', OPS.pd.length);
     console.log('[NW] OPS.per.length:', OPS.per.length);
 
-    document.getElementById('ld
+    document.getElementById('ld-msg').textContent='Calculando métricas…';
+    buildD();
+
+    document.getElementById('ld-msg').textContent='Renderizando dashboard…';
+    // Small delay to let the message show
+    await new Promise(r=>setTimeout(r,50));
+
+    initFilterOptions();
+    buildRE();
+    buildTop10();
+    ['ab','ga','pe'].forEach(seg=>renderTab(seg));
+    ['ab','ga','pe'].forEach(seg=>renderExcluidosPanel(seg));
+    renderPd();
+    renderGe();
+    updateBadges();
+
+    // Hide loading overlay
+    document.getElementById('loading-overlay').classList.add('hidden');
+
+  } catch(err){
+    document.getElementById('ld-spin').style.display='none';
+    document.getElementById('ld-err-msg').textContent=`Error al cargar datos: ${err.message}. Verifica que el Apps Script esté publicado y el token sea correcto.`;
+    document.getElementById('ld-err').style.display='block';
+  }
+}
+
+// Arranque
+initDashboard();
+</script>
+</body>
+</html>
