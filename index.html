@@ -784,7 +784,7 @@ function isPerdida(id){return getTk(id,'estado','')===PERDIDA_KEY||OPS.per.some(
 function buildD(){
   ['GH','CM','DA'].forEach(g=>{
     ['ab','ga','pe'].forEach(seg=>{
-      let ops = seg==='pe'?[...OPS.pe,...getPeMovidas()]:OPS[seg];
+      let ops = seg==='pe'?[...OPS.pe,...getPeMovidas(),...OPS.per]:OPS[seg];
       ops = ops.filter(o=>o.gestor===g);
       if(seg!=='pe') ops = ops.filter(o=>!isPerdida(o.id));
       ops = ops.filter(o=>!isExcluido(seg,o));
