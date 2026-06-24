@@ -342,6 +342,11 @@ body{background:#1F2229;color:#E2E8F0;font-family:'Segoe UI',system-ui,sans-seri
     <div class="kc ga"><div class="kv" id="re-cntGa">—</div><div class="kl">Ofertas Ganadas</div><div class="ks" id="re-cntGaSub">—</div></div>
     <div class="kc ne"><div class="kv" id="re-wr">—</div><div class="kl">Win Rate Promedio</div><div class="ks">Ponderado equipo</div></div>
   </div>
+  <div class="kr kr3">
+    <div class="kc pe"><div class="kv" id="re-cntPer">—</div><div class="kl">Ops Perdidas</div><div class="ks">Cerradas como perdida</div></div>
+    <div class="kc" style="border-top-color:#A78BFA"><div class="kv" style="color:#A78BFA" id="re-cntPd">—</div><div class="kl">Pendiente Despacho</div><div class="ks">Sin cotización enviada</div></div>
+    <div class="kc" style="border-top-color:#94A3B8"><div class="kv" style="color:#94A3B8" id="re-cntGe">—</div><div class="kl">Gestión Externa · Sin Oferta</div><div class="ks">Sin oferta preventa</div></div>
+  </div>
   <div class="kr kr3" style="margin-bottom:12px">
     <div style="display:flex;flex-direction:column;gap:12px">
       <div class="kc" style="border-top:2px solid #F59E0B"><div class="kv" style="color:#F59E0B" id="re-pl-nrc">—</div><div class="kl">Pipeline NRC Total</div><div class="ks">Ops Abiertas · Pipeline</div></div>
@@ -1393,10 +1398,16 @@ function buildRE(){
   document.getElementById('re-totReg').textContent=TOTAL_REGISTROS_NETWORK;
   const _cntAb=OPS.ab.filter(o=>!isPerdida(o.id)&&!isExcluido('ab',o)).length;
   const _cntGa=OPS.ga.filter(o=>!isExcluido('ga',o)).length;
-  document.getElementById('re-totSub').textContent=`Abiertas (Pipeline): ${_cntAb} · Ganadas: ${_cntGa} · Pendiente despachar cotización: ${TOTAL_REGISTROS_NETWORK - _cntAb - _cntGa}`;
+  const _cntPer=getPeMovidas().length+OPS.per.length;
+  const _cntPd=OPS.pd.filter(o=>!NO_OFERTA_ESTADOS.includes((o.estado||'').toUpperCase().trim())).length;
+  const _cntGe=OPS.pd.filter(o=>NO_OFERTA_ESTADOS.includes((o.estado||'').toUpperCase().trim())).length;
+  document.getElementById('re-totSub').textContent=`Abiertas: ${_cntAb} · Ganadas: ${_cntGa} · Perdidas: ${_cntPer} · Pend. Despacho: ${_cntPd} · Gest. Externa: ${_cntGe}`;
   document.getElementById('re-cntAb').textContent=_cntAb;
   document.getElementById('re-cntGa').textContent=_cntGa;
-  document.getElementById('re-cntGaSub').textContent='Perdidas: '+(getPeMovidas().length+OPS.per.length);
+  document.getElementById('re-cntGaSub').textContent='Perdidas: '+_cntPer;
+  document.getElementById('re-cntPer').textContent=_cntPer;
+  document.getElementById('re-cntPd').textContent=_cntPd;
+  document.getElementById('re-cntGe').textContent=_cntGe;
   document.getElementById('re-pl-nrc').textContent=fM(ab.tot.nrc);
   document.getElementById('re-pl-mrc').textContent=fM(ab.tot.mrc);
   document.getElementById('re-pl-tot').textContent=fM(ab.tot.nrc+ab.tot.mrc);
