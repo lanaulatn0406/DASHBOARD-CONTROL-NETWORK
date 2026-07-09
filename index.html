@@ -336,6 +336,39 @@ body{background:#1F2229;color:#E2E8F0;font-family:'Segoe UI',system-ui,sans-seri
 
 <!-- RESUMEN -->
 <div id="tp-re" class="tp ac">
+  <div class="fbar" id="fbar-re">
+    <span class="fbar-lbl">Filtros:</span>
+    <select id="re-fg" onchange="applyRE()">
+      <option value="ALL">Todos los gestores</option>
+      <option value="GH">George Heredia</option>
+      <option value="CM">Carlos Mejía</option>
+      <option value="DA">David Alcívar</option>
+    </select>
+    <div class="tipo-grp">
+      <button class="tipo-btn ac-all" onclick="setRET('ALL',this)">Todos</button>
+      <button class="tipo-btn" onclick="setRET('SIN',this)">SIN</button>
+      <button class="tipo-btn" onclick="setRET('CON',this)">CON</button>
+    </div>
+    <input class="fbar-search" id="re-fq" type="search" placeholder="🔍 Buscar por cliente, asesor o #Tarea…" oninput="applyRE()">
+    <span class="fbar-badge" id="re-badge" style="display:none"></span>
+    <button class="btn-reset" onclick="resetRE()">✕ Limpiar</button>
+    <div class="fbar-sep"></div>
+    <span class="fbar-lbl">Asesor:</span>
+    <select id="re-fa" onchange="applyRE()"><option value="ALL">Todos los asesores</option></select>
+    <span class="fbar-lbl-sm" style="margin-left:8px">Año:</span>
+    <select id="re-fanio" onchange="applyRE()"><option value="ALL">Todos</option></select>
+    <span class="fbar-lbl-sm">Mes:</span>
+    <select id="re-fmes" onchange="applyRE()">
+      <option value="ALL">Todos</option>
+      <option>ENERO</option><option>FEBRERO</option><option>MARZO</option><option>ABRIL</option>
+      <option>MAYO</option><option>JUNIO</option><option>JULIO</option><option>AGOSTO</option>
+      <option>SEPTIEMBRE</option><option>OCTUBRE</option><option>NOVIEMBRE</option><option>DICIEMBRE</option>
+    </select>
+    <span class="fbar-lbl-sm" style="margin-left:8px">Desde:</span>
+    <input type="date" class="fbar-date" id="re-fdesde" onchange="applyRE()">
+    <span class="fbar-lbl-sm">Hasta:</span>
+    <input type="date" class="fbar-date" id="re-fhasta" onchange="applyRE()">
+  </div>
   <div class="kr kr4">
     <div class="kc ne"><div class="kv" id="re-totReg">—</div><div class="kl">Total Registros Network</div><div class="ks" id="re-totSub">Cargando…</div></div>
     <div class="kc pl"><div class="kv" id="re-cntAb">—</div><div class="kl">Ofertas Abiertas</div><div class="ks">Pipeline activo</div></div>
@@ -861,7 +894,7 @@ const pct=(v,t)=>t>0?+(v/t*100).toFixed(1):0;
 
 /* ── FILTER STATE ── */
 const _FD=()=>({g:'ALL',t:'ALL',q:'',asesor:'ALL',anio:'ALL',mes_f:'ALL',desde:'',hasta:''});
-const F={ab:_FD(),ga:_FD(),pe:_FD()};
+const F={ab:_FD(),ga:_FD(),pe:_FD(),re:_FD()};
 function setFT(seg,tipo,btn){F[seg].t=tipo;btn.closest('.tipo-grp').querySelectorAll('.tipo-btn').forEach(b=>{b.className='tipo-btn';});btn.className='tipo-btn ac-'+(tipo==='ALL'?'all':tipo.toLowerCase());renderTab(seg);}
 function applyF(seg){
   F[seg].g=document.getElementById(`${seg}-fg`).value;
@@ -885,6 +918,63 @@ function resetF(seg){
   document.querySelector(`#fbar-${seg} .tipo-grp`).querySelectorAll('.tipo-btn').forEach((b,i)=>{b.className='tipo-btn'+(i===0?' ac-all':'');});
   renderTab(seg);
 }
+/* ── FILTROS RESUMEN EJECUTIVO ── */
+/* matchF: aplica los mismos criterios que aggF a un registro individual.
+   applyG=false ignora el filtro de gestor (útil cuando el gestor ya se fijó aparte). */
+function matchF(o,filt,applyG=true){
+  if(applyG&&filt.g&&filt.g!=='ALL'&&o.gestor!==filt.g)return false;
+  if(filt.t&&filt.t!=='ALL'&&o.tipo!==filt.t)return false;
+  if(filt.asesor&&filt.asesor!=='ALL'&&(o.asesor||'').trim()!==filt.asesor)return false;
+  if(filt.anio&&filt.anio!=='ALL'){const fa=parseFechaA(o.fechaA);if(!fa||fa.getFullYear()!==+filt.anio)return false;}
+  if(filt.mes_f&&filt.mes_f!=='ALL'){if((o.mes||'').trim().toUpperCase()!==filt.mes_f)return false;}
+  if(filt.desde||filt.hasta){const fa=parseFechaA(o.fechaA);if(!fa)return false;
+    const dD=filt.desde?new Date(filt.desde):null;
+    const dH=filt.hasta?(()=>{const d=new Date(filt.hasta);d.setHours(23,59,59,999);return d;})():null;
+    if(dD&&fa<dD)return false;if(dH&&fa>dH)return false;}
+  return true;
+}
+/* Win Rate por gestor respetando los filtros del Resumen */
+function wrFilt(g,filt){
+  const gaN=aggF('ga',{...filt,g}).tot.ops;
+  const peN=aggF('pe',{...filt,g}).tot.ops;
+  return gaN+peN>0?+(gaN/(gaN+peN)*100).toFixed(2):0;
+}
+/* Margen promedio por gestor respetando los filtros del Resumen */
+function margenFilt(g,filt){
+  const mOps=OPS.ga.filter(o=>o.gestor===g&&o.margen&&!isExcluido('ga',o)&&matchF(o,filt,false));
+  if(!mOps.length)return 0;
+  const sum=mOps.reduce((a,o)=>{const s=String(o.margen);const raw=parseFloat(s.replace('%','').replace(',','.'))||0;const m=s.includes('%')?raw:raw*100;return a+m;},0);
+  return +(sum/mOps.length).toFixed(2);
+}
+function setRET(tipo,btn){
+  F.re.t=tipo;
+  document.querySelectorAll('#fbar-re .tipo-btn').forEach(b=>{b.className='tipo-btn';});
+  btn.className='tipo-btn ac-'+(tipo==='ALL'?'all':tipo.toLowerCase());
+  buildRE();buildTop10();
+}
+function applyRE(){
+  F.re.g=document.getElementById('re-fg').value;
+  F.re.q=document.getElementById('re-fq').value.toLowerCase().trim();
+  F.re.asesor=document.getElementById('re-fa').value;
+  F.re.anio=document.getElementById('re-fanio').value;
+  F.re.mes_f=document.getElementById('re-fmes').value;
+  F.re.desde=document.getElementById('re-fdesde').value;
+  F.re.hasta=document.getElementById('re-fhasta').value;
+  buildRE();buildTop10();
+}
+function resetRE(){
+  F.re=_FD();
+  document.getElementById('re-fg').value='ALL';
+  document.getElementById('re-fq').value='';
+  document.getElementById('re-fa').value='ALL';
+  document.getElementById('re-fanio').value='ALL';
+  document.getElementById('re-fmes').value='ALL';
+  document.getElementById('re-fdesde').value='';
+  document.getElementById('re-fhasta').value='';
+  document.querySelectorAll('#fbar-re .tipo-btn').forEach((b,i)=>{b.className='tipo-btn'+(i===0?' ac-all':'');});
+  buildRE();buildTop10();
+}
+
 /* Parse fechaA "dd/MM/yyyy" → Date | null */
 function parseFechaA(s){
   if(!s||!s.includes('/'))return null;
@@ -898,7 +988,7 @@ function initFilterOptions(){
   const allOps=[...OPS.ab,...OPS.ga,...OPS.pe,...OPS.pd];
   const asesores=[...new Set(allOps.map(o=>(o.asesor||'').trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'es'));
   const anos=[...new Set(allOps.map(o=>{const fa=parseFechaA(o.fechaA);return fa?fa.getFullYear():null;}).filter(Boolean))].sort((a,b)=>b-a);
-  ['ab','ga','pe','pd','ge'].forEach(seg=>{
+  ['ab','ga','pe','pd','ge','re'].forEach(seg=>{
     const sa=document.getElementById(`${seg}-fa`);
     if(sa){sa.innerHTML='<option value="ALL">Todos los asesores</option>'+asesores.map(a=>`<option value="${a}">${a}</option>`).join('');}
     const sy=document.getElementById(`${seg}-fanio`);
@@ -1394,13 +1484,25 @@ function buildDistCard(label,color,opsArr){
 
 /* ── RESUMEN ── */
 function buildRE(){
-  const ab=aggF('ab',{g:'ALL',t:'ALL',q:''}),ga=aggF('ga',{g:'ALL',t:'ALL',q:''});
-  document.getElementById('re-totReg').textContent=TOTAL_REGISTROS_NETWORK;
-  const _cntAb=OPS.ab.filter(o=>!isPerdida(o.id)&&!isExcluido('ab',o)).length;
-  const _cntGa=OPS.ga.filter(o=>!isExcluido('ga',o)).length;
-  const _cntPer=getPeMovidas().length+OPS.per.length;
-  const _cntPd=OPS.pd.filter(o=>!NO_OFERTA_ESTADOS.includes((o.estado||'').toUpperCase().trim())).length;
-  const _cntGe=OPS.pd.filter(o=>NO_OFERTA_ESTADOS.includes((o.estado||'').toUpperCase().trim())).length;
+  const filt=F.re;
+  const keys=filt.g==='ALL'?['GH','CM','DA']:[filt.g];
+  const ab=aggF('ab',filt),ga=aggF('ga',filt);
+  /* Agregados por gestor con los filtros del Resumen aplicados */
+  const DR={};
+  ['GH','CM','DA'].forEach(k=>{DR[k]={ab:aggF('ab',{...filt,g:k}),ga:aggF('ga',{...filt,g:k}),pe:aggF('pe',{...filt,g:k}),wr:wrFilt(k,filt),margen:margenFilt(k,filt)};});
+  /* Listas de ops filtradas */
+  const opsAb=OPS.ab.filter(o=>!isPerdida(o.id)&&!isExcluido('ab',o)&&matchF(o,filt));
+  const opsGa=OPS.ga.filter(o=>!isExcluido('ga',o)&&matchF(o,filt));
+  const opsPe=[...OPS.pe,...getPeMovidas(),...OPS.per].filter(o=>!isExcluido('pe',o)&&matchF(o,filt));
+  const _cntAb=opsAb.length;
+  const _cntGa=opsGa.length;
+  const _cntPer=opsPe.length;
+  const _cntPd=OPS.pd.filter(o=>!NO_OFERTA_ESTADOS.includes((o.estado||'').toUpperCase().trim())&&matchF(o,filt)).length;
+  const _cntGe=OPS.pd.filter(o=>NO_OFERTA_ESTADOS.includes((o.estado||'').toUpperCase().trim())&&matchF(o,filt)).length;
+  const _active=(filt.g!=='ALL'||filt.t!=='ALL'||filt.q!==''||filt.asesor!=='ALL'||filt.anio!=='ALL'||filt.mes_f!=='ALL'||filt.desde!==''||filt.hasta!=='');
+  const _reBadge=document.getElementById('re-badge');
+  if(_reBadge){_reBadge.style.display=_active?'inline':'none';if(_active)_reBadge.textContent='Filtro activo';}
+  document.getElementById('re-totReg').textContent=_active?(_cntAb+_cntGa+_cntPer+_cntPd+_cntGe):TOTAL_REGISTROS_NETWORK;
   document.getElementById('re-totSub').textContent=`Abiertas: ${_cntAb} · Ganadas: ${_cntGa} · Perdidas: ${_cntPer} · Pend. Despacho: ${_cntPd} · Gest. Externa: ${_cntGe}`;
   document.getElementById('re-cntAb').textContent=_cntAb;
   document.getElementById('re-cntGa').textContent=_cntGa;
@@ -1423,12 +1525,9 @@ function buildRE(){
   document.getElementById('re-con-mrc').textContent=fM(ab.con.mrc);
   document.getElementById('re-con-mrc-ops').textContent=ab.con.ops;
   document.getElementById('re-con-mrc-pct').textContent=pct(ab.con.mrc,ab.tot.mrc)+'% del MRC Total';
-  const wrAvg=(D.GH.wr+D.CM.wr+D.DA.wr)/3;
+  const wrAvg=keys.length?keys.reduce((s,k)=>s+DR[k].wr,0)/keys.length:0;
   document.getElementById('re-wr').textContent=fP(wrAvg);
   /* ── Distribución de Oportunidades ── */
-  const opsAb=OPS.ab.filter(o=>!isPerdida(o.id)&&!isExcluido('ab',o));
-  const opsGa=OPS.ga.filter(o=>!isExcluido('ga',o));
-  const opsPe=[...OPS.pe,...getPeMovidas(),...OPS.per].filter(o=>!isExcluido('pe',o));
   const nAb=opsAb.length, nGa=opsGa.length, nPe=opsPe.length, nTot=nAb+nGa+nPe;
   document.getElementById('re-dist-kpis').innerHTML=
     buildDistCard('Ops Abiertas · Pipeline','#F59E0B',opsAb)+
@@ -1440,8 +1539,8 @@ function buildRE(){
      <div class="cleg-i"><div class="cleg-d" style="background:#E55C6C"></div>Perdidas<span class="cleg-chip">${nPe}</span><span class="cleg-chip">${pct(nPe,nTot)}%</span></div>`;
   const pTN=ab.tot.nrc,pTM=ab.tot.mrc;
   let th=`<thead><tr><th>Gestor</th><th class="r">SIN NRC</th><th class="r">CON NRC</th><th class="r">Total NRC</th><th class="r">SIN MRC</th><th class="r">CON MRC</th><th class="r">Total MRC</th></tr></thead><tbody>`;
-  ['GH','CM','DA'].forEach(k=>{
-    const sN=D[k].ab.sin.nrc,cN=D[k].ab.con.nrc,tN=sN+cN,sM=D[k].ab.sin.mrc,cM=D[k].ab.con.mrc,tM=sM+cM;
+  keys.forEach(k=>{
+    const sN=DR[k].ab.sin.nrc,cN=DR[k].ab.con.nrc,tN=sN+cN,sM=DR[k].ab.sin.mrc,cM=DR[k].ab.con.mrc,tM=sM+cM;
     th+=`<tr><td><span class="gdot" style="background:${GC[k]}"></span>${GL[k]}</td>
       <td><span class="itv">${fM(sN)}</span><span class="itp sv">${pct(sN,pTN)}%</span></td>
       <td><span class="itv">${fM(cN)}</span><span class="itp cv">${pct(cN,pTN)}%</span></td>
@@ -1458,14 +1557,13 @@ function buildRE(){
     <td><span class="itv">${fM(ab.con.mrc)}</span><span class="itp cv">${pct(ab.con.mrc,pTM)}%</span></td>
     <td><span class="itv" style="color:#F59E0B">${fM(pTM)}</span></td></tr></tbody>`;
   document.getElementById('tbl-pipeline').innerHTML=th;
-  document.getElementById('wr-cards').innerHTML=['GH','CM','DA'].map(k=>`
+  document.getElementById('wr-cards').innerHTML=keys.map(k=>`
     <div class="wr-card">
       <div class="wr-hdr"><div style="width:10px;height:10px;border-radius:50%;background:${GC[k]}"></div><div style="font-size:18px;font-weight:600;color:#E2E8F0">${GL[k]}</div></div>
-      <div class="wr-v">${fP(D[k].wr)}</div>
-      <div class="wr-b"><div class="wr-bf" style="width:${Math.min(D[k].wr,100)}%;background:${GC[k]}"></div></div>
-      <div style="margin-top:8px;font-size:15px;color:#94A3B8">Margen estimado: <strong style="color:#E2E8F0">${fP(D[k].margen)}</strong></div>
+      <div class="wr-v">${fP(DR[k].wr)}</div>
+      <div class="wr-b"><div class="wr-bf" style="width:${Math.min(DR[k].wr,100)}%;background:${GC[k]}"></div></div>
+      <div style="margin-top:8px;font-size:15px;color:#94A3B8">Margen estimado: <strong style="color:#E2E8F0">${fP(DR[k].margen)}</strong></div>
     </div>`).join('');
-  const keys=['GH','CM','DA'];
   setTimeout(()=>{
     if(reCharts.distOps)reCharts.distOps.destroy();
     if(reCharts.nrc)reCharts.nrc.destroy();
@@ -1476,17 +1574,17 @@ function buildRE(){
       options:{responsive:false,maintainAspectRatio:false,width:249,height:249,cutout:'65%',
         plugins:{legend:{display:false},centerText:{text:String(nTot),fontSize:16},
           datalabels:{color:'#E2E8F0',font:{size:9,weight:'bold'},formatter:(v,c)=>v>0?`${pct(v,nTot)}%`:''}}}});
-    reCharts.nrc=new Chart(document.getElementById('cReNrc'),{type:'bar',data:{labels:['G. Heredia','C. Mejía','D. Alcívar'],
-      datasets:[{label:'Pipeline NRC',data:keys.map(k=>D[k].ab.sin.nrc+D[k].ab.con.nrc),backgroundColor:keys.map(k=>GC[k]+'88'),borderRadius:4},
-        {label:'Ganado NRC',data:keys.map(k=>D[k].ga.sin.nrc+D[k].ga.con.nrc),backgroundColor:keys.map(k=>GC[k]),borderRadius:4}]},
+    reCharts.nrc=new Chart(document.getElementById('cReNrc'),{type:'bar',data:{labels:keys.map(k=>GL[k]),
+      datasets:[{label:'Pipeline NRC',data:keys.map(k=>DR[k].ab.sin.nrc+DR[k].ab.con.nrc),backgroundColor:keys.map(k=>GC[k]+'88'),borderRadius:4},
+        {label:'Ganado NRC',data:keys.map(k=>DR[k].ga.sin.nrc+DR[k].ga.con.nrc),backgroundColor:keys.map(k=>GC[k]),borderRadius:4}]},
       options:{responsive:true,scales:{y:{ticks:{callback:v=>fK(v),color:'#64748B',font:{size:9}},grid:{color:'#3A405566'}}},plugins:{legend:{labels:{color:'#94A3B8',font:{size:9}}},datalabels:{display:false}}}});
-    reCharts.mrc=new Chart(document.getElementById('cReMrc'),{type:'bar',data:{labels:['G. Heredia','C. Mejía','D. Alcívar'],
-      datasets:[{label:'Pipeline MRC',data:keys.map(k=>D[k].ab.sin.mrc+D[k].ab.con.mrc),backgroundColor:keys.map(k=>GC[k]+'88'),borderRadius:4},
-        {label:'Ganado MRC',data:keys.map(k=>D[k].ga.sin.mrc+D[k].ga.con.mrc),backgroundColor:keys.map(k=>GC[k]),borderRadius:4}]},
+    reCharts.mrc=new Chart(document.getElementById('cReMrc'),{type:'bar',data:{labels:keys.map(k=>GL[k]),
+      datasets:[{label:'Pipeline MRC',data:keys.map(k=>DR[k].ab.sin.mrc+DR[k].ab.con.mrc),backgroundColor:keys.map(k=>GC[k]+'88'),borderRadius:4},
+        {label:'Ganado MRC',data:keys.map(k=>DR[k].ga.sin.mrc+DR[k].ga.con.mrc),backgroundColor:keys.map(k=>GC[k]),borderRadius:4}]},
       options:{responsive:true,scales:{y:{ticks:{callback:v=>fK(v),color:'#64748B',font:{size:9}},grid:{color:'#3A405566'}}},plugins:{legend:{labels:{color:'#94A3B8',font:{size:9}}},datalabels:{display:false}}}});
-    reCharts.ops=new Chart(document.getElementById('cReOps'),{type:'bar',data:{labels:['G. Heredia','C. Mejía','D. Alcívar'],
-      datasets:[{label:'SIN',data:keys.map(k=>D[k].ab.sin.ops+D[k].ga.sin.ops),backgroundColor:'#60B4F099',borderRadius:4},
-        {label:'CON',data:keys.map(k=>D[k].ab.con.ops+D[k].ga.con.ops),backgroundColor:'#4AE3B599',borderRadius:4}]},
+    reCharts.ops=new Chart(document.getElementById('cReOps'),{type:'bar',data:{labels:keys.map(k=>GL[k]),
+      datasets:[{label:'SIN',data:keys.map(k=>DR[k].ab.sin.ops+DR[k].ga.sin.ops),backgroundColor:'#60B4F099',borderRadius:4},
+        {label:'CON',data:keys.map(k=>DR[k].ab.con.ops+DR[k].ga.con.ops),backgroundColor:'#4AE3B599',borderRadius:4}]},
       options:{responsive:true,scales:{y:{ticks:{color:'#64748B',font:{size:9}},grid:{color:'#3A405566'}}},plugins:{legend:{labels:{color:'#94A3B8',font:{size:9}}},datalabels:{display:false}}}});
   },60);
 }
@@ -1500,12 +1598,19 @@ function buildTop10(){
     <th style="min-width:200px">Seguimiento (Hoja)</th>
     <th style="width:36px"></th>
   </tr></thead>`;
+  const filt=F.re, q=filt.q;
+  const gShow=filt.g==='ALL'?['GH','CM','DA']:[filt.g];
   ['GH','CM','DA'].forEach(g=>{
-    const ops=OPS.ab.filter(o=>!isPerdida(o.id)&&o.gestor===g&&!isExcluido('ab',o))
-                    .sort((a,b)=>((b.nrc||0)+(b.mrc||0))-((a.nrc||0)+(a.mrc||0))).slice(0,10);
+    const tbl=document.getElementById(`tbl-top10-${g}`);
+    const wrap=tbl?tbl.closest('.t10-wrap'):null;
+    if(wrap)wrap.style.display=gShow.includes(g)?'':'none';
+    if(!gShow.includes(g)){if(tbl)tbl.innerHTML='';return;}
+    let ops=OPS.ab.filter(o=>!isPerdida(o.id)&&o.gestor===g&&!isExcluido('ab',o)&&matchF(o,filt,false));
+    if(q){ops=ops.filter(o=>((o.cliente||'')+' '+(o.tarea||'')+' '+(o.asesor||'')).toLowerCase().includes(q));}
+    ops=ops.sort((a,b)=>((b.nrc||0)+(b.mrc||0))-((a.nrc||0)+(a.mrc||0))).slice(0,10);
     let html=HDR+'<tbody>';
     if(!ops.length){
-      html+='<tr><td colspan="11" class="no-results">Sin oportunidades abiertas.</td></tr>';
+      html+='<tr><td colspan="11" class="no-results">Sin oportunidades para el filtro aplicado.</td></tr>';
     } else {
       ops.forEach((o,i)=>{
         const total=(o.nrc||0)+(o.mrc||0);
@@ -1552,40 +1657,71 @@ function downloadPPT(){
   if(typeof PptxGenJS==='undefined'){alert('PptxGenJS no disponible.');return;}
   const pptx=new PptxGenJS();pptx.layout='LAYOUT_WIDE';
   const BG='1F2229',BG2='272C35',W='FFFFFF',GR='94A3B8',AM='F59E0B',TE='02C39A',BL='5B9FE8';
-  const ab=aggF('ab',{g:'ALL',t:'ALL',q:''}),ga=aggF('ga',{g:'ALL',t:'ALL',q:''});
-  const wrAvg=fP((D.GH.wr+D.CM.wr+D.DA.wr)/3);
+  /* ── Respeta el filtro activo del Resumen Ejecutivo ── */
+  const filt=F.re;
+  const keys=filt.g==='ALL'?['GH','CM','DA']:[filt.g];
+  const ab=aggF('ab',filt),ga=aggF('ga',filt);
+  /* Agregados por gestor filtrados */
+  const DR={};
+  keys.forEach(k=>{DR[k]={ab:aggF('ab',{...filt,g:k}),wr:wrFilt(k,filt),margen:margenFilt(k,filt)};});
+  const wrAvg=fP(keys.length?keys.reduce((s,k)=>s+DR[k].wr,0)/keys.length:0);
+  /* Etiqueta de filtros activos */
+  const _lbl=[];
+  if(filt.g!=='ALL')_lbl.push('Gestor: '+GL[filt.g]);
+  if(filt.t!=='ALL')_lbl.push('Tipo: '+filt.t);
+  if(filt.asesor!=='ALL')_lbl.push('Asesor: '+filt.asesor);
+  if(filt.anio!=='ALL')_lbl.push('Año: '+filt.anio);
+  if(filt.mes_f!=='ALL')_lbl.push('Mes: '+filt.mes_f);
+  if(filt.desde)_lbl.push('Desde: '+filt.desde);
+  if(filt.hasta)_lbl.push('Hasta: '+filt.hasta);
+  if(filt.q)_lbl.push('Búsqueda: "'+filt.q+'"');
+  const _active=_lbl.length>0;
+  const filtTxt=_active?('▸ Filtros aplicados — '+_lbl.join('  ·  ')):'Vista completa · sin filtros';
+  /* Total de registros (filtrado o global) */
+  const cAb=OPS.ab.filter(o=>!isPerdida(o.id)&&!isExcluido('ab',o)&&matchF(o,filt)).length;
+  const cGa=OPS.ga.filter(o=>!isExcluido('ga',o)&&matchF(o,filt)).length;
+  const cPe=[...OPS.pe,...getPeMovidas(),...OPS.per].filter(o=>!isExcluido('pe',o)&&matchF(o,filt)).length;
+  const cPd=OPS.pd.filter(o=>!NO_OFERTA_ESTADOS.includes((o.estado||'').toUpperCase().trim())&&matchF(o,filt)).length;
+  const cGe=OPS.pd.filter(o=>NO_OFERTA_ESTADOS.includes((o.estado||'').toUpperCase().trim())&&matchF(o,filt)).length;
+  const totReg=_active?(cAb+cGa+cPe+cPd+cGe):TOTAL_REGISTROS_NETWORK;
+  const totRegLbl=_active?'TOTAL REGISTROS (FILTRADO)':'TOTAL REGISTROS NETWORK';
   const s1=pptx.addSlide();s1.background={color:BG};
   s1.addText('NETWORK · Telconet — Dashboard Eficiencia Preventa',{x:.4,y:.25,w:12,h:.35,color:GR,fontSize:10});
   s1.addText('Resumen Ejecutivo',{x:.4,y:.6,w:12,h:.7,color:W,fontSize:26,bold:true});
-  s1.addText(new Date().toLocaleDateString('es-EC',{day:'2-digit',month:'long',year:'numeric'}),{x:.4,y:1.3,w:12,h:.3,color:GR,fontSize:12});
+  s1.addText(new Date().toLocaleDateString('es-EC',{day:'2-digit',month:'long',year:'numeric'}),{x:.4,y:1.3,w:6,h:.3,color:GR,fontSize:12});
+  s1.addText(filtTxt,{x:.4,y:1.58,w:12.3,h:.3,color:_active?AM:GR,fontSize:10,bold:_active,italic:!_active});
   [{l:'PIPELINE NRC',v:fM(ab.tot.nrc),c:AM},{l:'NRC GANADO',v:fM(ga.tot.nrc),c:TE},
-   {l:'WIN RATE PROM.',v:wrAvg,c:BL},{l:'TOTAL REGISTROS NETWORK',v:String(TOTAL_REGISTROS_NETWORK),c:'E09D3A'}
-  ].forEach((k,i)=>{const x=.4+i*3.15,y=1.9;
+   {l:'WIN RATE PROM.',v:wrAvg,c:BL},{l:totRegLbl,v:String(totReg),c:'E09D3A'}
+  ].forEach((k,i)=>{const x=.4+i*3.15,y=2.05;
     s1.addShape(pptx.ShapeType.rect,{x,y,w:3.0,h:1.6,fill:{color:BG2},line:{color:'3A4055',w:.5}});
     s1.addText(k.l,{x,y:y+.1,w:3.0,h:.3,color:GR,fontSize:8,bold:true,align:'center'});
     s1.addText(k.v,{x,y:y+.4,w:3.0,h:.7,color:k.c,fontSize:16,bold:true,align:'center'});});
   const s2=pptx.addSlide();s2.background={color:BG};
   s2.addText('Distribución PIPELINE por Tipo de Inspección',{x:.4,y:.25,w:12,h:.45,color:AM,fontSize:15,bold:true});
+  s2.addText(filtTxt,{x:.4,y:.62,w:12.3,h:.25,color:GR,fontSize:8,italic:true});
   const pTN=ab.tot.nrc,pTM=ab.tot.mrc;
   const rows2=[['GESTOR','SIN NRC','%','CON NRC','%','TOTAL NRC','TOTAL MRC']];
-  ['GH','CM','DA'].forEach(k=>{const sN=D[k].ab.sin.nrc,cN=D[k].ab.con.nrc;rows2.push([GL[k],fM(sN),pct(sN,pTN)+'%',fM(cN),pct(cN,pTN)+'%',fM(sN+cN),fM(D[k].ab.sin.mrc+D[k].ab.con.mrc)]);});
+  keys.forEach(k=>{const sN=DR[k].ab.sin.nrc,cN=DR[k].ab.con.nrc;rows2.push([GL[k],fM(sN),pct(sN,pTN)+'%',fM(cN),pct(cN,pTN)+'%',fM(sN+cN),fM(DR[k].ab.sin.mrc+DR[k].ab.con.mrc)]);});
   rows2.push(['TOTAL',fM(ab.sin.nrc),pct(ab.sin.nrc,pTN)+'%',fM(ab.con.nrc),pct(ab.con.nrc,pTN)+'%',fM(pTN),fM(pTM)]);
-  s2.addTable(rows2,{x:.4,y:.85,w:12.3,colW:[2.1,1.9,1.1,1.9,1.1,2.0,1.7],fill:{color:BG2},color:W,fontSize:9,rowH:.42,border:{type:'none'}});
+  s2.addTable(rows2,{x:.4,y:.95,w:12.3,colW:[2.1,1.9,1.1,1.9,1.1,2.0,1.7],fill:{color:BG2},color:W,fontSize:9,rowH:.42,border:{type:'none'}});
   const s3=pptx.addSlide();s3.background={color:BG};
   s3.addText('Win Rate & Margen — Ing. de Diseño',{x:.4,y:.25,w:12,h:.45,color:TE,fontSize:15,bold:true});
-  ['GH','CM','DA'].forEach((k,i)=>{const x=.4+i*4.35,y=1.0;
+  s3.addText(filtTxt,{x:.4,y:.62,w:12.3,h:.25,color:GR,fontSize:8,italic:true});
+  keys.forEach((k,i)=>{const x=.4+i*4.35,y=1.1;
     s3.addShape(pptx.ShapeType.rect,{x,y,w:4.1,h:2.8,fill:{color:BG2},line:{color:'3A4055',w:.5}});
     s3.addText(GL[k],{x,y:y+.15,w:4.1,h:.35,color:GC[k].replace('#',''),fontSize:12,bold:true,align:'center'});
     s3.addText('Win Rate',{x,y:y+.58,w:4.1,h:.25,color:GR,fontSize:9,align:'center'});
-    s3.addText(fP(D[k].wr),{x,y:y+.82,w:4.1,h:.6,color:W,fontSize:22,bold:true,align:'center'});
+    s3.addText(fP(DR[k].wr),{x,y:y+.82,w:4.1,h:.6,color:W,fontSize:22,bold:true,align:'center'});
     s3.addText('Margen estimado',{x,y:y+1.55,w:4.1,h:.25,color:GR,fontSize:9,align:'center'});
-    s3.addText(fP(D[k].margen),{x,y:y+1.8,w:4.1,h:.5,color:GC[k].replace('#',''),fontSize:16,bold:true,align:'center'});});
+    s3.addText(fP(DR[k].margen),{x,y:y+1.8,w:4.1,h:.5,color:GC[k].replace('#',''),fontSize:16,bold:true,align:'center'});});
   const s4=pptx.addSlide();s4.background={color:BG};
   s4.addText('Top 10 Oportunidades · PIPELINE — con Seguimiento',{x:.4,y:.25,w:12,h:.45,color:AM,fontSize:14,bold:true});
-  const top10=OPS.ab.filter(o=>!isPerdida(o.id)).sort((a,b)=>((b.nrc||0)+(b.mrc||0))-((a.nrc||0)+(a.mrc||0))).slice(0,10);
+  s4.addText(filtTxt,{x:.4,y:.62,w:12.3,h:.25,color:GR,fontSize:8,italic:true});
+  const top10=OPS.ab.filter(o=>!isPerdida(o.id)&&!isExcluido('ab',o)&&matchF(o,filt)&&(!filt.q||((o.cliente||'')+' '+(o.tarea||'')+' '+(o.asesor||'')).toLowerCase().includes(filt.q))).sort((a,b)=>((b.nrc||0)+(b.mrc||0))-((a.nrc||0)+(a.mrc||0))).slice(0,10);
   const rows4=[['#','#TAREA','CLIENTE','GESTOR','TIPO','NRC','MRC','TOTAL','ASESOR','ESTADO']];
   top10.forEach((o,i)=>{rows4.push([String(i+1),o.tarea||'',o.cliente||'',GL[o.gestor]||o.gestor||'',o.tipo||'',fM(o.nrc),fM(o.mrc),fM((o.nrc||0)+(o.mrc||0)),o.asesor||'',getTk(o.id,'estado',ESTADOS_AB[0])]);});
-  s4.addTable(rows4,{x:.4,y:.85,w:12.3,colW:[.3,1.35,2.35,1.2,.65,1.5,1.5,1.7],fill:{color:BG2},color:W,fontSize:9,rowH:.35,border:{type:'none'}});
+  if(rows4.length===1)rows4.push(['—','Sin oportunidades para el filtro aplicado','','','','','','','','']);
+  s4.addTable(rows4,{x:.4,y:.95,w:12.3,colW:[.3,1.35,2.35,1.2,.65,1.5,1.5,1.7],fill:{color:BG2},color:W,fontSize:9,rowH:.35,border:{type:'none'}});
   pptx.writeFile({fileName:'Resumen_Preventa_NETWORK_'+new Date().toISOString().slice(0,10)+'.pptx'})
     .catch(e=>alert('Error PPT: '+e.message));
 }
