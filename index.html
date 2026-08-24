@@ -343,6 +343,7 @@ body{background:#1F2229;color:#E2E8F0;font-family:'Segoe UI',system-ui,sans-seri
       <option value="GH">George Heredia</option>
       <option value="CM">Carlos Mejía</option>
       <option value="DA">David Alcívar</option>
+      <option value="AS">Alfredo Salazar</option>
     </select>
     <div class="tipo-grp">
       <button class="tipo-btn ac-all" onclick="setRET('ALL',this)">Todos</button>
@@ -463,6 +464,13 @@ body{background:#1F2229;color:#E2E8F0;font-family:'Segoe UI',system-ui,sans-seri
       </div>
       <table class="t10" id="tbl-top10-DA"></table>
     </div>
+    <div class="t10-wrap">
+      <div class="t10-hdr">
+        <span class="t10-htxt" style="color:#A855F7">● Alfredo Salazar — Top 10 por Monto Total (NRC+MRC)</span>
+        <span style="font-size:15px;color:#64748B">Ops Abiertas · Pipeline</span>
+      </div>
+      <table class="t10" id="tbl-top10-AS"></table>
+    </div>
   </div>
 </div>
 
@@ -475,6 +483,7 @@ body{background:#1F2229;color:#E2E8F0;font-family:'Segoe UI',system-ui,sans-seri
       <option value="GH">George Heredia</option>
       <option value="CM">Carlos Mejía</option>
       <option value="DA">David Alcívar</option>
+      <option value="AS">Alfredo Salazar</option>
     </select>
     <div class="tipo-grp">
       <button class="tipo-btn ac-all" onclick="setFT('ab','ALL',this)">Todos</button>
@@ -528,6 +537,7 @@ body{background:#1F2229;color:#E2E8F0;font-family:'Segoe UI',system-ui,sans-seri
       <option value="GH">George Heredia</option>
       <option value="CM">Carlos Mejía</option>
       <option value="DA">David Alcívar</option>
+      <option value="AS">Alfredo Salazar</option>
     </select>
     <div class="tipo-grp">
       <button class="tipo-btn ac-all" onclick="setFT('ga','ALL',this)">Todos</button>
@@ -559,7 +569,7 @@ body{background:#1F2229;color:#E2E8F0;font-family:'Segoe UI',system-ui,sans-seri
   <div class="sttl" style="color:#02C39A">Distribución NRC / MRC</div>
   <div class="cg3" id="ga-charts"></div>
   <div class="sttl" style="color:#02C39A">📐 Por Ing. de Diseño</div>
-  <div class="gd3" id="ga-gestores"></div>
+  <div class="gd4" id="ga-gestores"></div>
   <div class="sttl" style="color:#02C39A">📋 Detalle de Oportunidades Ganadas</div>
   <div class="ops-wrap">
     <div class="ops-hdr">
@@ -580,6 +590,7 @@ body{background:#1F2229;color:#E2E8F0;font-family:'Segoe UI',system-ui,sans-seri
       <option value="GH">George Heredia</option>
       <option value="CM">Carlos Mejía</option>
       <option value="DA">David Alcívar</option>
+      <option value="AS">Alfredo Salazar</option>
     </select>
     <div class="tipo-grp">
       <button class="tipo-btn ac-all" onclick="setFT('pe','ALL',this)">Todos</button>
@@ -611,7 +622,7 @@ body{background:#1F2229;color:#E2E8F0;font-family:'Segoe UI',system-ui,sans-seri
   <div class="sttl" style="color:#E55C6C">Distribución NRC / MRC</div>
   <div class="cg3" id="pe-charts"></div>
   <div class="sttl" style="color:#E55C6C">📐 Por Ing. de Diseño</div>
-  <div class="gd3" id="pe-gestores"></div>
+  <div class="gd4" id="pe-gestores"></div>
   <div class="sttl" style="color:#E55C6C">📋 Detalle de Oportunidades Perdidas — con Razón</div>
   <div class="ops-wrap">
     <div class="ops-hdr">
@@ -633,6 +644,7 @@ body{background:#1F2229;color:#E2E8F0;font-family:'Segoe UI',system-ui,sans-seri
       <option value="GH">George Heredia</option>
       <option value="CM">Carlos Mejía</option>
       <option value="DA">David Alcívar</option>
+      <option value="AS">Alfredo Salazar</option>
     </select>
     <div class="tipo-grp">
       <button class="tipo-btn ac-all" onclick="setPdT('ALL',this)">Todos</button>
@@ -697,6 +709,7 @@ body{background:#1F2229;color:#E2E8F0;font-family:'Segoe UI',system-ui,sans-seri
       <option value="GH">George Heredia</option>
       <option value="CM">Carlos Mejía</option>
       <option value="DA">David Alcívar</option>
+      <option value="AS">Alfredo Salazar</option>
     </select>
     <div class="tipo-grp">
       <button class="tipo-btn ac-all" onclick="setGeT('ALL',this)">Todos</button>
@@ -791,8 +804,8 @@ document.getElementById('fechaHoy').textContent=new Date().toLocaleDateString('e
 const ENDPOINT_URL = 'https://script.google.com/macros/s/AKfycbwK9RiVz3oyQoNi29IyQr9jJAvpYuzOxow13PDKEp_YU6-ZBJ1wXoK3GV-voLspUHtY/exec?token=NW2026_PREVENTA';
 
 /* ── CONSTANTES ── */
-const GC  = {GH:'#5B9FE8', CM:'#2DC48D', DA:'#E09D3A'};
-const GL  = {GH:'George Heredia', CM:'Carlos Mejía', DA:'David Alcívar'};
+const GC  = {GH:'#5B9FE8', CM:'#2DC48D', DA:'#E09D3A', AS:'#A855F7'};
+const GL  = {GH:'George Heredia', CM:'Carlos Mejía', DA:'David Alcívar', AS:'Alfredo Salazar'};
 const ESTADOS_AB  = ['Propuesta enviada','En negociación','Revisión técnica','Pendiente aprobación','En riesgo','Pausada'];
 const ESTADOS_GA  = ['Ganada — Facturación pendiente','En implementación','Completada'];
 const ESTADOS_PE_ORIG = ['Pérdida por precio','Pérdida por competencia','Presupuesto cancelado','Sin respuesta del cliente','Requisitos no cumplidos'];
@@ -809,7 +822,8 @@ let OPS = {ab:[], ga:[], pe:[], pd:[], per:[]};
 let TOTAL_REGISTROS_NETWORK = 0;   // Total filas con contenido en CM+GH+DA 2026
 let D   = {GH:{ab:{sin:{ops:0,nrc:0,mrc:0},con:{ops:0,nrc:0,mrc:0}},ga:{sin:{ops:0,nrc:0,mrc:0},con:{ops:0,nrc:0,mrc:0}},pe:{sin:{ops:0,nrc:0,mrc:0},con:{ops:0,nrc:0,mrc:0}},wr:0,margen:0},
             CM:{ab:{sin:{ops:0,nrc:0,mrc:0},con:{ops:0,nrc:0,mrc:0}},ga:{sin:{ops:0,nrc:0,mrc:0},con:{ops:0,nrc:0,mrc:0}},pe:{sin:{ops:0,nrc:0,mrc:0},con:{ops:0,nrc:0,mrc:0}},wr:0,margen:0},
-            DA:{ab:{sin:{ops:0,nrc:0,mrc:0},con:{ops:0,nrc:0,mrc:0}},ga:{sin:{ops:0,nrc:0,mrc:0},con:{ops:0,nrc:0,mrc:0}},pe:{sin:{ops:0,nrc:0,mrc:0},con:{ops:0,nrc:0,mrc:0}},wr:0,margen:0}};
+            DA:{ab:{sin:{ops:0,nrc:0,mrc:0},con:{ops:0,nrc:0,mrc:0}},ga:{sin:{ops:0,nrc:0,mrc:0},con:{ops:0,nrc:0,mrc:0}},pe:{sin:{ops:0,nrc:0,mrc:0},con:{ops:0,nrc:0,mrc:0}},wr:0,margen:0},
+            AS:{ab:{sin:{ops:0,nrc:0,mrc:0},con:{ops:0,nrc:0,mrc:0}},ga:{sin:{ops:0,nrc:0,mrc:0},con:{ops:0,nrc:0,mrc:0}},pe:{sin:{ops:0,nrc:0,mrc:0},con:{ops:0,nrc:0,mrc:0}},wr:0,margen:0}};
 
 /* ── TRACKING (localStorage) ── */
 const LS = 'nw_tk_v8';
@@ -820,7 +834,7 @@ function isPerdida(id){return getTk(id,'estado','')===PERDIDA_KEY||OPS.per.some(
 
 /* ── BUILD D desde OPS ── */
 function buildD(){
-  ['GH','CM','DA'].forEach(g=>{
+  ['GH','CM','DA','AS'].forEach(g=>{
     ['ab','ga','pe'].forEach(seg=>{
       let ops = seg==='pe'?[...OPS.pe,...getPeMovidas(),...OPS.per]:OPS[seg];
       ops = ops.filter(o=>o.gestor===g);
@@ -1109,7 +1123,7 @@ function buildCharts(seg){
     data:{labels:['SIN','CON'],datasets:[{data:[a.sin.mrc,a.con.mrc],backgroundColor:['#60B4F0','#4AE3B5'],borderWidth:0,hoverOffset:4}]},
     options:{responsive:false,maintainAspectRatio:false,width:249,height:249,cutout:'68%',
       plugins:{legend:{display:false},centerText:{text:fM(totM)},datalabels:{color:'#E2E8F0',font:{size:9,weight:'bold'},formatter:v=>v>0?`${fK(v)}\n${pct(v,totM)}%`:''}}}});
-  const keys=F[seg].g==='ALL'?['GH','CM','DA']:[F[seg].g];
+  const keys=F[seg].g==='ALL'?['GH','CM','DA','AS']:[F[seg].g];
   const nD=keys.map(k=>{const d=D[k][seg];let n=0;if(F[seg].t==='ALL'||F[seg].t==='SIN')n+=d.sin.nrc;if(F[seg].t==='ALL'||F[seg].t==='CON')n+=d.con.nrc;return n;});
   const mD=keys.map(k=>{const d=D[k][seg];let m=0;if(F[seg].t==='ALL'||F[seg].t==='SIN')m+=d.sin.mrc;if(F[seg].t==='ALL'||F[seg].t==='CON')m+=d.con.mrc;return m;});
   const tN=nD.reduce((a,b)=>a+b,0),tMM=mD.reduce((a,b)=>a+b,0);
@@ -1178,7 +1192,7 @@ function renderTab(seg){
         <div></div>
       </div>`;
   }
-  const keys=filt.g==='ALL'?['GH','CM','DA']:[filt.g];
+  const keys=filt.g==='ALL'?['GH','CM','DA','AS']:[filt.g];
   document.getElementById(`${seg}-charts`).innerHTML=`
     <div class="cbox"><div class="cbox-t">NRC · SIN vs CON</div><canvas id="${seg}Nr" width="249" height="249" style="width:249px!important;height:249px!important;display:block"></canvas>
       <div class="cleg">
@@ -1198,7 +1212,7 @@ function renderTab(seg){
 
 /* ── GESTORES ── */
 function renderGestores(seg,totTab,col,filt){
-  const keys=filt.g==='ALL'?['GH','CM','DA']:[filt.g];
+  const keys=filt.g==='ALL'?['GH','CM','DA','AS']:[filt.g];
   let html='';
   keys.forEach(k=>{
     const d=D[k][seg];
@@ -1274,7 +1288,7 @@ function renderOpsTable(seg,filt){
   let displayRows = rows;
   let limitMsg = '';
   if(seg==='ab' && !q){
-    const gestores = filt.g==='ALL' ? ['GH','CM','DA'] : [filt.g];
+    const gestores = filt.g==='ALL' ? ['GH','CM','DA','AS'] : [filt.g];
     displayRows = [];
     gestores.forEach(g=>{
       const gRows = rows.filter(o=>o.gestor===g).sort((a,b)=>((b.nrc||0)+(b.mrc||0))-((a.nrc||0)+(a.mrc||0)));
@@ -1284,7 +1298,7 @@ function renderOpsTable(seg,filt){
     if(total>displayRows.length) limitMsg=` (Top 20 por gestor · ${total} totales — busca por #Tarea para ver más)`;
   }
   if(seg==='ga'){
-    const gestorOrder=['GH','CM','DA'];
+    const gestorOrder=['GH','CM','DA','AS'];
     displayRows=displayRows.slice().sort((a,b)=>{
       const gi=gestorOrder.indexOf(a.gestor)-gestorOrder.indexOf(b.gestor);
       if(gi!==0)return gi;
@@ -1445,7 +1459,7 @@ function buildDistCard(label,color,opsArr){
   const totNrc=opsArr.reduce((s,o)=>s+(o.nrc||0),0);
   const totMrc=opsArr.reduce((s,o)=>s+(o.mrc||0),0);
   let rows='';
-  ['GH','CM','DA'].forEach(g=>{
+  ['GH','CM','DA','AS'].forEach(g=>{
     const go=opsArr.filter(o=>o.gestor===g);
     if(!go.length)return;
     const sin=go.filter(o=>o.tipo!=='CON').length;
@@ -1485,11 +1499,11 @@ function buildDistCard(label,color,opsArr){
 /* ── RESUMEN ── */
 function buildRE(){
   const filt=F.re;
-  const keys=filt.g==='ALL'?['GH','CM','DA']:[filt.g];
+  const keys=filt.g==='ALL'?['GH','CM','DA','AS']:[filt.g];
   const ab=aggF('ab',filt),ga=aggF('ga',filt);
   /* Agregados por gestor con los filtros del Resumen aplicados */
   const DR={};
-  ['GH','CM','DA'].forEach(k=>{DR[k]={ab:aggF('ab',{...filt,g:k}),ga:aggF('ga',{...filt,g:k}),pe:aggF('pe',{...filt,g:k}),wr:wrFilt(k,filt),margen:margenFilt(k,filt)};});
+  ['GH','CM','DA','AS'].forEach(k=>{DR[k]={ab:aggF('ab',{...filt,g:k}),ga:aggF('ga',{...filt,g:k}),pe:aggF('pe',{...filt,g:k}),wr:wrFilt(k,filt),margen:margenFilt(k,filt)};});
   /* Listas de ops filtradas */
   const opsAb=OPS.ab.filter(o=>!isPerdida(o.id)&&!isExcluido('ab',o)&&matchF(o,filt));
   const opsGa=OPS.ga.filter(o=>!isExcluido('ga',o)&&matchF(o,filt));
@@ -1599,8 +1613,8 @@ function buildTop10(){
     <th style="width:36px"></th>
   </tr></thead>`;
   const filt=F.re, q=filt.q;
-  const gShow=filt.g==='ALL'?['GH','CM','DA']:[filt.g];
-  ['GH','CM','DA'].forEach(g=>{
+  const gShow=filt.g==='ALL'?['GH','CM','DA','AS']:[filt.g];
+  ['GH','CM','DA','AS'].forEach(g=>{
     const tbl=document.getElementById(`tbl-top10-${g}`);
     const wrap=tbl?tbl.closest('.t10-wrap'):null;
     if(wrap)wrap.style.display=gShow.includes(g)?'':'none';
@@ -1659,7 +1673,7 @@ function downloadPPT(){
   const BG='1F2229',BG2='272C35',W='FFFFFF',GR='94A3B8',AM='F59E0B',TE='02C39A',BL='5B9FE8';
   /* ── Respeta el filtro activo del Resumen Ejecutivo ── */
   const filt=F.re;
-  const keys=filt.g==='ALL'?['GH','CM','DA']:[filt.g];
+  const keys=filt.g==='ALL'?['GH','CM','DA','AS']:[filt.g];
   const ab=aggF('ab',filt),ga=aggF('ga',filt);
   /* Agregados por gestor filtrados */
   const DR={};
@@ -1795,6 +1809,7 @@ function renderPd(){
   const cntGH = ops.filter(o=>o.gestor==='GH').length;
   const cntCM = ops.filter(o=>o.gestor==='CM').length;
   const cntDA = ops.filter(o=>o.gestor==='DA').length;
+  const cntAS = ops.filter(o=>o.gestor==='AS').length;
 
   document.getElementById('pd-kpis').innerHTML=`
     <div class="kc" style="border-top:3px solid #A78BFA">
@@ -1815,7 +1830,7 @@ function renderPd(){
 
   // ── Gestor distribution cards ──
   let gestCrds='';
-  ['GH','CM','DA'].forEach(gk=>{
+  ['GH','CM','DA','AS'].forEach(gk=>{
     const go=ops.filter(o=>o.gestor===gk);
     if(!go.length){
       gestCrds+=`<div class="gc" style="border-top-color:${GC[gk]}66;opacity:.4">
@@ -1868,6 +1883,12 @@ function renderPd(){
         <span style="color:#E2E8F0;font-weight:800;font-size:17px">${cntDA}</span>
         <span style="color:#E09D3A;font-weight:700;font-size:13px">${pct(cntDA,total)}%</span>
       </div>
+      <div style="display:flex;align-items:center;gap:8px">
+        <div style="width:11px;height:11px;border-radius:50%;background:#A855F7;flex-shrink:0"></div>
+        <span style="color:#94A3B8;flex:1;font-size:13px">AS · ${GL['AS']}</span>
+        <span style="color:#E2E8F0;font-weight:800;font-size:17px">${cntAS}</span>
+        <span style="color:#A855F7;font-weight:700;font-size:13px">${pct(cntAS,total)}%</span>
+      </div>
     </div>`;
 
   // Donut distribución por gestor — debe correr DESPUÉS de insertar el canvas en el DOM
@@ -1876,7 +1897,7 @@ function renderPd(){
     const cvsPd=document.getElementById('cPdDistGest');
     if(cvsPd && document.getElementById('tp-pd').classList.contains('ac')){
       tCharts['pdDistGest']=new Chart(cvsPd,{type:'doughnut',
-        data:{labels:['GH','CM','DA'],datasets:[{data:[cntGH,cntCM,cntDA],backgroundColor:['#5B9FE8','#2DC48D','#E09D3A'],borderWidth:0,hoverOffset:4}]},
+        data:{labels:['GH','CM','DA','AS'],datasets:[{data:[cntGH,cntCM,cntDA,cntAS],backgroundColor:['#5B9FE8','#2DC48D','#E09D3A','#A855F7'],borderWidth:0,hoverOffset:4}]},
         options:{responsive:false,maintainAspectRatio:false,width:249,height:249,cutout:'65%',
           plugins:{
             legend:{display:false},
@@ -1900,7 +1921,7 @@ function renderPd(){
         <span style="font-size:15px;color:#94A3B8;margin-left:auto">Requieren atención antes de despachar</span>
       </div>
       <div class="pd-revision-cards">`;
-    ['GH','CM','DA'].forEach(gk=>{
+    ['GH','CM','DA','AS'].forEach(gk=>{
       const grev=enRevision.filter(o=>o.gestor===gk);
       if(!grev.length) return;
       const gcol=GC[gk]||'#94A3B8';
@@ -1936,7 +1957,7 @@ function renderPd(){
     <th>TP Preventa (Días)</th><th>Mes</th><th>Asesor</th><th>Seguimiento</th>
   </tr></thead><tbody>`;
 
-  ['GH','CM','DA'].forEach(gk=>{
+  ['GH','CM','DA','AS'].forEach(gk=>{
     const go=ops.filter(o=>o.gestor===gk).sort((a,b)=>(b.tpPre??-1)-(a.tpPre??-1));
     if(!go.length) return;
     html+=`<tr class="pd-sep"><td colspan="8">● ${GL[gk]} — ${go.length} ops</td></tr>`;
@@ -2020,6 +2041,7 @@ function renderGe(){
   const cntGH  = ops.filter(o=>o.gestor==='GH').length;
   const cntCM  = ops.filter(o=>o.gestor==='CM').length;
   const cntDA  = ops.filter(o=>o.gestor==='DA').length;
+  const cntAS  = ops.filter(o=>o.gestor==='AS').length;
 
   // Conteo por estado
   const cntPRC = ops.filter(o=>NO_OFERTA_ESTADOS.includes((o.estado||'').trim().toUpperCase())).length;
@@ -2050,7 +2072,7 @@ function renderGe(){
 
   // ── Gestor distribution cards ──
   let gestCrds='';
-  ['GH','CM','DA'].forEach(gk=>{
+  ['GH','CM','DA','AS'].forEach(gk=>{
     const go=ops.filter(o=>o.gestor===gk);
     if(!go.length){
       gestCrds+=`<div class="gc" style="border-top-color:${GC[gk]}66;opacity:.4">
@@ -2107,6 +2129,12 @@ function renderGe(){
         <span style="color:#E2E8F0;font-weight:800;font-size:17px">${cntDA}</span>
         <span style="color:#E09D3A;font-weight:700;font-size:13px">${pct(cntDA,total)}%</span>
       </div>
+      <div style="display:flex;align-items:center;gap:8px">
+        <div style="width:11px;height:11px;border-radius:50%;background:#A855F7;flex-shrink:0"></div>
+        <span style="color:#94A3B8;flex:1;font-size:13px">AS · ${GL['AS']}</span>
+        <span style="color:#E2E8F0;font-weight:800;font-size:17px">${cntAS}</span>
+        <span style="color:#A855F7;font-weight:700;font-size:13px">${pct(cntAS,total)}%</span>
+      </div>
     </div>`;
 
   try{
@@ -2114,7 +2142,7 @@ function renderGe(){
     const cvsGe=document.getElementById('cGeDistGest');
     if(cvsGe && document.getElementById('tp-ge').classList.contains('ac')){
       tCharts['geDistGest']=new Chart(cvsGe,{type:'doughnut',
-        data:{labels:['GH','CM','DA'],datasets:[{data:[cntGH,cntCM,cntDA],backgroundColor:['#5B9FE8','#2DC48D','#E09D3A'],borderWidth:0,hoverOffset:4}]},
+        data:{labels:['GH','CM','DA','AS'],datasets:[{data:[cntGH,cntCM,cntDA,cntAS],backgroundColor:['#5B9FE8','#2DC48D','#E09D3A','#A855F7'],borderWidth:0,hoverOffset:4}]},
         options:{responsive:false,maintainAspectRatio:false,width:249,height:249,cutout:'65%',
           plugins:{
             legend:{display:false},
@@ -2139,7 +2167,7 @@ function renderGe(){
     <th>TP Total Cot. (Días)</th><th>Mes</th><th>Asesor</th><th>Seguimiento</th>
   </tr></thead><tbody>`;
 
-  ['GH','CM','DA'].forEach(gk=>{
+  ['GH','CM','DA','AS'].forEach(gk=>{
     const go=ops.filter(o=>o.gestor===gk).sort((a,b)=>(b.tpTot??-1)-(a.tpTot??-1));
     if(!go.length) return;
     html+=`<tr class="ge-sep"><td colspan="8">● ${GL[gk]} — ${go.length} ops</td></tr>`;
@@ -2186,7 +2214,7 @@ async function initDashboard(){
   }
 
   try {
-    document.getElementById('ld-msg').textContent='Leyendo hojas CM 2026, GH 2026, DA 2026…';
+    document.getElementById('ld-msg').textContent='Leyendo hojas CM 2026, GH 2026, DA 2026, AS 2026…';
     const resp = await fetch(ENDPOINT_URL, {method:'GET', credentials:'omit', redirect:'follow'});
     if(!resp.ok) throw new Error(`HTTP ${resp.status}`);
     const data = await resp.json();
