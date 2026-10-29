@@ -748,6 +748,9 @@ textarea.rg-in{resize:vertical;min-height:64px}
 .rgg-f .rg-sec-btn{padding:9px 14px}
 
 .rg-auto-tag{font-size:10px;font-weight:800;color:#5B9FE8;background:#5B9FE81A;border:1px solid #5B9FE855;border-radius:4px;padding:0 5px;margin-left:4px}
+
+.rq-grid{grid-template-columns:repeat(3,minmax(0,1fr))}
+@media(max-width:800px){.rq-grid{grid-template-columns:1fr}}
 </style>
 </head>
 <body>
@@ -3723,10 +3726,10 @@ function rgSave(){lsSet('nw_rg_draft_v9',{mode:RG.mode,quick:!!RG.quick,v:RG.mod
 function rgSet(k,val,noRender){
   RG.v[k]=val;
   if(k==='fechaE'&&val){const e=String(RG.v.estado||'').toUpperCase().trim();if(e!=='PERDIDA'&&!/NO OFERTADO|REVISI[OÓ]N COMERCIAL/.test(e)&&e!=='OFERTA ENTREGADA A COMERCIAL'){RG.v.estado='OFERTA ENTREGADA A COMERCIAL';RG.auto='estado';}}
-  if(k==='estado'&&/PERDIDA/i.test(val)&&!RG.v.fechaPerd)RG.v.fechaPerd=todayYmd();
+  if(k==='estado'&&/PERDIDA/i.test(val)&&(!RG.v.fechaPerd||!(RG.orig&&/PERDIDA/i.test(RG.orig.estado||''))))RG.v.fechaPerd=todayYmd();   // al pasar a PERDIDA: fecha de hoy (editable)
   if(k==='gestor'&&RG.mode==='create'&&GL[val]){RG.user=GL[val];const u=document.getElementById('rg-user');if(u)u.value=RG.user;}
   rgSave();
-  const RER=['estado','fechaE','fechaA','cierre','gestor','tipo','prob','fechaPerd'];   // campos que cambian otros campos o botones
+  const RER=['estado','fechaE','fechaA','cierre','gestor','tipo','prob','fechaPerd'];   // (en actualización rápida se re-renderiza siempre)   // campos que cambian otros campos o botones
   if(noRender||!RER.includes(k)){rgRefreshSide();return;}
   rgRender();
 }
@@ -3756,13 +3759,13 @@ function rgCheck(){
 }
 /* datos que se envían: create = todo lo lleno; update = solo lo que cambió */
 function rgPayloadData(){
-  const v=RG.v,out={};const keys=RG.quick?[...RG_QK,'estado']:RG_F.filter(f=>f.t!=='auto').map(f=>f.k);
+  const v=RG.v,out={};const keys=RG.quick?[...rgQKeys(),'estado','fechaPerd']:RG_F.filter(f=>f.t!=='auto').map(f=>f.k);
   keys.forEach(k=>{let x=v[k];if(x===undefined||x===null)return;x=typeof x==='string'?x.trim():x;
     if(RG.mode==='update'){const o=RG.orig?RG.orig[k]:undefined;if(String(o??'')===String(x??''))return;}else if(x==='')return;
     if(k==='nrc'||k==='mrc')x=x===''?'':+x;
     if(k==='margen')x=x===''?'':(+x)/100;
     out[k]=x;});
-  out.tarea=String(v.tarea||'').trim();if(RG.mode==='create')out.gestor=v.gestor;
+  out.tarea=String(v.tarea||'').trim();if(RG.mode==='create'){out.gestor=v.gestor;out.fechaA=todayYmd();delete out.cierre;delete out.fechaPerd;}
   return out;
 }
 
@@ -3773,10 +3776,12 @@ function rgField(f){
   const ro=up&&(f.k==='tarea'||f.k==='gestor');
   let inp='';
   if(f.t==='text')inp=`<input id="${id}" data-k="${f.k}" class="rg-in" value="${escA(val)}" placeholder="${f.ph||''}" ${f.im?`inputmode="${f.im}"`:''} ${ro?'readonly':''} oninput="rgInput(this)">`;
+  else if(f.t==='date'&&f.k==='fechaA'&&!up)inp=`<div class="rg-auto">Hoy · <b>${todayYmd().split('-').reverse().join('/')}</b> <span class="rg-chg" style="color:#5B9FE8;border-color:#5B9FE855;background:#5B9FE81A">automático</span></div>`;
   else if(f.t==='date')inp=`<input id="${id}" data-k="${f.k}" type="date" class="rg-in" value="${escA(val)}" onchange="rgSet('${f.k}',this.value)">`+(f.k!=='fechaA'?`<button class="rg-mini" onclick="rgSet('${f.k}','${todayYmd()}')">Hoy</button>`:'');
   else if(f.t==='money')inp=`<div class="rg-pre"><span>$</span><input id="${id}" data-k="${f.k}" type="number" min="0" step="0.01" class="rg-in" value="${escA(val)}" placeholder="0,00" oninput="rgInput(this)"></div>`;
   else if(f.t==='pct')inp=`<div class="rg-pre rg-suf"><input id="${id}" data-k="${f.k}" type="number" min="0" max="100" step="0.5" class="rg-in" value="${escA(val)}" placeholder="Ej. 25" oninput="rgInput(this)"><span>%</span></div>`;
   else if(f.t==='area')inp=`<textarea id="${id}" data-k="${f.k}" class="rg-in" rows="3" placeholder="${f.ph||''}" oninput="rgInput(this)">${esc(val)}</textarea>`;
+  else if(f.k==='estado'){const o=rgOpts('estado');if(val&&!o.includes(val))o.unshift(val);inp=`<select id="${id}" data-k="estado" class="rg-in" onchange="rgSet('estado',this.value)"><option value="">— Elige el estado —</option>${o.map(x=>`<option value="${escA(x)}"${x===val?' selected':''}>${esc(x)}</option>`).join('')}</select>`;}
   else if(f.t==='list'){const o=rgOpts(f.k);inp=`<input id="${id}" data-k="${f.k}" class="rg-in" list="dl-${f.k}" value="${escA(val)}" placeholder="Escribe o elige…" oninput="rgInput(this)" onchange="rgSet('${f.k}',this.value)"><datalist id="dl-${f.k}">${o.map(x=>`<option value="${escA(x)}">`).join('')}</datalist>`;}
   else if(f.t==='seg')inp=`<div class="rg-seg">${f.opts.map((o,i)=>`<button class="${val===o?'on':''}" onclick="rgSet('${f.k}','${o}')">${f.lbl?f.lbl[i]:o}</button>`).join('')}</div>`;
   else if(f.t==='chips'){const o=(RG.cat&&RG.cat.prob)||RG_DEF.prob;inp=`<div class="rg-chips">${o.map(x=>`<button class="${String(val)===String(x)?'on':''}" onclick="rgSet('prob',${String(val)===String(x)?"''":`'${escA(x)}'`})">${esc(x)}</button>`).join('')}</div>`;}
@@ -3807,7 +3812,7 @@ function rgRender(keepFocus){
     h+=`<div class="rg-grid"><div class="rg-form">${rgQuickHtml()}</div><aside class="rg-side" id="rg-side">${rgSideHtml()}</aside></div>`;
   } else if(!up||RG.found){
     h+=`<div class="rg-grid"><div class="rg-form">`;
-    RG_SECS.forEach(([n,t,d])=>{const fs=RG_F.filter(f=>f.s===n).map(rgField).join('')+(n===5&&up&&RG.orig&&RG.orig.cierre?`<div class="rg-f w2"><button class="rgg-open" onclick="rgGanFetch('${escA(RG.found.tarea)}')">🏆 Datos del proyecto ganado (PROYECTOS GANADOS 2026)</button></div>`:'');h+=`<section class="rg-sec"><div class="rg-sh"><span class="rg-n">${n}</span><div><div class="rg-sht">${t}</div><div class="rg-shd">${d}</div></div></div><div class="rg-fs">${fs}</div></section>`;});
+    RG_SECS.filter(([n])=>!(n===5&&!up)).forEach(([n,t,d])=>{const fs=RG_F.filter(f=>f.s===n).map(rgField).join('')+(n===5&&up&&RG.orig&&RG.orig.cierre?`<div class="rg-f w2"><button class="rgg-open" onclick="rgGanFetch('${escA(RG.found.tarea)}')">🏆 Datos del proyecto ganado (PROYECTOS GANADOS 2026)</button></div>`:'');h+=`<section class="rg-sec"><div class="rg-sh"><span class="rg-n">${n}</span><div><div class="rg-sht">${t}</div><div class="rg-shd">${d}</div></div></div><div class="rg-fs">${fs}</div></section>`;});
     h+=`</div><aside class="rg-side" id="rg-side">${rgSideHtml()}</aside></div>`;
   }
   root.innerHTML=h;
@@ -3891,7 +3896,8 @@ async function rgSubmit(){
 
 
 /* ══════════ v9.9 — ACTUALIZACIÓN RÁPIDA (5 campos) ══════════ */
-const RG_QK=['fechaA','fechaE','nrc','mrc','cierre'];
+const RG_QK=['estado','fechaA','fechaE','nrc','mrc','cierre'];
+const rgQKeys=()=>/PERDIDA/i.test(RG.v.estado||'')?[...RG_QK,'fechaPerd']:RG_QK;
 function rgFmtV(k,x){if(x===undefined||x===null||x==='')return 'vacío';if(k==='nrc'||k==='mrc')return fM(+x);if(/^fecha/.test(k)&&String(x).includes('-'))return String(x).split('-').reverse().join('/');if(k==='margen')return x+'%';return String(x);}
 function rgClsOf(v){const e=String(v.estado||'').toUpperCase().trim();if(String(v.cierre||'').trim())return ['Ganada','ga'];if(e==='PERDIDA')return ['Perdida','pe'];if(NO_OFERTA_ESTADOS.includes(e))return ['Sin oferta','ge'];if(e==='OFERTA ENTREGADA A COMERCIAL')return ['Abierta','ab'];return ['Pendiente','pd'];}
 let _rgFindT;
@@ -3902,6 +3908,9 @@ function rgImpact(){
   if(a[0]!==b[0]){
     if(b[1]==='ab')L.push(`Pasa de <b>${a[0]}</b> a <b>Abierta</b>: entra al <b>Pipeline activo</b>, al Top 10 y a "Nuevas abiertas" de la semana del ${wk(v.fechaE||todayYmd())} en Cambios semanales.`);
     else if(b[1]==='ga')L.push(`Pasa de <b>${a[0]}</b> a <b>Ganada</b>: sale del pipeline, suma a <b>Ganado</b> y al <b>win rate</b>, y aparece como ✓ Ganada esta semana (fecha de cierre = hoy en PROYECTOS GANADOS 2026).`);
+    else if(b[1]==='pe')L.push(`Pasa de <b>${a[0]}</b> a <b>Perdida</b>: sale del pipeline, suma a <b>Perdido</b>, baja el <b>win rate</b> y aparece como ✕ Perdida esta semana (día de registro de pérdida = ${rgFmtV('fechaPerd',v.fechaPerd||todayYmd())}).`);
+    else if(b[1]==='ge')L.push(`Pasa de <b>${a[0]}</b> a <b>Sin oferta (Gestión Externa)</b>: deja de contar en Pendientes de despacho.`);
+    else if(b[1]==='pd')L.push(`Pasa de <b>${a[0]}</b> a <b>Pendiente</b>: ${a[1]==='ab'?'sale del Pipeline activo y ':''}cuenta en Pendientes de despacho.`);
     else L.push(`Cambia de <b>${a[0]}</b> a <b>${b[0]}</b>.`);
   }
   const dn=(+v.nrc||0)-(+o.nrc||0),dm=(+v.mrc||0)-(+o.mrc||0);
@@ -3921,7 +3930,7 @@ function rgQuickHtml(){
       <div class="rq-sub"><span class="tarea-tag" style="font-size:12px">#${esc(RG.found.tarea)}</span> <span class="gdot" style="background:${GC[g]||'#64748B'}"></span>${esc(GL[g]||g||'')} · ${esc(RG.found.hoja||'')}${RG.found.fila?' fila '+RG.found.fila:''} · ${esc((v.tipo||'').replace(' INSPECCION',''))} · ${esc(v.asesor||'')}</div>
       <div class="rq-sub">Estado: <b>${esc(v.estado||'—')}</b>${RG.auto==='estado'&&v.estado!==o.estado?' <span class="rg-chg">auto</span>':''}</div></div>
       <div class="rq-cls" id="rq-cls"><span class="sg sg-${a[1]}">${a[0]}</span>${a[0]!==b[0]?` <span class="rq-arr">→</span> <span class="sg sg-${b[1]}">${b[0]}</span>`:''}</div></div>
-    <div class="rq-grid">${RG_QK.map(k=>rgField(F(k))).join('')}</div>
+    <div class="rq-grid">${rgQKeys().map(k=>rgField(F(k))).join('')}</div>
     ${o.cierre?`<button class="rgg-open" onclick="rgGanFetch('${escA(RG.found.tarea)}')">🏆 Datos del proyecto ganado (PROYECTOS GANADOS 2026)</button>`:''}
     <div class="rq-keys">Atajos: <b>Ctrl + Enter</b> guarda · los botones <b>Hoy</b> llenan la fecha con un click · escribe la siguiente #Tarea arriba para seguir</div>
   </section>
