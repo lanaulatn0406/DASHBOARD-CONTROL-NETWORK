@@ -3724,7 +3724,7 @@ function rgExisting(t){t=String(t||'').trim();if(!t)return null;for(const s of [
 
 /* ── abrir el módulo ── */
 function rgOpen(){
-  if(!RG.loaded){const d=lsGet('nw_rg_draft_v9',null);RG.quick=!!(d&&d.quick);if(d&&d.mode==='update'){RG.mode='update';RG.v={};}else if(d&&d.v&&Object.keys(d.v).length){RG.v=d.v;RG.mode='create';RG.draft=true;}else rgReset(true);RG.loaded=true;}
+  if(!RG.loaded){const d=lsGet('nw_rg_draft_v9',null);RG.quick=!!(d&&d.quick);if(d&&d.mode==='update'){RG.mode='update';RG.v={};}else if(d&&d.v&&Object.keys(d.v).length){RG.v=d.v;if(!RG.v.estado)RG.v.estado=RG_ESTADO_INICIAL;RG.mode='create';RG.draft=true;}else rgReset(true);RG.loaded=true;}
   rgRender();
   if(!RG.catTried){RG.catTried=true;fetch(ENDPOINT_URL+'&action=catalogos',{credentials:'omit',redirect:'follow'}).then(r=>r.json()).then(j=>{if(j&&j.ganados)RG.catGan=j.ganados;if(j&&j.catalogos&&Object.keys(j.catalogos).length){RG.cat=j.catalogos;rgRender();}}).catch(()=>{});}
 }
