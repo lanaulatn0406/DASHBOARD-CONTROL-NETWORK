@@ -769,7 +769,9 @@ textarea.rg-in{resize:vertical;min-height:64px}
 .rgg-fab-p{font-size:13px;font-weight:700;color:#E2E8F0}.rgg-fab-p i{color:#64748B;font-weight:400}
 @media(max-width:700px){.rgg-fab-r{grid-template-columns:1fr}}
 .rg-multi button{font-size:12px}
-.rgg-g3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px}
+.rgg-g3{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px}
+.rgg-q{display:flex;gap:8px;flex-wrap:wrap;margin-top:8px}.rgg-q button{background:#1F2229;border:1px solid #3A4055;color:#E2E8F0;border-radius:8px;padding:6px 12px;cursor:pointer;font-size:13px}.rgg-q button.on{background:#5B9FE833;border-color:#5B9FE8;color:#fff}
+.rgg-newreg{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;margin-top:8px}@media(max-width:700px){.rgg-newreg{grid-template-columns:1fr}}
 @media(max-width:700px){.rgg-g3{grid-template-columns:1fr}}
 .rgg-f{display:flex;align-items:center;gap:10px;padding:12px 18px;border-top:1px solid #3A4055}
 .rgg-f #rgg-need{margin-right:auto}
@@ -3991,7 +3993,7 @@ document.addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&e.key==='Ente
    Tras registrar una tarea de notificación de cierre se piden:
    · Tipo de Proyecto (siempre)
    · Tiempo de contrato en meses (solo si la tarea cotizada tiene MRC > 0)
-   · Fabricante, Distribuidor y marca de cableado (solo si el producto es Cableado Estructurado)
+   · Fabricante / vendor (= marca) y distribuidor de cada producto; si no hay registro de oportunidad, se pregunta si se quiere registrar (v9.22)
    y se escriben en PROYECTOS GANADOS 2026 en la fila de esa tarea de cierre; PROYECTO CLIENTE = cliente de la tarea. */
 let RGG=null;
 const RGG_DEF={tipoProyecto:['Privado','Público'],meses:[12,24,36,48,60],marcaCableado:['PANDUIT','FURUKAWA','COMMSCOPE','NEXANS','SIEMON','LEGRAND'],distribuidor:['STOCK TN','INTCOMEX'],fabricante:[]};
@@ -4000,7 +4002,14 @@ function rggOpts(k){const extra=k==='fabricante'||k==='marca'?[...((RG.cat||{}).
 /* v9.14 — productos de la tarea con su fabricante / vendor (lo ya guardado en FABRICANTES GANADOS 2026 tiene prioridad) */
 /* v9.15 — registro de oportunidad de la tarea cotizada (FABRICANTE 1/2 + REG OPE / DEAL) */
 const rggNorm=x=>String(x||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase().replace(/\s+/g,' ').trim();
-const rggRegs=()=>((RGG&&RGG.info.registros)||[]);
+const rggRegs=()=>{if(!RGG)return [];const r=RGG.info.registros||[];if(r.length)return r;const n=RGG.v.reg||{};   // v9.22 — registro nuevo ingresado en el modal
+  return n.op==='si'&&String(n.fabricante||'').trim()?[{n:1,fabricante:String(n.fabricante).trim(),deal:String(n.deal||'').trim()}]:[];};
+const rggSinReg=()=>!!RGG&&!(RGG.info.registros||[]).length;
+/* v9.22 — respuesta a "¿registrar un registro de oportunidad?" (op: 'si' | 'no') */
+function rgGanReg(k,v,render){const n=RGG.v.reg=RGG.v.reg||{};const prevFab=n.fabricante;n[k]=v;
+  if(k==='fabricante'||k==='op'){const nf=n.op==='si'?String(n.fabricante||'').trim():'';   // el fabricante del registro se sugiere en los productos vacíos o auto-llenados
+    RGG.v.productos.forEach(p=>{if(!String(p.fabricante||'').trim()||(p.auto&&p.fabricante===prevFab)){p.fabricante=nf;p.auto=!!nf;}});}
+  if(render)rgGanRender();else rgGanBtn();}
 const rggRegTxt=()=>rggRegs().map(r=>(r.fabricante||'(sin fabricante)')+(r.deal?' · Deal '+r.deal:'')).join('; ');
 function rggRegFab(n){const f=rggRegs().map(r=>r.fabricante).filter(Boolean);return f.length?(f[n]||f[0]):'';}
 /* 'SIN' = no hubo registro · 'NO' = mismo fabricante del registro · 'SI' = cambió (pide motivo) */
@@ -4027,7 +4036,7 @@ async function rgGanFetch(tarea){
   }catch(e){RG.msg={ok:false,html:'✕ No se pudo conectar con el Apps Script (¿publicada la v9.10?)'};rgRefreshSide();}
 }
 function rgGanOpen(info,actual){
-  RGG={info,v:Object.assign({tipoProyecto:'',tiempoContrato:'',fabricante:'',distribuidor:'',marcaCableado:''},actual||{}),msg:null,busy:false};
+  RGG={info,v:Object.assign({tipoProyecto:'',tiempoContrato:'',fabricante:'',distribuidor:'',marcaCableado:''},actual||{},{reg:{op:'',fabricante:'',deal:''}}),msg:null,busy:false};
   RGG.v.productos=rggProdsIni(info,actual);
   let ov=document.getElementById('rgg-ov');
   if(!ov){ov=document.createElement('div');ov.id='rgg-ov';ov.className='rgg-ov';document.body.appendChild(ov);}
@@ -4040,7 +4049,9 @@ function rgGanSet(k,v,render){RGG.v[k]=v;if(render)rgGanRender();else rgGanBtn()
 function rgGanErr(){const i=RGG.info,v=RGG.v,E=[];
   if(!String(v.tipoProyecto).trim())E.push('Elige el Tipo de Proyecto');
   if(i.pideContrato&&!(+v.tiempoContrato>0))E.push('Indica el tiempo de contrato (meses)');
-  v.productos.forEach(p=>{const nom=p.producto||'la tarea',f=['fabricante','distribuidor','marca'].filter(k=>!String(p[k]||'').trim());
+  if(rggSinReg()){const n=v.reg||{};if(!n.op)E.push('Indica si quieres registrar un registro de oportunidad');
+    else if(n.op==='si'){if(!String(n.fabricante||'').trim())E.push('Registro de oportunidad: fabricante');if(!String(n.deal||'').trim())E.push('Registro de oportunidad: #Reg OPE / Deal');}}
+  v.productos.forEach(p=>{const nom=p.producto||'la tarea',f=['fabricante','distribuidor'].filter(k=>!String(p[k]||'').trim());
     if(f.length)E.push(nom+': '+f.join(', '));
     if(rggCambio(p.fabricante)==='SI'&&!String(p.motivo||'').trim())E.push(nom+': motivo del cambio de fabricante');});
   return E;}
@@ -4064,21 +4075,26 @@ function rgGanRender(){
       ${i.pideContrato?`<div class="rg-f"><label>Tiempo de contrato (meses) <i>*</i> <span class="rgg-why">la tarea tiene MRC ${fM(+i.mrc)}</span></label>
         <div class="rgg-row">${chips('tiempoContrato',RGG_DEF.meses,' m')}<input class="rg-in rgg-num" type="number" min="1" step="1" value="${escA(v.tiempoContrato)}" placeholder="Otro" oninput="rgGanSet('tiempoContrato',this.value)"></div></div>`
         :`<div class="rgg-skip">⏭ No se pide tiempo de contrato: la tarea cotizada no tiene MRC (MRC = $0).</div>`}
-      <div class="rgg-reg ${rggRegs().length?'':'none'}">${rggRegs().length
-        ?`<b>📋 Registro de oportunidad de la cotización:</b> ${rggRegs().map(r=>`<span class="rgg-reg-i">${esc(r.fabricante||'(sin fabricante)')}${r.deal?` · Deal <b>${esc(r.deal)}</b>`:''}</span>`).join(' ')}<div class="rg-help">El fabricante se llenó con el del registro. Si lo cambias, explica el motivo.</div>`
-        :`<b>⚠ La tarea cotizada #${esc(i.tarea)} no tiene registro de oportunidad</b> (Fabricante 1/2 y Reg. OPE / Deal vacíos). Indica el fabricante con el que se cerró.`}</div>
+      ${!rggSinReg()
+        ?`<div class="rgg-reg"><b>📋 Registro de oportunidad de la cotización:</b> ${rggRegs().map(r=>`<span class="rgg-reg-i">${esc(r.fabricante||'(sin fabricante)')}${r.deal?` · Deal <b>${esc(r.deal)}</b>`:''}</span>`).join(' ')}<div class="rg-help">El fabricante se llenó con el del registro. Si lo cambias, explica el motivo.</div></div>`
+        :`<div class="rgg-reg none"><b>⚠ La tarea cotizada #${esc(i.tarea)} no tiene registro de oportunidad</b> (Fabricante 1/2 y Reg. OPE / Deal vacíos).
+          <div style="margin-top:6px;color:#E2E8F0">¿Quieres registrar un registro de oportunidad para este negocio? <i style="color:#F59E0B">*</i></div>
+          <div class="rgg-q"><button class="${v.reg.op==='si'?'on':''}" onclick="rgGanReg('op','si',1)">📋 Sí, registrarlo</button>
+            <button class="${v.reg.op==='no'?'on':''}" onclick="rgGanReg('op','no',1)">No, no se necesitó para ganar el negocio</button></div>
+          ${v.reg.op==='si'?`<div class="rgg-newreg"><div class="rg-f"><label>Fabricante del registro <i>*</i></label><input class="rg-in" list="rgg-dl-fab" value="${escA(v.reg.fabricante||'')}" placeholder="Ej. CISCO" oninput="rgGanReg('fabricante',this.value)" onchange="rgGanRender()"></div>
+            <div class="rg-f"><label>#Reg OPE / Deal <i>*</i></label><input class="rg-in" value="${escA(v.reg.deal||'')}" placeholder="Número del registro" oninput="rgGanReg('deal',this.value)"></div></div>
+            <div class="rg-help">Se guarda en la tarea cotizada (FABRICANTE 1 y REG OPE / DEAL) y su fabricante se sugiere en los productos.</div>`
+           :v.reg.op==='no'?`<div class="rg-help">Se registra como <b>NO REQUERIDO</b>. Indica abajo el fabricante con el que se cerró.</div>`:''}</div>`}
       <div class="rg-f"><label>Datos por producto <i>*</i> <span class="rgg-why">${v.productos.length} producto${v.productos.length!==1?'s':''}</span></label>
         <div class="rgg-fab">${v.productos.map((p,n)=>`<div class="rgg-fab-c">
           <div class="rgg-fab-p">${p.producto?esc(p.producto):'<i>Tarea sin producto registrado</i>'} <span id="rgg-tag-${n}">${rggTag(n)}</span></div>
-          <div class="rgg-g3"><div class="rg-f"><label>Fabricante / vendor <i>*</i>${p.auto?` <span class="rg-auto-tag" id="rgg-auto-${n}">del registro</span>`:''}</label><input class="rg-in" list="rgg-dl-fab" value="${escA(p.fabricante||'')}" placeholder="Ej. CISCO" oninput="rgGanFab(${n},'fabricante',this.value)"></div>
-            <div class="rg-f"><label>Distribuidor <i>*</i></label><input class="rg-in" list="rgg-dl-dis" value="${escA(p.distribuidor||'')}" placeholder="Ej. STOCK TN" oninput="rgGanFab(${n},'distribuidor',this.value)"></div>
-            <div class="rg-f"><label>Marca <i>*</i></label><input class="rg-in" list="rgg-dl-mar" value="${escA(p.marca||'')}" placeholder="Ej. CISCO / PANDUIT" oninput="rgGanFab(${n},'marca',this.value)"></div></div>
+          <div class="rgg-g3"><div class="rg-f"><label>Fabricante / vendor <i>*</i>${p.auto?` <span class="rg-auto-tag" id="rgg-auto-${n}">del registro</span>`:''}</label><input class="rg-in" list="rgg-dl-fab" value="${escA(p.fabricante||'')}" placeholder="Ej. CISCO / PANDUIT" title="Fabricante / vendor = marca" oninput="rgGanFab(${n},'fabricante',this.value)"></div>
+            <div class="rg-f"><label>Distribuidor <i>*</i></label><input class="rg-in" list="rgg-dl-dis" value="${escA(p.distribuidor||'')}" placeholder="Ej. STOCK TN" oninput="rgGanFab(${n},'distribuidor',this.value)"></div></div>
           <div class="rg-f" id="rgg-mot-${n}" ${rggCambio(p.fabricante)==='SI'?'':'style="display:none"'}><label>Motivo del cambio de fabricante <i>*</i> <span class="rgg-why" style="color:#F59E0B">registro: ${esc(rggRegTxt())}</span></label>
             <textarea class="rg-in" rows="2" placeholder="Ej. El cliente pidió cambiar a otra marca por precio / disponibilidad…" oninput="rgGanFab(${n},'motivo',this.value)">${esc(p.motivo||'')}</textarea></div>
         </div>`).join('')}</div>
-        <datalist id="rgg-dl-fab">${rggOpts('fabricante').map(x=>`<option value="${escA(x)}">`).join('')}</datalist>
+        <datalist id="rgg-dl-fab">${rggOpts('marca').map(x=>`<option value="${escA(x)}">`).join('')}</datalist>
         <datalist id="rgg-dl-dis">${rggOpts('distribuidor').map(x=>`<option value="${escA(x)}">`).join('')}</datalist>
-        <datalist id="rgg-dl-mar">${rggOpts('marca').map(x=>`<option value="${escA(x)}">`).join('')}</datalist>
         <div class="rg-help">Se guarda una fila por producto en <b>FABRICANTES GANADOS</b> (histórico de todos los años), con el registro de oportunidad y el motivo si hubo cambio.</div></div>
       ${RG.key?'':`<div class="rg-f"><label>Clave de escritura</label><input class="rg-in" type="password" autocomplete="off" oninput="RG.key=this.value" placeholder="Clave definida en el Apps Script"></div>`}
       ${RGG.msg?`<div class="rg-res ${RGG.msg.ok?'ok':'ko'}">${RGG.msg.html}</div>`:''}
@@ -4094,8 +4110,10 @@ async function rgGanSubmit(){
   if(!RG.key){RGG.msg={ok:false,html:'Ingresa la clave de escritura.'};rgGanRender();return;}
   const i=RGG.info,v=RGG.v,data={tarea:i.tarea,cierre:i.cierre,tipoProyecto:String(v.tipoProyecto).trim()};
   if(i.pideContrato)data.tiempoContrato=+v.tiempoContrato;
-  data.productos=v.productos.map(p=>({producto:p.producto,fabricante:String(p.fabricante||'').trim(),distribuidor:String(p.distribuidor||'').trim(),marca:String(p.marca||'').trim(),
+  data.productos=v.productos.map(p=>({producto:p.producto,fabricante:String(p.fabricante||'').trim(),distribuidor:String(p.distribuidor||'').trim(),marca:String(p.fabricante||'').trim(),   // v9.22 — marca = fabricante / vendor
+
     motivo:rggCambio(p.fabricante)==='SI'?String(p.motivo||'').trim():''}));   // v9.15
+  if(rggSinReg()){const n=v.reg||{};data.registro=n.op==='si'?{opcion:'si',fabricante:String(n.fabricante||'').trim(),deal:String(n.deal||'').trim()}:{opcion:'no'};}   // v9.22
   RGG.busy=true;RGG.msg=null;rgGanRender();
   try{
     const r=await fetch(rgBase(),{method:'POST',body:JSON.stringify({token:rgTok(),writeKey:RG.key,user:rgUser(),mode:'ganado',data}),headers:{'Content-Type':'text/plain;charset=utf-8'},redirect:'follow',credentials:'omit'});
