@@ -712,6 +712,13 @@ textarea.rg-in{resize:vertical;min-height:64px}
 @media(max-width:1400px){.rq-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
 @media(max-width:800px){.rq-grid{grid-template-columns:1fr}}
 .rq-grid .rg-f.w2{grid-column:auto}
+.rq-prod{margin-top:10px}
+.rg-pchips{display:flex;gap:6px;flex-wrap:wrap;min-height:30px;align-items:center}
+.rg-pchip{display:inline-flex;align-items:center;gap:4px;background:#5B9FE8;color:#fff;border-radius:999px;padding:4px 6px 4px 12px;font-size:13px;font-weight:700}
+.rg-pchip button{background:#ffffff33;border:none;color:#fff;border-radius:50%;width:20px;height:20px;line-height:18px;font-size:15px;cursor:pointer;padding:0;font-family:inherit}
+.rg-pchip button:hover{background:#E55C6C}
+.rg-padd{display:flex;gap:8px;align-items:center;margin-top:8px}
+.rg-padd .rg-in{flex:1}
 .rq-keys{font-size:11px;color:#64748B;margin-top:10px}.rq-keys b{color:#94A3B8}
 .rq-imp ul{margin:6px 0 0 18px;font-size:13px;color:#CBD5E1;line-height:1.55}
 .rq-imp b{color:#fff}
@@ -3719,6 +3726,7 @@ const todayYmd=()=>_ymd(new Date());
 const RG_ESTADO_INICIAL='PENDIENTE DE REVISION PREVENTA TN';
 const rgProds=s=>[...new Set(String(s||'').split(/\s*[,;]\s*/).map(x=>x.trim()).filter(Boolean))];
 const rgEsCab=p=>/CABLEADO\s*ESTRUCTURADO/i.test(String(p||'').normalize('NFD').replace(/[\u0300-\u036f]/g,''));
+function rgProdAddIn(ev,el){const v=String(el.value||'').trim();if(!v)return;if((!ev||!ev.inputType||ev.inputType==='insertReplacementText')&&rgOpts('prod').includes(v))rgProdToggle(v);}
 function rgProdToggle(p){p=String(p||'').trim();if(!p)return;const a=rgProds(RG.v.prod),i=a.indexOf(p);if(i>=0)a.splice(i,1);else a.push(p);rgSet('prod',a.join(', '));}
 function rgOpts(k){
   const key=k==='fab2'?'fab1':k;const c=(RG.cat&&(RG.cat[k]||RG.cat[key]))||[];
@@ -3799,10 +3807,15 @@ function rgField(f){
   else if(f.t==='pct')inp=`<div class="rg-pre rg-suf"><input id="${id}" data-k="${f.k}" type="number" min="0" max="100" step="0.5" class="rg-in" value="${escA(val)}" placeholder="Ej. 25" oninput="rgInput(this)"><span>%</span></div>`;
   else if(f.t==='area')inp=`<textarea id="${id}" data-k="${f.k}" class="rg-in" rows="3" placeholder="${f.ph||''}" oninput="rgInput(this)">${esc(val)}</textarea>`;
   else if(f.k==='estado'){const o=rgOpts('estado');if(val&&!o.includes(val))o.unshift(val);inp=`<select id="${id}" data-k="estado" class="rg-in" onchange="rgSet('estado',this.value)"><option value="">— Elige el estado —</option>${o.map(x=>`<option value="${escA(x)}"${x===val?' selected':''}>${esc(x)}</option>`).join('')}</select>`;}
+  else if(f.t==='multi'&&RG.quick&&!RG.prodAll){const sel=rgProds(val),o=rgOpts(f.k).filter(x=>!sel.includes(x));
+    inp=`<div class="rg-pchips">${sel.map(x=>`<span class="rg-pchip">${esc(x)}<button type="button" data-p="${escA(x)}" onclick="rgProdToggle(this.dataset.p)" title="Quitar ${escA(x)}">×</button></span>`).join('')||'<span class="rg-help">La tarea no tiene productos — agrégalos abajo.</span>'}</div>
+      <div class="rg-padd"><input id="rg-prod-add" class="rg-in" list="dl-prodadd" placeholder="➕ Agregar producto… escribe para buscar y elige" oninput="rgProdAddIn(event,this)" onkeydown="if(event.key==='Enter'){event.preventDefault();rgProdToggle(this.value);}">
+        <datalist id="dl-prodadd">${o.map(x=>`<option value="${escA(x)}">`).join('')}</datalist>
+        <button type="button" class="rg-mini" onclick="RG.prodAll=1;rgRender()">Ver lista completa</button></div>`;}
   else if(f.t==='multi'){const sel=rgProds(val),o=[...new Set([...rgOpts(f.k),...sel])];
     inp=`<div class="rg-chips rg-multi">${o.map(x=>{const on=sel.includes(x);return `<button type="button" class="${on?'on':''}" data-p="${escA(x)}" onclick="rgProdToggle(this.dataset.p)">${on?'✓ ':''}${esc(x)}</button>`;}).join('')}</div>
       <input id="${id}-otro" class="rg-in" style="margin-top:6px" placeholder="¿Otro producto? Escríbelo y presiona Enter" onkeydown="if(event.key==='Enter'){event.preventDefault();rgProdToggle(this.value);}">
-      ${sel.length?`<div class="rg-help">Seleccionados (${sel.length}): <b style="color:#E2E8F0">${esc(sel.join(', '))}</b></div>`:''}`;}
+      ${sel.length?`<div class="rg-help">Seleccionados (${sel.length}): <b style="color:#E2E8F0">${esc(sel.join(', '))}</b></div>`:''}${RG.quick?`<button type="button" class="rg-mini" style="margin-top:6px" onclick="RG.prodAll=0;rgRender()">Vista compacta</button>`:''}`;}
   else if(f.t==='list'){const o=rgOpts(f.k);inp=`<input id="${id}" data-k="${f.k}" class="rg-in" list="dl-${f.k}" value="${escA(val)}" placeholder="Escribe o elige…" oninput="rgInput(this)" onchange="rgSet('${f.k}',this.value)"><datalist id="dl-${f.k}">${o.map(x=>`<option value="${escA(x)}">`).join('')}</datalist>`;}
   else if(f.t==='seg')inp=`<div class="rg-seg">${f.opts.map((o,i)=>`<button class="${val===o?'on':''}" onclick="rgSet('${f.k}','${o}')">${f.lbl?f.lbl[i]:o}</button>`).join('')}</div>`;
   else if(f.t==='chips'){const o=(RG.cat&&RG.cat.prob)||RG_DEF.prob;inp=`<div class="rg-chips">${o.map(x=>`<button class="${String(val)===String(x)?'on':''}" onclick="rgSet('prob',${String(val)===String(x)?"''":`'${escA(x)}'`})">${esc(x)}</button>`).join('')}</div>`;}
@@ -3917,7 +3930,7 @@ async function rgSubmit(){
 
 
 /* ══════════ v9.9 — ACTUALIZACIÓN RÁPIDA (5 campos) ══════════ */
-const RG_QK=['estado','fechaA','fechaE','nrc','mrc','cierre'];
+const RG_QK=['estado','fechaA','fechaE','nrc','mrc','cierre','prod'];   // v9.17 — prod: cambiar / agregar / quitar productos
 const rgQKeys=()=>/PERDIDA/i.test(RG.v.estado||'')?[...RG_QK,'fechaPerd']:RG_QK;
 function rgFmtV(k,x){if(x===undefined||x===null||x==='')return 'vacío';if(k==='nrc'||k==='mrc')return fM(+x);if(/^fecha/.test(k)&&String(x).includes('-'))return String(x).split('-').reverse().join('/');if(k==='margen')return x+'%';return String(x);}
 function rgClsOf(v){const e=String(v.estado||'').toUpperCase().trim();if(String(v.cierre||'').trim())return ['Ganada','ga'];if(e==='PERDIDA')return ['Perdida','pe'];if(NO_OFERTA_ESTADOS.includes(e))return ['Sin oferta','ge'];if(e==='OFERTA ENTREGADA A COMERCIAL')return ['Abierta','ab'];return ['Pendiente','pd'];}
@@ -3940,6 +3953,8 @@ function rgImpact(){
   if(v.fechaA&&v.fechaA!==o.fechaA){const m1=o.fechaA?MESN[ymdLocal(o.fechaA).getMonth()]:'—',m2=MESN[ymdLocal(v.fechaA).getMonth()];
     L.push(`Día asignado: cambia el <b>periodo</b> en que se cuenta${m1!==m2?` (Mes ${m1} → ${m2})`:''}, el Ingreso de tareas y los tiempos de preventa/cotización. La hoja se reordena por fecha.`);}
   if(v.fechaE!==o.fechaE&&v.fechaE&&a[1]===b[1])L.push('Día entregado: cambia el Tiempo total de cotización y la semana en que figura como "→ Abierta".');
+  if(String(v.prod||'')!==String(o.prod||'')){const a2=rgProds(o.prod),b2=rgProds(v.prod),mas=b2.filter(x=>!a2.includes(x)),menos=a2.filter(x=>!b2.includes(x));
+    L.push(`Productos: ${mas.length?`<b style="color:#02C39A">+ ${esc(mas.join(', '))}</b> `:''}${menos.length?`<b style="color:#F87171">− ${esc(menos.join(', '))}</b>`:''} → quedan <b>${b2.length}</b>${b2.length?` (${esc(b2.join(', '))})`:''}. Al ganar el proyecto se pedirá el fabricante de cada uno.`);}
   if(o.cierre&&!v.cierre)L.push('<span style="color:#FBBF24">Quitar la tarea de cierre devuelve la venta a NO; la fila en PROYECTOS GANADOS hay que revisarla a mano.</span>');
   return L;
 }
@@ -3951,7 +3966,8 @@ function rgQuickHtml(){
       <div class="rq-sub"><span class="tarea-tag" style="font-size:12px">#${esc(RG.found.tarea)}</span> <span class="gdot" style="background:${GC[g]||'#64748B'}"></span>${esc(GL[g]||g||'')} · ${esc(RG.found.hoja||'')}${RG.found.fila?' fila '+RG.found.fila:''} · ${esc((v.tipo||'').replace(' INSPECCION',''))} · ${esc(v.asesor||'')}</div>
       <div class="rq-sub">Estado: <b>${esc(v.estado||'—')}</b>${RG.auto==='estado'&&v.estado!==o.estado?' <span class="rg-chg">auto</span>':''}</div></div>
       <div class="rq-cls" id="rq-cls"><span class="sg sg-${a[1]}">${a[0]}</span>${a[0]!==b[0]?` <span class="rq-arr">→</span> <span class="sg sg-${b[1]}">${b[0]}</span>`:''}</div></div>
-    <div class="rq-grid">${rgQKeys().map(k=>rgField(F(k))).join('')}</div>
+    <div class="rq-grid">${rgQKeys().filter(k=>k!=='prod').map(k=>rgField(F(k))).join('')}</div>
+    <div class="rq-prod">${rgField(F('prod'))}</div>
     ${o.cierre?`<button class="rgg-open" onclick="rgGanFetch('${escA(RG.found.tarea)}')">🏆 Datos del proyecto ganado (PROYECTOS GANADOS)</button>`:''}
     <div class="rq-keys">Atajos: <b>Ctrl + Enter</b> guarda · los botones <b>Hoy</b> llenan la fecha con un click · escribe la siguiente #Tarea arriba para seguir</div>
   </section>
