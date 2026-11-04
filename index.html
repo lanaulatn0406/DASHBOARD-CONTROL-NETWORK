@@ -714,6 +714,17 @@ textarea.rg-in{resize:vertical;min-height:64px}
 .rq-grid .rg-f.w2{grid-column:auto}
 .rq-prod{margin-top:10px}
 .rg-pchips{display:flex;gap:6px;flex-wrap:wrap;min-height:30px;align-items:center}
+.rgi-wrap{overflow-x:auto}
+.rgi{width:100%;border-collapse:collapse;font-size:13px}
+.rgi th{text-align:left;font-size:11px;color:#64748B;text-transform:uppercase;letter-spacing:.4px;padding:6px 8px;border-bottom:1px solid #3A4055}
+.rgi td{padding:8px;border-bottom:1px solid #3A405555;vertical-align:middle;color:#CBD5E1}
+.rgi .rg-in{min-width:180px}
+.rgi-off td{opacity:.55}
+.rgi-cod{display:inline-block;color:#fff;border-radius:6px;padding:3px 8px;font-size:13px;font-weight:800}
+.rgi-col{width:42px;height:32px;border:1px solid #3A4055;border-radius:6px;background:#1F2229;padding:2px;cursor:pointer}
+.rgi-n{white-space:nowrap}
+.rgi-sw{display:inline-flex;align-items:center;gap:6px;cursor:pointer;font-weight:700}
+.rgi .dw-btn:disabled{opacity:.4;cursor:not-allowed}
 .rg-pchip{display:inline-flex;align-items:center;gap:4px;background:#5B9FE8;color:#fff;border-radius:999px;padding:4px 6px 4px 12px;font-size:13px;font-weight:700}
 .rg-pchip button{background:#ffffff33;border:none;color:#fff;border-radius:50%;width:20px;height:20px;line-height:18px;font-size:15px;cursor:pointer;padding:0;font-family:inherit}
 .rg-pchip button:hover{background:#E55C6C}
@@ -3682,7 +3693,7 @@ function rgOpen(){
   if(!RG.catTried){RG.catTried=true;fetch(ENDPOINT_URL+'&action=catalogos',{credentials:'omit',redirect:'follow'}).then(r=>r.json()).then(j=>{if(j&&j.ganados)RG.catGan=j.ganados;if(j&&j.catalogos&&Object.keys(j.catalogos).length){RG.cat=j.catalogos;rgRender();}}).catch(()=>{});}
 }
 function rgReset(silent){RG.user=null;RG.v={fechaA:todayYmd(),tipo:'SIN INSPECCION',estado:RG_ESTADO_INICIAL};RG.orig=null;RG.found=null;RG.draft=false;RG.msg=null;if(!silent){lsSet('nw_rg_draft_v9',null);rgRender();}}
-function rgMode(m){RG.quick=m==='quick';if(m==='quick')m='update';RG.mode=m;RG.msg=null;if(m==='create'){rgReset(true);}else{RG.v={};RG.orig=null;RG.found=null;}rgSave();rgRender();setTimeout(()=>{const e=document.getElementById(m==='update'?'rg-find':'rg-tarea');if(e)e.focus();},30);}
+function rgMode(m){if(m==='ing'){RG.mode='ing';RG.quick=false;RG.msg=null;RG.ingEd={};rgRender();return;}RG.quick=m==='quick';if(m==='quick')m='update';RG.mode=m;RG.msg=null;if(m==='create'){rgReset(true);}else{RG.v={};RG.orig=null;RG.found=null;}rgSave();rgRender();setTimeout(()=>{const e=document.getElementById(m==='update'?'rg-find':'rg-tarea');if(e)e.focus();},30);}
 function rgSave(){lsSet('nw_rg_draft_v9',{mode:RG.mode,quick:!!RG.quick,v:RG.mode==='create'?RG.v:{}});}
 
 /* ── cambios de campo ── */
@@ -3777,7 +3788,8 @@ function rgRender(keepFocus){
   RG._chk=rgCheck();
   const up=RG.mode==='update';
   let h=`<div class="rg-top"><div><div class="rg-t">Registro de Tarea / Proyecto TELCOS</div><div class="rg-st">Cada registro se escribe directamente en <b>NETWORK_SEG_TAREAS_2026_TEMPLATE</b> · el Sheet queda como base en crudo</div></div>
-    <div class="rg-seg rg-modes"><button class="${up&&RG.quick?'on':''}" onclick="rgMode('quick')" title="Solo fechas, NRC, MRC y tarea de cierre">⚡ Actualización rápida</button><button class="${!up?'on':''}" onclick="rgMode('create')">➕ Nueva tarea</button><button class="${up&&!RG.quick?'on':''}" onclick="rgMode('update')">✏️ Edición completa</button></div></div>`;
+    <div class="rg-seg rg-modes"><button class="${up&&RG.quick?'on':''}" onclick="rgMode('quick')" title="Solo fechas, NRC, MRC y tarea de cierre">⚡ Actualización rápida</button><button class="${!up?'on':''}" onclick="rgMode('create')">➕ Nueva tarea</button><button class="${up&&!RG.quick?'on':''}" onclick="rgMode('update')">✏️ Edición completa</button><button class="${RG.mode==='ing'?'on':''}" onclick="rgMode('ing')" title="Agregar, editar o desactivar ingenieros de diseño">👥 Ingenieros</button></div></div>`;
+  if(RG.mode==='ing'){root.innerHTML=h+rgIngHtml();return;}   // v9.19
   if(RG.draft&&!up)h+=`<div class="rg-note">Se recuperó un borrador sin guardar. <button class="vc-link" onclick="rgReset()">Descartar y empezar de cero</button></div>`;
   if(up){h+=`<div class="rg-find"><input id="rg-find" class="rg-in" inputmode="numeric" placeholder="#Tarea o cliente — se carga sola" list="dl-find" oninput="rgFindInput(this.value)" onkeydown="if(event.key==='Enter')rgLoad(this.value)"><datalist id="dl-find">${[...OPS.ab,...OPS.ga,...OPS.per,...OPS.pd].slice(0,800).map(o=>`<option value="${escA(o.tarea)}">${esc(o.cliente)}</option>`).join('')}</datalist><button class="dw-btn pri" onclick="rgLoad(document.getElementById('rg-find').value)">Cargar</button>
       ${RG.found?`<span class="rg-found">Editando <b>#${esc(RG.found.tarea)}</b> · ${esc(RG.found.hoja||'')} ${RG.found.fila?'fila '+RG.found.fila:''} · ${esc(RG.v.cliente||'')}</span>`:'<span class="rg-help">Escribe la #Tarea y presiona Enter. Solo se enviarán los campos que cambies.</span>'}</div>`;}
@@ -3868,6 +3880,61 @@ async function rgSubmit(){
   }catch(err){RG.busy=false;RG.msg={ok:false,html:'✕ No se pudo conectar con el Apps Script ('+esc(err.message)+'). ¿Está publicada la versión v9.8 del backend?'};rgRefreshSide();}
 }
 
+
+/* ══════════ v9.19 — INGENIEROS DE DISEÑO (alta / edición / activo) ══════════
+   Escribe en la hoja INGENIEROS vía doPost mode 'ingeniero'. Con la misma clave de escritura. */
+function rgIngCnt(g){const all=[...OPS.ab,...OPS.ga,...OPS.per,...OPS.pd].filter(o=>o.gestor===g),por={};all.forEach(o=>{const a=o.anio||(parseFechaA(o.fechaA)||new Date()).getFullYear();por[a]=(por[a]||0)+1;});
+  return {n:all.length,ab:OPS.ab.filter(o=>o.gestor===g).length,txt:Object.keys(por).sort().map(a=>a+': '+por[a]).join(' · ')};}
+function rgIngSet(g,k,v){RG.ingEd=RG.ingEd||{};RG.ingEd[g]=Object.assign({},RG.ingEd[g],{[k]:v});const b=document.getElementById('rgi-save-'+g);if(b)b.disabled=!rgIngDirty(g);}
+function rgIngDirty(g){const e=(RG.ingEd||{})[g];if(!e)return false;return (e.nombre!==undefined&&e.nombre.trim()!==GL[g])||(e.color!==undefined&&e.color.toLowerCase()!==String(GC[g]).toLowerCase())||(e.activo!==undefined&&e.activo!==(ING_ACTIVO[g]!==false));}
+function rgIngHtml(){
+  if(RG.key==null)RG.key=lsGet('nw_rg_key_v9','')||'';
+  const usados=GKEYS.map(g=>String(GC[g]).toLowerCase()),sug=(ING_PALETA.find(c=>!usados.includes(c.toLowerCase()))||ING_PALETA[0]);
+  const nv=RG.ingNew||(RG.ingNew={codigo:'',nombre:'',color:sug});
+  const rows=GKEYS.map(g=>{const c=rgIngCnt(g),e=(RG.ingEd||{})[g]||{},act=e.activo!==undefined?e.activo:ING_ACTIVO[g]!==false;
+    return `<tr class="${act?'':'rgi-off'}"><td><input type="color" class="rgi-col" value="${escA(e.color||GC[g])}" oninput="rgIngSet('${g}','color',this.value)" title="Color en gráficos"></td>
+      <td><b class="rgi-cod" style="background:${escA(GC[g])}">${esc(g)}</b></td>
+      <td><input class="rg-in" value="${escA(e.nombre!==undefined?e.nombre:GL[g])}" oninput="rgIngSet('${g}','nombre',this.value)"></td>
+      <td class="rgi-n"><b>${c.n}</b> tareas · ${c.ab} abiertas<div class="rg-help">${esc(c.txt||'sin tareas')}</div></td>
+      <td><label class="rgi-sw"><input type="checkbox" ${act?'checked':''} onchange="rgIngSet('${g}','activo',this.checked);this.closest('tr').classList.toggle('rgi-off',!this.checked)"> <span>${act?'Activo':'Inactivo'}</span></label></td>
+      <td><button class="dw-btn pri" id="rgi-save-${g}" ${rgIngDirty(g)?'':'disabled'} onclick="rgIngGuardar('${g}')">Guardar</button></td></tr>`;}).join('');
+  return `<div class="rg-grid"><div class="rg-form">
+    <section class="rg-sec"><div class="rg-sh"><span class="rg-n">👥</span><div><div class="rg-sht">Ingenieros de diseño</div>
+      <div class="rg-shd">Inactivo = no recibe tareas nuevas ni hoja del año siguiente; su histórico se sigue viendo en el dashboard.</div></div></div>
+      <div class="rgi-wrap"><table class="rgi"><thead><tr><th>Color</th><th>Código</th><th>Nombre</th><th>Tareas</th><th>Estado</th><th></th></tr></thead><tbody>${rows}</tbody></table></div></section>
+    <section class="rg-sec"><div class="rg-sh"><span class="rg-n">➕</span><div><div class="rg-sht">Agregar ingeniero de diseño</div>
+      <div class="rg-shd">Se crea su hoja <b>${esc((nv.codigo||'XX').toUpperCase())} ${new Date().getFullYear()}</b> con fórmulas, desplegables y su nombre en la columna Gestor. Queda listo para recibir tareas.</div></div></div>
+      <div class="rg-fs"><div class="rg-f"><label>Código <i>*</i></label><input id="rgi-cod" class="rg-in" maxlength="4" value="${escA(nv.codigo)}" placeholder="2 a 4 letras, p. ej. JP" oninput="this.value=this.value.toUpperCase().replace(/[^A-Z]/g,'');RG.ingNew.codigo=this.value"></div>
+        <div class="rg-f"><label>Color</label><input type="color" class="rgi-col" value="${escA(nv.color)}" oninput="RG.ingNew.color=this.value"></div>
+        <div class="rg-f w2"><label>Nombre completo <i>*</i></label><input id="rgi-nom" class="rg-in" value="${escA(nv.nombre)}" placeholder="Así aparecerá en el Sheet y en el dashboard" oninput="RG.ingNew.nombre=this.value"></div></div>
+      <button class="rg-go" style="margin-top:12px" onclick="rgIngAlta()">➕ Agregar ingeniero</button></section>
+  </div><aside class="rg-side"><div class="rg-card"><label class="rg-lb">Registrado por</label><input class="rg-in" id="rg-user" value="${escA(rgUser())}" placeholder="Tu nombre" oninput="RG.user=this.value;lsSet('nw_rg_user_v9',this.value)">
+      <label class="rg-lb">Clave de escritura</label><input class="rg-in" id="rg-key" type="password" value="${escA(RG.key)}" placeholder="Clave definida en el Apps Script" autocomplete="off" oninput="RG.key=this.value">
+      <div id="rg-res" class="rg-res${RG.msg?(RG.msg.ok?' ok':' ko'):''}" ${RG.msg?'':'style="display:none"'}>${RG.msg?RG.msg.html:''}</div>
+      <div class="rg-help">Los cambios se guardan en la hoja <b>INGENIEROS</b> del Sheet y quedan en LOG_REGISTROS_DASHBOARD.</div></div></aside></div>`;
+}
+async function rgIngPost(data){
+  if(!RG.key){RG.msg={ok:false,html:'Ingresa la clave de escritura.'};rgRender();return null;}
+  RG.msg={ok:true,html:'Guardando…'};rgRender();
+  try{const r=await fetch(rgBase(),{method:'POST',body:JSON.stringify({token:rgTok(),writeKey:RG.key,user:rgUser(),mode:'ingeniero',data}),headers:{'Content-Type':'text/plain;charset=utf-8'},redirect:'follow',credentials:'omit'});
+    const j=await r.json();if(!j||!j.ok){RG.msg={ok:false,html:'✕ '+esc((j&&j.error)||'Error desconocido')+(j&&/Acci[oó]n inv|mode/i.test(j.error||'')?'':'')};rgRender();return null;}
+    lsSet('nw_rg_key_v9',RG.key);if(j.ingenieros)aplicarIngenieros(j.ingenieros,[...OPS.ab,...OPS.ga,...OPS.pd,...OPS.per]);return j;
+  }catch(e){RG.msg={ok:false,html:'✕ No se pudo conectar con el Apps Script ('+esc(e.message)+'). ¿Está publicada la v9.19 del backend?'};rgRender();return null;}
+}
+async function rgIngGuardar(g){const e=(RG.ingEd||{})[g]||{},data={accion:'editar',codigo:g};
+  if(e.nombre!==undefined&&e.nombre.trim()!==GL[g])data.nombre=e.nombre.trim();
+  if(e.color!==undefined&&e.color.toLowerCase()!==String(GC[g]).toLowerCase())data.color=e.color;
+  if(e.activo!==undefined&&e.activo!==(ING_ACTIVO[g]!==false))data.activo=e.activo;
+  const j=await rgIngPost(data);if(!j)return;delete RG.ingEd[g];
+  RG.msg={ok:true,html:`✓ ${esc(GL[g]||g)} actualizado${data.activo===false?' · ahora está <b>inactivo</b>':data.activo===true?' · ahora está <b>activo</b>':''}.<br><span style="color:#94A3B8">Actualizando el dashboard…</span>`};rgRender();
+  try{await initDashboard();}catch(err){}if(RG.msg&&RG.msg.ok)RG.msg.html=RG.msg.html.replace(/<br><span[^>]*>Actualizando el dashboard…<\/span>/,'');if(RG.mode==='ing')rgRender();}
+async function rgIngAlta(){const n=RG.ingNew||{};const cod=String(n.codigo||'').toUpperCase(),nom=String(n.nombre||'').trim();
+  if(!/^[A-Z]{2,4}$/.test(cod)){RG.msg={ok:false,html:'El código debe tener de 2 a 4 letras.'};rgRender();return;}
+  if(!nom){RG.msg={ok:false,html:'Falta el nombre completo.'};rgRender();return;}
+  if(GKEYS.includes(cod)&&ING_ACTIVO[cod]!==false){RG.msg={ok:false,html:`El código ${esc(cod)} ya existe (${esc(GL[cod])}).`};rgRender();return;}
+  const j=await rgIngPost({accion:'alta',codigo:cod,nombre:nom,color:n.color});if(!j)return;
+  RG.ingNew=null;RG.msg={ok:true,html:`✓ <b>${esc(j.nombre||nom)}</b> (${esc(cod)}) agregado. Hoja creada: <b>${esc((j.hojas||[]).join(', ')||'—')}</b>. Ya puede recibir tareas.<br><span style="color:#94A3B8">Actualizando el dashboard…</span>`};rgRender();
+  try{await initDashboard();}catch(err){}if(RG.msg&&RG.msg.ok)RG.msg.html=RG.msg.html.replace(/<br><span[^>]*>Actualizando el dashboard…<\/span>/,'');if(RG.mode==='ing')rgRender();}
 
 /* ══════════ v9.9 — ACTUALIZACIÓN RÁPIDA (5 campos) ══════════ */
 const RG_QK=['estado','fechaA','fechaE','nrc','mrc','cierre','prod'];   // v9.17 — prod: cambiar / agregar / quitar productos
