@@ -3724,7 +3724,7 @@ const todayYmd=()=>_ymd(new Date());
 
 /* v9.14 — varios productos por tarea: se guardan en la misma celda como "Prod A, Prod B" */
 const RG_ESTADO_INICIAL='PENDIENTE DE REVISION PREVENTA TN';
-const RG_PROD_EXCL=['PRODUCTOS','PRODUCTO','NA','N/A'];   // valores que no son productos (si una tarea ya los tiene, se ven y se pueden quitar)
+const RG_PROD_EXCL=['PRODUCTOS','PRODUCTO'];   // encabezado colado en el desplegable del Sheet (si una tarea ya lo tiene, se ve y se puede quitar)
 const rgProds=s=>[...new Set(String(s||'').split(/\s*[,;]\s*/).map(x=>x.trim()).filter(Boolean))];
 const rgEsCab=p=>/CABLEADO\s*ESTRUCTURADO/i.test(String(p||'').normalize('NFD').replace(/[\u0300-\u036f]/g,''));
 function rgProdAddIn(ev,el){const v=String(el.value||'').trim();if(!v)return;if((!ev||!ev.inputType||ev.inputType==='insertReplacementText')&&rgOpts('prod').includes(v))rgProdToggle(v);}
@@ -3733,7 +3733,7 @@ function rgOpts(k){
   const key=k==='fab2'?'fab1':k;const c=(RG.cat&&(RG.cat[k]||RG.cat[key]))||[];
   const data=[...OPS.ab,...OPS.ga,...OPS.per,...OPS.pd];
   const fromData=k==='asesor'?data.map(o=>(o.asesor||'').trim()):k==='prod'?data.flatMap(o=>rgProds(o.prod)):k==='estado'?data.map(o=>(o.estado||'').trim()):[];
-  const excl=k==='prod'?x=>!RG_PROD_EXCL.includes(String(x).trim().toUpperCase()):()=>true;   // v9.17 — no ofrecer "Productos" (encabezado) ni "NA"
+  const excl=k==='prod'?x=>!RG_PROD_EXCL.includes(String(x).trim().toUpperCase()):()=>true;   // v9.17 — no ofrecer "Productos" (encabezado)
   return [...new Set([...c,...(RG_DEF[key]||[]),...fromData].filter(Boolean).filter(excl))].sort((a,b)=>String(a).localeCompare(String(b),'es'));
 }
 function rgExisting(t){t=String(t||'').trim();if(!t)return null;for(const s of ['ab','ga','per','pd']){const o=OPS[s].find(x=>String(x.tarea)===t);if(o)return Object.assign({},o,{_s:s});}return null;}
