@@ -3707,7 +3707,12 @@ function rgSet(k,val,noRender){
   if(noRender||!RER.includes(k)){rgRefreshSide();return;}
   rgRender();
 }
-function rgInput(el){const k=el.dataset.k;rgSet(k,el.value,true);if(k==='tarea'||k==='cierre'||RG.quick)rgRender(true);}
+/* montos y %: campo de texto (type=number pierde el cursor al re-renderizar y borra el punto decimal a medio escribir);
+   acepta coma o punto decimal (con punto presente, las comas son de miles) y solo deja dígitos y un separador */
+function rgNumLimpio(el){const a=el.value,p=el.selectionStart;const nc=(a.match(/,/g)||[]).length;let b=(a.includes('.')||nc>1?a.replace(/,/g,''):a.replace(',','.')).replace(/[^\d.]/g,'');   // 1,000.50 / 1,000,000 → miles; 520,75 → decimal
+  const i=b.indexOf('.');if(i>=0)b=b.slice(0,i+1)+b.slice(i+1).replace(/\./g,'');
+  if(b!==a){el.value=b;const np=Math.max(0,(p==null?b.length:p)-(a.length-b.length));try{el.setSelectionRange(np,np);}catch(e){}}}
+function rgInput(el){const k=el.dataset.k;if(el.dataset.num)rgNumLimpio(el);rgSet(k,el.value,true);if(k==='tarea'||k==='cierre'||RG.quick)rgRender(true);}
 
 /* ── validación ── */
 function rgCheck(){
@@ -3753,8 +3758,8 @@ function rgField(f){
   if(f.t==='text')inp=`<input id="${id}" data-k="${f.k}" class="rg-in" value="${escA(val)}" placeholder="${f.ph||''}" ${f.im?`inputmode="${f.im}"`:''} ${ro?'readonly':''} oninput="rgInput(this)">`;
   else if(f.t==='date'&&f.k==='fechaA'&&!up)inp=`<div class="rg-auto">Hoy · <b>${todayYmd().split('-').reverse().join('/')}</b> <span class="rg-chg" style="color:#5B9FE8;border-color:#5B9FE855;background:#5B9FE81A">automático</span></div>`;
   else if(f.t==='date')inp=`<input id="${id}" data-k="${f.k}" type="date" class="rg-in" value="${escA(val)}" onchange="rgSet('${f.k}',this.value)">`+(f.k!=='fechaA'?`<button class="rg-mini" onclick="rgSet('${f.k}','${todayYmd()}')">Hoy</button>`:'');
-  else if(f.t==='money')inp=`<div class="rg-pre"><span>$</span><input id="${id}" data-k="${f.k}" type="number" min="0" step="0.01" class="rg-in" value="${escA(val)}" placeholder="0,00" oninput="rgInput(this)"></div>`;
-  else if(f.t==='pct')inp=`<div class="rg-pre rg-suf"><input id="${id}" data-k="${f.k}" type="number" min="0" max="100" step="0.5" class="rg-in" value="${escA(val)}" placeholder="Ej. 25" oninput="rgInput(this)"><span>%</span></div>`;
+  else if(f.t==='money')inp=`<div class="rg-pre"><span>$</span><input id="${id}" data-k="${f.k}" data-num="1" type="text" inputmode="decimal" autocomplete="off" class="rg-in" value="${escA(val)}" placeholder="0,00" oninput="rgInput(this)"></div>`;
+  else if(f.t==='pct')inp=`<div class="rg-pre rg-suf"><input id="${id}" data-k="${f.k}" data-num="1" type="text" inputmode="decimal" autocomplete="off" class="rg-in" value="${escA(val)}" placeholder="Ej. 25" oninput="rgInput(this)"><span>%</span></div>`;
   else if(f.t==='area')inp=`<textarea id="${id}" data-k="${f.k}" class="rg-in" rows="3" placeholder="${f.ph||''}" oninput="rgInput(this)">${esc(val)}</textarea>`;
   else if(f.k==='estado'){const o=rgOpts('estado');if(val&&!o.includes(val))o.unshift(val);inp=`<select id="${id}" data-k="estado" class="rg-in" onchange="rgSet('estado',this.value)"><option value="">— Elige el estado —</option>${o.map(x=>`<option value="${escA(x)}"${x===val?' selected':''}>${esc(x)}</option>`).join('')}</select>`;}
   else if(f.t==='multi'&&RG.quick&&!RG.prodAll){const sel=rgProds(val),o=rgOpts(f.k).filter(x=>!sel.includes(x));
