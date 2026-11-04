@@ -887,10 +887,6 @@ textarea.rg-in{resize:vertical;min-height:64px}
     <span class="fbar-lbl">Filtros:</span>
     <select id="re-fg" onchange="applyRE()">
       <option value="ALL">Todos los gestores</option>
-      <option value="GH">George Heredia</option>
-      <option value="CM">Carlos Mejía</option>
-      <option value="DA">David Alcívar</option>
-      <option value="AS">Alfredo Salazar</option>
     </select>
     <div class="tipo-grp">
       <button class="tipo-btn ac-all" onclick="setRET('ALL',this)">Todos</button>
@@ -989,36 +985,7 @@ textarea.rg-in{resize:vertical;min-height:64px}
     <div class="cbox"><div class="cbox-t">Ops — CON vs SIN Inspección</div><canvas id="cReOps" height="155"></canvas></div>
   </div>
   <div class="sttl" style="color:#F59E0B">🏆 Top 10 Oportunidades · PIPELINE · por Ing. de Diseño</div>
-  <div style="display:flex;flex-direction:column;gap:16px">
-    <div class="t10-wrap">
-      <div class="t10-hdr">
-        <span class="t10-htxt" style="color:#5B9FE8">● George Heredia — Top 10 por Monto Total (NRC+MRC)</span>
-        <span style="font-size:15px;color:#64748B">Ops Abiertas · Pipeline</span>
-      </div>
-      <table class="t10" id="tbl-top10-GH"></table>
-    </div>
-    <div class="t10-wrap">
-      <div class="t10-hdr">
-        <span class="t10-htxt" style="color:#2DC48D">● Carlos Mejía — Top 10 por Monto Total (NRC+MRC)</span>
-        <span style="font-size:15px;color:#64748B">Ops Abiertas · Pipeline</span>
-      </div>
-      <table class="t10" id="tbl-top10-CM"></table>
-    </div>
-    <div class="t10-wrap">
-      <div class="t10-hdr">
-        <span class="t10-htxt" style="color:#E09D3A">● David Alcívar — Top 10 por Monto Total (NRC+MRC)</span>
-        <span style="font-size:15px;color:#64748B">Ops Abiertas · Pipeline</span>
-      </div>
-      <table class="t10" id="tbl-top10-DA"></table>
-    </div>
-    <div class="t10-wrap">
-      <div class="t10-hdr">
-        <span class="t10-htxt" style="color:#A855F7">● Alfredo Salazar — Top 10 por Monto Total (NRC+MRC)</span>
-        <span style="font-size:15px;color:#64748B">Ops Abiertas · Pipeline</span>
-      </div>
-      <table class="t10" id="tbl-top10-AS"></table>
-    </div>
-  </div>
+  <div style="display:flex;flex-direction:column;gap:16px" id="t10-list"></div>   <!-- v9.18: un bloque por ingeniero (ingResumen) -->
 </div>
 
 <!-- OPS ABIERTAS -->
@@ -1027,10 +994,6 @@ textarea.rg-in{resize:vertical;min-height:64px}
     <span class="fbar-lbl">Filtros:</span>
     <select id="ab-fg" onchange="applyF('ab')">
       <option value="ALL">Todos los gestores</option>
-      <option value="GH">George Heredia</option>
-      <option value="CM">Carlos Mejía</option>
-      <option value="DA">David Alcívar</option>
-      <option value="AS">Alfredo Salazar</option>
     </select>
     <div class="tipo-grp">
       <button class="tipo-btn ac-all" onclick="setFT('ab','ALL',this)">Todos</button>
@@ -1081,10 +1044,6 @@ textarea.rg-in{resize:vertical;min-height:64px}
     <span class="fbar-lbl">Filtros:</span>
     <select id="ga-fg" onchange="applyF('ga')">
       <option value="ALL">Todos los gestores</option>
-      <option value="GH">George Heredia</option>
-      <option value="CM">Carlos Mejía</option>
-      <option value="DA">David Alcívar</option>
-      <option value="AS">Alfredo Salazar</option>
     </select>
     <div class="tipo-grp">
       <button class="tipo-btn ac-all" onclick="setFT('ga','ALL',this)">Todos</button>
@@ -1134,10 +1093,6 @@ textarea.rg-in{resize:vertical;min-height:64px}
     <span class="fbar-lbl">Filtros:</span>
     <select id="pe-fg" onchange="applyF('pe')">
       <option value="ALL">Todos los gestores</option>
-      <option value="GH">George Heredia</option>
-      <option value="CM">Carlos Mejía</option>
-      <option value="DA">David Alcívar</option>
-      <option value="AS">Alfredo Salazar</option>
     </select>
     <div class="tipo-grp">
       <button class="tipo-btn ac-all" onclick="setFT('pe','ALL',this)">Todos</button>
@@ -1209,10 +1164,6 @@ textarea.rg-in{resize:vertical;min-height:64px}
     <span class="fbar-lbl">Filtros:</span>
     <select id="pd-fg" onchange="renderPd()">
       <option value="ALL">Todos los gestores</option>
-      <option value="GH">George Heredia</option>
-      <option value="CM">Carlos Mejía</option>
-      <option value="DA">David Alcívar</option>
-      <option value="AS">Alfredo Salazar</option>
     </select>
     <div class="tipo-grp">
       <button class="tipo-btn ac-all" onclick="setPdT('ALL',this)">Todos</button>
@@ -1274,10 +1225,6 @@ textarea.rg-in{resize:vertical;min-height:64px}
     <span class="fbar-lbl">Filtros:</span>
     <select id="ge-fg" onchange="renderGe()">
       <option value="ALL">Todos los gestores</option>
-      <option value="GH">George Heredia</option>
-      <option value="CM">Carlos Mejía</option>
-      <option value="DA">David Alcívar</option>
-      <option value="AS">Alfredo Salazar</option>
     </select>
     <div class="tipo-grp">
       <button class="tipo-btn ac-all" onclick="setGeT('ALL',this)">Todos</button>
@@ -1372,8 +1319,35 @@ document.getElementById('fechaHoy').textContent=new Date().toLocaleDateString('e
 const ENDPOINT_URL = 'https://script.google.com/macros/s/AKfycbwK9RiVz3oyQoNi29IyQr9jJAvpYuzOxow13PDKEp_YU6-ZBJ1wXoK3GV-voLspUHtY/exec?token=NW2026_PREVENTA';
 
 /* ── CONSTANTES ── */
+/* v9.18 — ingenieros de diseño: valores por defecto; el backend envía la lista real (hoja INGENIEROS) y aplicarIngenieros() la carga */
 const GC  = {GH:'#5B9FE8', CM:'#2DC48D', DA:'#E09D3A', AS:'#A855F7'};
 const GL  = {GH:'George Heredia', CM:'Carlos Mejía', DA:'David Alcívar', AS:'Alfredo Salazar'};
+const GKEYS = ['GH','CM','DA','AS'];   // orden de los ingenieros (se reemplaza con la hoja INGENIEROS)
+const ING_ACTIVO = {GH:true, CM:true, DA:true, AS:true};
+const ING_PALETA = ['#F472B6','#22D3EE','#FACC15','#FB7185','#34D399','#818CF8','#F97316','#14B8A6'];
+function aplicarIngenieros(lista, ops){
+  if(!lista||!lista.length)lista=GKEYS.map(g=>({codigo:g,nombre:GL[g],color:GC[g],activo:ING_ACTIVO[g]!==false}));   // backend sin lista: valores por defecto
+  const codigos=[];
+  (lista||[]).forEach(i=>{const c=String(i.codigo||'').trim().toUpperCase();if(!c)return;codigos.push(c);
+    if(i.nombre)GL[c]=i.nombre;ING_ACTIVO[c]=i.activo!==false;});
+  // tareas de un código que no está en la lista (no debería pasar): se muestran igual
+  (ops||[]).forEach(o=>{if(o.gestor&&!codigos.includes(o.gestor)){codigos.push(o.gestor);if(!GL[o.gestor])GL[o.gestor]=o.gestor;ING_ACTIVO[o.gestor]=false;}});
+  if(!codigos.length)return;
+  GKEYS.length=0;codigos.forEach(c=>GKEYS.push(c));
+  let n=0;GKEYS.forEach(c=>{const i=(lista||[]).find(x=>String(x.codigo).toUpperCase()===c);
+    if(i&&i.color)GC[c]=i.color;else if(!GC[c]){while(Object.values(GC).includes(ING_PALETA[n%ING_PALETA.length])&&n<ING_PALETA.length*2)n++;GC[c]=ING_PALETA[n%ING_PALETA.length];n++;}
+    if(typeof RG_GFULL!=='undefined'&&!RG_GFULL[c])RG_GFULL[c]=GL[c];});
+  ingResumen();
+}
+/* filtros de gestor y bloques del Top 10 según la lista de ingenieros */
+function ingResumen(){
+  ['re','ab','ga','pe','pd','ge'].forEach(seg=>{const sel=document.getElementById(seg+'-fg');if(!sel)return;const cur=sel.value;
+    sel.innerHTML='<option value="ALL">Todos los gestores</option>'+GKEYS.map(g=>`<option value="${g}">${esc(GL[g])}${ING_ACTIVO[g]===false?' (inactivo)':''}</option>`).join('');
+    sel.value=[...sel.options].some(o=>o.value===cur)?cur:'ALL';});
+  const t=document.getElementById('t10-list');
+  if(t)t.innerHTML=GKEYS.map(g=>`<div class="t10-wrap"><div class="t10-hdr"><span class="t10-htxt" style="color:${GC[g]}">● ${esc(GL[g])} — Top 10 por Monto Total (NRC+MRC)</span>
+    <span style="font-size:15px;color:#64748B">Ops Abiertas · Pipeline</span></div><table class="t10" id="tbl-top10-${g}"></table></div>`).join('');
+}
 const ESTADOS_AB  = ['Propuesta enviada','En negociación','Revisión técnica','Pendiente aprobación','En riesgo','Pausada'];
 const ESTADOS_GA  = ['Ganada — Facturación pendiente','En implementación','Completada'];
 const ESTADOS_PE_ORIG = ['Pérdida por precio','Pérdida por competencia','Presupuesto cancelado','Sin respuesta del cliente','Requisitos no cumplidos'];
@@ -1401,8 +1375,12 @@ function getTk(id,f,def){const d=loadTk();return d[id]&&d[id][f]!=null?d[id][f]:
 function isPerdida(id){return getTk(id,'estado','')===PERDIDA_KEY||OPS.per.some(o=>String(o.id)===String(id));}
 
 /* ── BUILD D desde OPS ── */
+/* v9.18 — ingenieros con al menos una ganada o perdida (para promediar el win rate sin contar a quien no tiene cierres) */
+function wrKeys(keys,filt){const n=x=>((x&&x.sin&&x.sin.ops)||0)+((x&&x.con&&x.con.ops)||0);
+  return keys.filter(k=>n(aggF('ga',{...filt,g:k}))+n(aggF('pe',{...filt,g:k}))>0);}
 function buildD(){
-  ['GH','CM','DA','AS'].forEach(g=>{
+  GKEYS.forEach(g=>{
+    if(!D[g])D[g]={ab:{},ga:{},pe:{},wr:0,margen:0};   // v9.18 — ingeniero nuevo (hoja INGENIEROS)
     ['ab','ga','pe'].forEach(seg=>{
       let ops = seg==='pe'?[...OPS.pe,...getPeMovidas(),...OPS.per]:OPS[seg];
       ops = ops.filter(o=>o.gestor===g);
@@ -1762,7 +1740,7 @@ function buildCharts(seg){
     data:{labels:['SIN','CON'],datasets:[{data:[a.sin.mrc,a.con.mrc],backgroundColor:['#60B4F0','#4AE3B5'],borderWidth:0,hoverOffset:4}]},
     options:{responsive:false,maintainAspectRatio:false,width:249,height:249,cutout:'68%',
       plugins:{legend:{display:false},centerText:{text:fM(totM)},datalabels:{color:'#E2E8F0',font:{size:9,weight:'bold'},formatter:v=>v>0?`${fK(v)}\n${pct(v,totM)}%`:''}}}});
-  const keys=F[seg].g==='ALL'?['GH','CM','DA','AS']:[F[seg].g];
+  const keys=F[seg].g==='ALL'?GKEYS:[F[seg].g];
   const nD=keys.map(k=>{const d=D[k][seg];let n=0;if(F[seg].t==='ALL'||F[seg].t==='SIN')n+=d.sin.nrc;if(F[seg].t==='ALL'||F[seg].t==='CON')n+=d.con.nrc;return n;});
   const mD=keys.map(k=>{const d=D[k][seg];let m=0;if(F[seg].t==='ALL'||F[seg].t==='SIN')m+=d.sin.mrc;if(F[seg].t==='ALL'||F[seg].t==='CON')m+=d.con.mrc;return m;});
   const tN=nD.reduce((a,b)=>a+b,0),tMM=mD.reduce((a,b)=>a+b,0);
@@ -1845,7 +1823,7 @@ function renderTab(seg){
         <div></div>
       </div>`;
   }
-  const keys=filt.g==='ALL'?['GH','CM','DA','AS']:[filt.g];
+  const keys=filt.g==='ALL'?GKEYS:[filt.g];
   document.getElementById(`${seg}-charts`).innerHTML=`
     <div class="cbox"><div class="cbox-t">NRC · SIN vs CON</div><canvas id="${seg}Nr" width="249" height="249" style="width:249px!important;height:249px!important;display:block"></canvas>
       <div class="cleg">
@@ -1865,7 +1843,7 @@ function renderTab(seg){
 
 /* ── GESTORES ── */
 function renderGestores(seg,totTab,col,filt){
-  const keys=filt.g==='ALL'?['GH','CM','DA','AS']:[filt.g];
+  const keys=filt.g==='ALL'?GKEYS:[filt.g];
   let html='';
   keys.forEach(k=>{
     const d=D[k][seg];
@@ -1943,7 +1921,7 @@ function renderOpsTable(seg,filt){
   let displayRows = rows;
   let limitMsg = '';
   if(seg==='ab' && !q && !TC.ab){
-    const gestores = filt.g==='ALL' ? ['GH','CM','DA','AS'] : [filt.g];
+    const gestores = filt.g==='ALL' ? GKEYS : [filt.g];
     displayRows = [];
     gestores.forEach(g=>{
       const gRows = rows.filter(o=>o.gestor===g).sort((a,b)=>((b.nrc||0)+(b.mrc||0))-((a.nrc||0)+(a.mrc||0)));
@@ -1953,7 +1931,7 @@ function renderOpsTable(seg,filt){
     if(total>displayRows.length) limitMsg=` (Top 20 por gestor · ${total} totales — busca por #Tarea para ver más)`;
   }
   if(seg==='ga'){
-    const gestorOrder=['GH','CM','DA','AS'];
+    const gestorOrder=GKEYS;
     displayRows=displayRows.slice().sort((a,b)=>{
       const gi=gestorOrder.indexOf(a.gestor)-gestorOrder.indexOf(b.gestor);
       if(gi!==0)return gi;
@@ -2114,7 +2092,7 @@ function buildDistCard(label,color,opsArr){
   const totNrc=opsArr.reduce((s,o)=>s+(o.nrc||0),0);
   const totMrc=opsArr.reduce((s,o)=>s+(o.mrc||0),0);
   let rows='';
-  ['GH','CM','DA','AS'].forEach(g=>{
+  GKEYS.forEach(g=>{
     const go=opsArr.filter(o=>o.gestor===g);
     if(!go.length)return;
     const sin=go.filter(o=>o.tipo!=='CON').length;
@@ -2154,11 +2132,11 @@ function buildDistCard(label,color,opsArr){
 /* ── RESUMEN ── */
 function buildRE(){
   const filt=F.re;
-  const keys=filt.g==='ALL'?['GH','CM','DA','AS']:[filt.g];
+  const keys=filt.g==='ALL'?GKEYS:[filt.g];
   const ab=aggF('ab',filt),ga=aggF('ga',filt);
   /* Agregados por gestor con los filtros del Resumen aplicados */
   const DR={};
-  ['GH','CM','DA','AS'].forEach(k=>{DR[k]={ab:aggF('ab',{...filt,g:k}),ga:aggF('ga',{...filt,g:k}),pe:aggF('pe',{...filt,g:k}),wr:wrFilt(k,filt),margen:margenFilt(k,filt)};});
+  GKEYS.forEach(k=>{DR[k]={ab:aggF('ab',{...filt,g:k}),ga:aggF('ga',{...filt,g:k}),pe:aggF('pe',{...filt,g:k}),wr:wrFilt(k,filt),margen:margenFilt(k,filt)};});
   /* Listas de ops filtradas */
   const opsAb=OPS.ab.filter(o=>!isPerdida(o.id)&&!isExcluido('ab',o)&&matchF(o,filt));
   const opsGa=OPS.ga.filter(o=>!isExcluido('ga',o)&&matchF(o,filt));
@@ -2194,7 +2172,7 @@ function buildRE(){
   document.getElementById('re-con-mrc').textContent=fM(ab.con.mrc);
   document.getElementById('re-con-mrc-ops').textContent=ab.con.ops;
   document.getElementById('re-con-mrc-pct').textContent=pct(ab.con.mrc,ab.tot.mrc)+'% del MRC Total';
-  const wrAvg=keys.length?keys.reduce((s,k)=>s+DR[k].wr,0)/keys.length:0;
+  const kW=wrKeys(keys,filt);const wrAvg=kW.length?kW.reduce((s,k)=>s+DR[k].wr,0)/kW.length:0;   // v9.18 — solo ingenieros con cierres
   document.getElementById('re-wr').textContent=fP(wrAvg);
   /* ── Distribución de Oportunidades ── */
   const nAb=opsAb.length, nGa=opsGa.length, nPe=opsPe.length, nTot=nAb+nGa+nPe;
@@ -2268,8 +2246,8 @@ function buildTop10(){
     <th style="width:36px"></th>
   </tr></thead>`;
   const filt=F.re, q=filt.q;
-  const gShow=filt.g==='ALL'?['GH','CM','DA','AS']:[filt.g];
-  ['GH','CM','DA','AS'].forEach(g=>{
+  const gShow=filt.g==='ALL'?GKEYS:[filt.g];
+  GKEYS.forEach(g=>{
     const tbl=document.getElementById(`tbl-top10-${g}`);
     const wrap=tbl?tbl.closest('.t10-wrap'):null;
     if(wrap)wrap.style.display=gShow.includes(g)?'':'none';
@@ -2330,12 +2308,12 @@ function downloadPPT(){
   const BG='1F2229',BG2='272C35',W='FFFFFF',GR='94A3B8',AM='F59E0B',TE='02C39A',BL='5B9FE8';
   /* ── Respeta el filtro activo del Resumen Ejecutivo ── */
   const filt=F.re;
-  const keys=filt.g==='ALL'?['GH','CM','DA','AS']:[filt.g];
+  const keys=filt.g==='ALL'?GKEYS:[filt.g];
   const ab=aggF('ab',filt),ga=aggF('ga',filt);
   /* Agregados por gestor filtrados */
   const DR={};
   keys.forEach(k=>{DR[k]={ab:aggF('ab',{...filt,g:k}),wr:wrFilt(k,filt),margen:margenFilt(k,filt)};});
-  const wrAvg=fP(keys.length?keys.reduce((s,k)=>s+DR[k].wr,0)/keys.length:0);
+  const kW=wrKeys(keys,filt);const wrAvg=fP(kW.length?kW.reduce((s,k)=>s+DR[k].wr,0)/kW.length:0);
   /* Etiqueta de filtros activos */
   const _lbl=[];
   if(filt.g!=='ALL')_lbl.push('Gestor: '+GL[filt.g]);
@@ -2463,10 +2441,7 @@ function renderPd(){
   const conC     = ops.filter(o=>o.tipo==='CON').length;
 
   // Conteo por gestor para el donut de distribución
-  const cntGH = ops.filter(o=>o.gestor==='GH').length;
-  const cntCM = ops.filter(o=>o.gestor==='CM').length;
-  const cntDA = ops.filter(o=>o.gestor==='DA').length;
-  const cntAS = ops.filter(o=>o.gestor==='AS').length;
+  const cntG = Object.fromEntries(GKEYS.map(g=>[g,ops.filter(o=>o.gestor===g).length]));   // v9.18 — ingenieros dinámicos
 
   document.getElementById('pd-kpis').innerHTML=`
     <div class="kc" style="border-top:3px solid #A78BFA">
@@ -2487,7 +2462,7 @@ function renderPd(){
 
   // ── Gestor distribution cards ──
   let gestCrds='';
-  ['GH','CM','DA','AS'].forEach(gk=>{
+  GKEYS.forEach(gk=>{
     const go=ops.filter(o=>o.gestor===gk);
     if(!go.length){
       gestCrds+=`<div class="gc" style="border-top-color:${GC[gk]}66;opacity:.4">
@@ -2522,30 +2497,12 @@ function renderPd(){
     <div class="cbox-t" style="color:#A78BFA">Dist. Ing. Preventa</div>
     <canvas id="cPdDistGest" width="249" height="249" style="display:block;width:249px!important;height:249px!important"></canvas>
     <div style="width:100%;display:flex;flex-direction:column;gap:8px;margin-top:10px">
-      <div style="display:flex;align-items:center;gap:8px">
-        <div style="width:11px;height:11px;border-radius:50%;background:#5B9FE8;flex-shrink:0"></div>
-        <span style="color:#94A3B8;flex:1;font-size:13px">GH · ${GL['GH']}</span>
-        <span style="color:#E2E8F0;font-weight:800;font-size:17px">${cntGH}</span>
-        <span style="color:#5B9FE8;font-weight:700;font-size:13px">${pct(cntGH,total)}%</span>
-      </div>
-      <div style="display:flex;align-items:center;gap:8px">
-        <div style="width:11px;height:11px;border-radius:50%;background:#2DC48D;flex-shrink:0"></div>
-        <span style="color:#94A3B8;flex:1;font-size:13px">CM · ${GL['CM']}</span>
-        <span style="color:#E2E8F0;font-weight:800;font-size:17px">${cntCM}</span>
-        <span style="color:#2DC48D;font-weight:700;font-size:13px">${pct(cntCM,total)}%</span>
-      </div>
-      <div style="display:flex;align-items:center;gap:8px">
-        <div style="width:11px;height:11px;border-radius:50%;background:#E09D3A;flex-shrink:0"></div>
-        <span style="color:#94A3B8;flex:1;font-size:13px">DA · ${GL['DA']}</span>
-        <span style="color:#E2E8F0;font-weight:800;font-size:17px">${cntDA}</span>
-        <span style="color:#E09D3A;font-weight:700;font-size:13px">${pct(cntDA,total)}%</span>
-      </div>
-      <div style="display:flex;align-items:center;gap:8px">
-        <div style="width:11px;height:11px;border-radius:50%;background:#A855F7;flex-shrink:0"></div>
-        <span style="color:#94A3B8;flex:1;font-size:13px">AS · ${GL['AS']}</span>
-        <span style="color:#E2E8F0;font-weight:800;font-size:17px">${cntAS}</span>
-        <span style="color:#A855F7;font-weight:700;font-size:13px">${pct(cntAS,total)}%</span>
-      </div>
+      ${GKEYS.map(g=>`<div style="display:flex;align-items:center;gap:8px">
+        <div style="width:11px;height:11px;border-radius:50%;background:${GC[g]};flex-shrink:0"></div>
+        <span style="color:#94A3B8;flex:1;font-size:13px">${g} · ${GL[g]}</span>
+        <span style="color:#E2E8F0;font-weight:800;font-size:17px">${cntG[g]}</span>
+        <span style="color:${GC[g]};font-weight:700;font-size:13px">${pct(cntG[g],total)}%</span>
+      </div>`).join('')}
     </div>`;
 
   // Donut distribución por gestor — debe correr DESPUÉS de insertar el canvas en el DOM
@@ -2554,7 +2511,7 @@ function renderPd(){
     const cvsPd=document.getElementById('cPdDistGest');
     if(cvsPd && document.getElementById('tp-pd').classList.contains('ac')){
       tCharts['pdDistGest']=new Chart(cvsPd,{type:'doughnut',
-        data:{labels:['GH','CM','DA','AS'],datasets:[{data:[cntGH,cntCM,cntDA,cntAS],backgroundColor:['#5B9FE8','#2DC48D','#E09D3A','#A855F7'],borderWidth:0,hoverOffset:4}]},
+        data:{labels:GKEYS,datasets:[{data:GKEYS.map(g=>cntG[g]),backgroundColor:GKEYS.map(g=>GC[g]),borderWidth:0,hoverOffset:4}]},
         options:{responsive:false,maintainAspectRatio:false,width:249,height:249,cutout:'65%',
           plugins:{
             legend:{display:false},
@@ -2578,7 +2535,7 @@ function renderPd(){
         <span style="font-size:15px;color:#94A3B8;margin-left:auto">Requieren atención antes de despachar</span>
       </div>
       <div class="pd-revision-cards">`;
-    ['GH','CM','DA','AS'].forEach(gk=>{
+    GKEYS.forEach(gk=>{
       const grev=enRevision.filter(o=>o.gestor===gk);
       if(!grev.length) return;
       const gcol=GC[gk]||'#94A3B8';
@@ -2614,7 +2571,7 @@ function renderPd(){
     <th>TP Preventa (Días)</th><th>Mes</th><th>Asesor</th><th>Seguimiento</th>
   </tr></thead><tbody>`;
 
-  ['GH','CM','DA','AS'].forEach(gk=>{
+  GKEYS.forEach(gk=>{
     const go=ops.filter(o=>o.gestor===gk&&tcPass('pd',o)).sort((a,b)=>(b.tpPre??-1)-(a.tpPre??-1));
     if(!go.length) return;
     html+=`<tr class="pd-sep"><td colspan="8">● ${GL[gk]} — ${go.length} ops</td></tr>`;
@@ -2695,10 +2652,7 @@ function renderGe(){
   const total  = ops.length;
   const sinC   = ops.filter(o=>o.tipo!=='CON').length;
   const conC   = ops.filter(o=>o.tipo==='CON').length;
-  const cntGH  = ops.filter(o=>o.gestor==='GH').length;
-  const cntCM  = ops.filter(o=>o.gestor==='CM').length;
-  const cntDA  = ops.filter(o=>o.gestor==='DA').length;
-  const cntAS  = ops.filter(o=>o.gestor==='AS').length;
+  const cntG = Object.fromEntries(GKEYS.map(g=>[g,ops.filter(o=>o.gestor===g).length]));   // v9.18 — ingenieros dinámicos
 
   // Conteo por estado
   const cntPRC = ops.filter(o=>NO_OFERTA_ESTADOS.includes((o.estado||'').trim().toUpperCase())).length;
@@ -2729,7 +2683,7 @@ function renderGe(){
 
   // ── Gestor distribution cards ──
   let gestCrds='';
-  ['GH','CM','DA','AS'].forEach(gk=>{
+  GKEYS.forEach(gk=>{
     const go=ops.filter(o=>o.gestor===gk);
     if(!go.length){
       gestCrds+=`<div class="gc" style="border-top-color:${GC[gk]}66;opacity:.4">
@@ -2768,30 +2722,12 @@ function renderGe(){
     <div class="cbox-t" style="color:#94A3B8">Dist. Ing. Preventa</div>
     <canvas id="cGeDistGest" width="249" height="249" style="display:block;width:249px!important;height:249px!important"></canvas>
     <div style="width:100%;display:flex;flex-direction:column;gap:8px;margin-top:10px">
-      <div style="display:flex;align-items:center;gap:8px">
-        <div style="width:11px;height:11px;border-radius:50%;background:#5B9FE8;flex-shrink:0"></div>
-        <span style="color:#94A3B8;flex:1;font-size:13px">GH · ${GL['GH']}</span>
-        <span style="color:#E2E8F0;font-weight:800;font-size:17px">${cntGH}</span>
-        <span style="color:#5B9FE8;font-weight:700;font-size:13px">${pct(cntGH,total)}%</span>
-      </div>
-      <div style="display:flex;align-items:center;gap:8px">
-        <div style="width:11px;height:11px;border-radius:50%;background:#2DC48D;flex-shrink:0"></div>
-        <span style="color:#94A3B8;flex:1;font-size:13px">CM · ${GL['CM']}</span>
-        <span style="color:#E2E8F0;font-weight:800;font-size:17px">${cntCM}</span>
-        <span style="color:#2DC48D;font-weight:700;font-size:13px">${pct(cntCM,total)}%</span>
-      </div>
-      <div style="display:flex;align-items:center;gap:8px">
-        <div style="width:11px;height:11px;border-radius:50%;background:#E09D3A;flex-shrink:0"></div>
-        <span style="color:#94A3B8;flex:1;font-size:13px">DA · ${GL['DA']}</span>
-        <span style="color:#E2E8F0;font-weight:800;font-size:17px">${cntDA}</span>
-        <span style="color:#E09D3A;font-weight:700;font-size:13px">${pct(cntDA,total)}%</span>
-      </div>
-      <div style="display:flex;align-items:center;gap:8px">
-        <div style="width:11px;height:11px;border-radius:50%;background:#A855F7;flex-shrink:0"></div>
-        <span style="color:#94A3B8;flex:1;font-size:13px">AS · ${GL['AS']}</span>
-        <span style="color:#E2E8F0;font-weight:800;font-size:17px">${cntAS}</span>
-        <span style="color:#A855F7;font-weight:700;font-size:13px">${pct(cntAS,total)}%</span>
-      </div>
+      ${GKEYS.map(g=>`<div style="display:flex;align-items:center;gap:8px">
+        <div style="width:11px;height:11px;border-radius:50%;background:${GC[g]};flex-shrink:0"></div>
+        <span style="color:#94A3B8;flex:1;font-size:13px">${g} · ${GL[g]}</span>
+        <span style="color:#E2E8F0;font-weight:800;font-size:17px">${cntG[g]}</span>
+        <span style="color:${GC[g]};font-weight:700;font-size:13px">${pct(cntG[g],total)}%</span>
+      </div>`).join('')}
     </div>`;
 
   try{
@@ -2799,7 +2735,7 @@ function renderGe(){
     const cvsGe=document.getElementById('cGeDistGest');
     if(cvsGe && document.getElementById('tp-ge').classList.contains('ac')){
       tCharts['geDistGest']=new Chart(cvsGe,{type:'doughnut',
-        data:{labels:['GH','CM','DA','AS'],datasets:[{data:[cntGH,cntCM,cntDA,cntAS],backgroundColor:['#5B9FE8','#2DC48D','#E09D3A','#A855F7'],borderWidth:0,hoverOffset:4}]},
+        data:{labels:GKEYS,datasets:[{data:GKEYS.map(g=>cntG[g]),backgroundColor:GKEYS.map(g=>GC[g]),borderWidth:0,hoverOffset:4}]},
         options:{responsive:false,maintainAspectRatio:false,width:249,height:249,cutout:'65%',
           plugins:{
             legend:{display:false},
@@ -2824,7 +2760,7 @@ function renderGe(){
     <th>TP Total Cot. (Días)</th><th>Mes</th><th>Asesor</th><th>Seguimiento</th>
   </tr></thead><tbody>`;
 
-  ['GH','CM','DA','AS'].forEach(gk=>{
+  GKEYS.forEach(gk=>{
     const go=ops.filter(o=>o.gestor===gk&&tcPass('ge',o)).sort((a,b)=>(b.tpTot??-1)-(a.tpTot??-1));
     if(!go.length) return;
     html+=`<tr class="ge-sep"><td colspan="8">● ${GL[gk]} — ${go.length} ops</td></tr>`;
@@ -2857,6 +2793,7 @@ function renderGe(){
    CARGA DE DATOS DESDE APPS SCRIPT
    ══════════════════════════════════════════════ */
 async function initDashboard(){
+  try{ingResumen();}catch(e){}
   // Reset UI state
   document.getElementById('ld-err').style.display='none';
   document.getElementById('ld-spin').style.display='block';
@@ -2885,6 +2822,7 @@ async function initDashboard(){
     OPS.pe  = [];                        // Perdidas gestionadas desde el dashboard (localStorage)
     OPS.per = (data.perdidas   || []);  // Perdidas desde Sheet (estado='PERDIDA')
     TOTAL_REGISTROS_NETWORK = data.totalRegistrosNetwork || 0;
+    aplicarIngenieros(data.ingenieros, [...OPS.ab,...OPS.ga,...OPS.pd,...OPS.per]);   // v9.18 — lista de ingenieros (hoja INGENIEROS)
     // Diagnóstico — eliminar cuando todo funcione
     console.log('[NW] Backend response keys:', Object.keys(data));
     console.log('[NW] pendientes en data:', data.pendientes !== undefined ? data.pendientes.length : 'NO EXISTE (backend viejo)');
@@ -2924,7 +2862,6 @@ async function initDashboard(){
 const VG={g:'ALL',t:'ALL',per:'ALL',asesor:'ALL',anio:'ALL',mes:'ALL',desde:'',hasta:''};
 const SEGL={ab:'Abierta',ga:'Ganada',pe:'Perdida',pd:'Pendiente',ge:'Sin oferta'};
 const PERL={ALL:'Histórico',Y:'Año en curso',Q:'Trimestre',M:'Mes en curso','90':'Últ. 90 días',C:'Rango…'};
-const GKEYS=['GH','CM','DA','AS'];
 const isNoOf=o=>NO_OFERTA_ESTADOS.includes((o.estado||'').toUpperCase().trim());
 const amt=o=>(+o.nrc||0)+(+o.mrc||0);
 const _ymd=d=>d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0');
@@ -3395,8 +3332,8 @@ function buildVG(){
    const both=[...P.ga,...P.pe];
    const rows=pRows(m,[{key:'ga',label:'Ganado',color:'#02C39A',fn:o=>o._seg==='ga'},{key:'pe',label:'Perdido',color:'#E55C6C',fn:o=>o._seg==='pe'}],both,AGG.amt,fAmt,(d,t)=>`vgOpen('${d.key}','','${t}')`);
    const x=st(m==='CMP'?'ALL':m),gA=AGG.amt(x.ga),pA=AGG.amt(x.pe);
-   H+=`<div class="vc" style="--ac:#02C39A">${pHead('Ganado vs perdido','Win rate global = ganadas / (ganadas + perdidas). El "Win Rate Promedio" del Resumen Ejecutivo es el promedio simple de los 4 ingenieros, por eso puede diferir.',ctl(id))}
-     ${top}<div style="margin-top:12px">${rows}</div><div class="vc-foot">Conversión de monto: ${gA+pA?(gA/(gA+pA)*100).toFixed(0):0}% del valor ganado · Win rate promedio simple de los 4 Ing.: <b style="color:#E2E8F0">${(GKEYS.reduce((a,g)=>a+wrFilt(g,vgFilt({g:'ALL',t:tArg(m)||VG.t})),0)/GKEYS.length).toFixed(1)}%</b></div></div>`;}
+   H+=`<div class="vc" style="--ac:#02C39A">${pHead('Ganado vs perdido','Win rate global = ganadas / (ganadas + perdidas). El "Win Rate Promedio" del Resumen Ejecutivo es el promedio simple de los ingenieros con ganadas o perdidas, por eso puede diferir.',ctl(id))}
+     ${top}<div style="margin-top:12px">${rows}</div><div class="vc-foot">Conversión de monto: ${gA+pA?(gA/(gA+pA)*100).toFixed(0):0}% del valor ganado · Win rate promedio simple de los Ing. con cierres: <b style="color:#E2E8F0">${(()=>{const fV=vgFilt({g:'ALL',t:tArg(m)||VG.t}),kk=GKEYS.filter(g=>vgPool('ga',Object.assign({},fV,{g})).length+vgPool('pe',Object.assign({},fV,{g})).length>0);return kk.length?(kk.reduce((a,g)=>a+wrFilt(g,fV),0)/kk.length).toFixed(1):'0.0';})()}%</b></div></div>`;}
 
   /* 7 · INGRESO SEMANAL */
   {const id='vg:wk',m=M(id),fq=vgFilt({desde:'',hasta:''}),all=vgAll(fq);
@@ -3821,7 +3758,7 @@ function rgField(f){
   else if(f.t==='list'){const o=rgOpts(f.k);inp=`<input id="${id}" data-k="${f.k}" class="rg-in" list="dl-${f.k}" value="${escA(val)}" placeholder="Escribe o elige…" oninput="rgInput(this)" onchange="rgSet('${f.k}',this.value)"><datalist id="dl-${f.k}">${o.map(x=>`<option value="${escA(x)}">`).join('')}</datalist>`;}
   else if(f.t==='seg')inp=`<div class="rg-seg">${f.opts.map((o,i)=>`<button class="${val===o?'on':''}" onclick="rgSet('${f.k}','${o}')">${f.lbl?f.lbl[i]:o}</button>`).join('')}</div>`;
   else if(f.t==='chips'){const o=(RG.cat&&RG.cat.prob)||RG_DEF.prob;inp=`<div class="rg-chips">${o.map(x=>`<button class="${String(val)===String(x)?'on':''}" onclick="rgSet('prob',${String(val)===String(x)?"''":`'${escA(x)}'`})">${esc(x)}</button>`).join('')}</div>`;}
-  else if(f.t==='gestor')inp=`<div class="rg-seg rg-g">${GKEYS.map(g=>`<button class="${val===g?'on':''}" ${ro?'disabled':''} onclick="rgSet('gestor','${g}')"><span class="gdot" style="background:${GC[g]}"></span>${GL[g]}</button>`).join('')}</div>`;
+  else if(f.t==='gestor')inp=`<div class="rg-seg rg-g">${GKEYS.filter(g=>ING_ACTIVO[g]!==false||val===g).map(g=>`<button class="${val===g?'on':''}" ${ro?'disabled':''} onclick="rgSet('gestor','${g}')"><span class="gdot" style="background:${GC[g]}"></span>${GL[g]}</button>`).join('')}</div>`;
   else if(f.t==='auto'){
     let t='—';
     if(f.k==='mes'&&v.fechaA){const d=ymdLocal(v.fechaA);t=MESN[d.getMonth()];}
@@ -3904,7 +3841,8 @@ async function rgLoad(t){
     n[k]=typeof x==='number'?x:String(x);});
   RG.user=GL[n.gestor]||n.gestor||null;RG.v=Object.assign({},n);RG.orig=Object.assign({},n);RG.found={tarea:t,hoja,fila,gestor:n.gestor};rgSave();rgRender();
 }
-const abrevG=s=>{const k=String(s).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').trim();return {'carlos mejia':'CM','george heredia':'GH','david alcivar':'DA','alfredo salazar':'AS'}[k]||String(s).slice(0,2).toUpperCase();};
+const abrevG=s=>{const nn=x=>String(x).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').trim(),k=nn(s);if(GKEYS.includes(String(s).toUpperCase()))return String(s).toUpperCase();
+  return GKEYS.find(g=>nn(GL[g])===k||nn(RG_GFULL[g]||'')===k)||String(s).slice(0,2).toUpperCase();};   // v9.18 — según la lista de ingenieros
 
 /* ── enviar ── */
 async function rgSubmit(){
