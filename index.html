@@ -742,6 +742,12 @@ textarea.rg-in{resize:vertical;min-height:64px}
 .rgg-cab{border:1px solid #3A4055;border-radius:10px;padding:10px 12px}
 .rgg-fab{display:flex;flex-direction:column;gap:6px}
 .rgg-fab-r{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px;align-items:center}
+.rgg-fab-c{border:1px solid #3A4055;border-radius:10px;padding:10px 12px;display:flex;flex-direction:column;gap:8px}
+.rgg-reg{background:#5B9FE814;border:1px solid #5B9FE855;color:#CBD5E1;border-radius:9px;padding:9px 12px;font-size:13px;line-height:1.5}
+.rgg-reg.none{background:#F59E0B14;border-color:#F59E0B55;color:#FCD34D}
+.rgg-reg-i{display:inline-block;background:#1F2229;border:1px solid #3A4055;border-radius:6px;padding:1px 8px;margin:2px 4px 2px 0}
+.rgg-t-ok{font-size:11px;font-weight:700;color:#02C39A;margin-left:6px}
+.rgg-t-chg{font-size:11px;font-weight:800;color:#F59E0B;margin-left:6px}
 .rgg-fab-p{font-size:13px;font-weight:700;color:#E2E8F0}.rgg-fab-p i{color:#64748B;font-weight:400}
 @media(max-width:700px){.rgg-fab-r{grid-template-columns:1fr}}
 .rg-multi button{font-size:12px}
@@ -1374,7 +1380,7 @@ const NO_OFERTA_ESTADOS = [
 
 /* ── DATOS DINÁMICOS ── */
 let OPS = {ab:[], ga:[], pe:[], pd:[], per:[]};
-let TOTAL_REGISTROS_NETWORK = 0;   // Total filas con contenido en CM+GH+DA 2026
+let TOTAL_REGISTROS_NETWORK = 0;   // Total filas con contenido en las hojas de gestores (todos los años)
 let D   = {GH:{ab:{sin:{ops:0,nrc:0,mrc:0},con:{ops:0,nrc:0,mrc:0}},ga:{sin:{ops:0,nrc:0,mrc:0},con:{ops:0,nrc:0,mrc:0}},pe:{sin:{ops:0,nrc:0,mrc:0},con:{ops:0,nrc:0,mrc:0}},wr:0,margen:0},
             CM:{ab:{sin:{ops:0,nrc:0,mrc:0},con:{ops:0,nrc:0,mrc:0}},ga:{sin:{ops:0,nrc:0,mrc:0},con:{ops:0,nrc:0,mrc:0}},pe:{sin:{ops:0,nrc:0,mrc:0},con:{ops:0,nrc:0,mrc:0}},wr:0,margen:0},
             DA:{ab:{sin:{ops:0,nrc:0,mrc:0},con:{ops:0,nrc:0,mrc:0}},ga:{sin:{ops:0,nrc:0,mrc:0},con:{ops:0,nrc:0,mrc:0}},pe:{sin:{ops:0,nrc:0,mrc:0},con:{ops:0,nrc:0,mrc:0}},wr:0,margen:0},
@@ -2858,7 +2864,7 @@ async function initDashboard(){
   }
 
   try {
-    document.getElementById('ld-msg').textContent='Leyendo hojas CM 2026, GH 2026, DA 2026, AS 2026…';
+    document.getElementById('ld-msg').textContent='Leyendo las hojas de los gestores (todos los años)…';
     const resp = await fetch(ENDPOINT_URL, {method:'GET', credentials:'omit', redirect:'follow'});
     if(!resp.ok) throw new Error(`HTTP ${resp.status}`);
     const data = await resp.json();
@@ -2961,7 +2967,7 @@ function vgList(kind,g,t){
   if(kind==='ge')return L('Gestión Externa · Sin Oferta',vgPool('ge',f),'dias','ge');
   if(kind.startsWith('chg:')){            // chg:<semana>:<tipo|all>  ·  chg:nogan  ·  chg:nope
     const R=VG_WK||wkEvents(t||'ALL');const okG=o=>!g||o.gestor===g;
-    if(kind==='chg:nogan')return L('Ganadas sin fecha de cierre',R.noGan.filter(okG),'amt','ga','No se pueden ubicar en una semana: falta la fecha en PROYECTOS GANADOS 2026 o el backend aún no envía fechaGan');
+    if(kind==='chg:nogan')return L('Ganadas sin fecha de cierre',R.noGan.filter(okG),'amt','ga','No se pueden ubicar en una semana: falta la fecha en PROYECTOS GANADOS o el backend aún no envía fechaGan');
     if(kind==='chg:nope')return L('Perdidas sin fecha de pérdida',R.noPe.filter(okG),'amt','pe','No se pueden ubicar en una semana: completar "Dia de Registro Perdida"');
     const [,wi,ty]=kind.split(':'),w=R.W[+wi];if(!w)return L('—',[],'fecha',null);
     const rows=w.ev.filter(o=>(ty==='all'||o._chg.type===ty)&&okG(o));
@@ -3427,7 +3433,7 @@ function buildVG(){
   /* 10 · DISTRIBUCIÓN POR SEGMENTO */
   {const id='vg:dseg',m=M(id),sg=CT[id+':s']||'sem';
    const sb=[['sem','📅 Cambios semanales'],['ab','Abiertas'],['ga','Ganadas'],['pe','Perdidas']].map(([k,l])=>`<button class="mini${sg===k?' on':''}" onclick="ctSet('${id}:s','${k}','vg')">${l}</button>`).join('');
-   if(sg==='sem'){H+=`<div class="vc" style="--ac:#5B9FE8">${pHead('Distribución por Ing.','📅 Cambios semanales: cuántas oportunidades entraron al pipeline (Día Entregado), se ganaron (Fecha de Cierre en PROYECTOS GANADOS 2026) o se perdieron (Día de Registro Perdida) cada semana. Click en una barra = lista de esas oportunidades. Click en la fecha = ver el detalle de esa semana abajo.',ctl(id))}<div class="minis">${sb}</div>${wkView(m)}</div>`;}
+   if(sg==='sem'){H+=`<div class="vc" style="--ac:#5B9FE8">${pHead('Distribución por Ing.','📅 Cambios semanales: cuántas oportunidades entraron al pipeline (Día Entregado), se ganaron (Fecha de Cierre en PROYECTOS GANADOS) o se perdieron (Día de Registro Perdida) cada semana. Click en una barra = lista de esas oportunidades. Click en la fecha = ver el detalle de esa semana abajo.',ctl(id))}<div class="minis">${sb}</div>${wkView(m)}</div>`;}
    else{
    const arr=PT(sg),af=arr.filter(tOk(m)),tot=AGG.amt(af),tn=af.length;
    const body=pRows(m,GKEYS.map(g=>({key:g,label:GL[g],dot:GC[g],color:GC[g],fn:o=>o.gestor===g})),arr,AGG.amt,fAmt,(d,t)=>`vgOpen('${sg}','${d.key}','${t}')`,{val:r=>`${fK(r.v)} <span class="vlo">· ${r.n} · ${tot?Math.round(r.v/tot*100):0}%</span>`});
@@ -3661,7 +3667,7 @@ sbSync('vg');   // siempre arranca en el Panel de Control
    El Sheet queda como base en crudo; B, F, G, H e I siguen siendo fórmulas del Sheet.
    ══════════════════════════════════════════════ */
 const RG_SECS=[
-  [1,'Identificación','La #Tarea y el Ing. de Diseño definen en qué hoja se guarda (CM / GH / DA / AS 2026).'],
+  [1,'Identificación','La #Tarea y el Ing. de Diseño definen en qué hoja se guarda (CM / GH / DA / AS del año en curso).'],
   [2,'Fechas','Mes, Tiempo en preventa y Tiempo total los calcula el Sheet con sus fórmulas.'],
   [3,'Oferta','Montos, validez, probabilidad y margen de la oferta.'],
   [4,'Seguimiento','Comentarios de seguimiento que se ven en el dashboard.'],
@@ -3687,7 +3693,7 @@ const RG_F=[
   {k:'prob',l:'% Probabilidad de cierre',t:'chips',s:3,w:2},
   {k:'seg',l:'Seguimiento comentario / status',t:'area',s:4,w:2,ph:'Ej. Se envió oferta a comercial; cliente pide ajuste de alcance…'},
   {k:'seg2',l:'Seguimiento comentario (adicional)',t:'area',s:4,w:2,notGH:1},
-  {k:'cierre',l:'Tarea de notificación de cierre',t:'text',s:5,im:'numeric',help:'Si la llenas, "¿Se realizó la venta?" queda en SI y se registra en PROYECTOS GANADOS 2026.'},
+  {k:'cierre',l:'Tarea de notificación de cierre',t:'text',s:5,im:'numeric',help:'Si la llenas, "¿Se realizó la venta?" queda en SI y se registra en PROYECTOS GANADOS del año en curso.'},
   {k:'venta',l:'¿Se realizó la venta? (automático)',t:'auto',s:5},
   {k:'fechaPerd',l:'Día de registro perdida',t:'date',s:5,help:'Solo si el estado es PERDIDA.'},
   {k:'fab1',l:'Fabricante 1',t:'list',s:6},{k:'deal1',l:'Reg. OPE / Deal 1',t:'text',s:6},
@@ -3805,7 +3811,7 @@ function rgField(f){
     let t='—';
     if(f.k==='mes'&&v.fechaA){const d=ymdLocal(v.fechaA);t=MESN[d.getMonth()];}
     if(f.k==='tiempos'&&v.fechaA){const a=ymdLocal(v.fechaA),e=v.fechaE?ymdLocal(v.fechaE):null,hoy=ymdLocal(todayYmd());t=e?`Total cotización: <b>${Math.round((e-a)/864e5)}</b> d`:`En preventa: <b>${Math.round((hoy-a)/864e5)}</b> d (hasta entregar)`;}
-    if(f.k==='venta')t=v.cierre?'<b style="color:#02C39A">SI</b> — se registrará en PROYECTOS GANADOS 2026':'NO';
+    if(f.k==='venta')t=v.cierre?'<b style="color:#02C39A">SI</b> — se registrará en PROYECTOS GANADOS '+new Date().getFullYear():'NO';
     inp=`<div class="rg-auto">${t}</div>`;
   }
   const {E,W}=RG._chk||{E:[],W:[]};const e=E.find(x=>x[0]===f.k),w=W.find(x=>x[0]===f.k);
@@ -3827,7 +3833,7 @@ function rgRender(keepFocus){
     h+=`<div class="rg-grid"><div class="rg-form">${rgQuickHtml()}</div><aside class="rg-side" id="rg-side">${rgSideHtml()}</aside></div>`;
   } else if(!up||RG.found){
     h+=`<div class="rg-grid"><div class="rg-form">`;
-    RG_SECS.filter(([n])=>!(n===5&&!up)).forEach(([n,t,d])=>{const fs=RG_F.filter(f=>f.s===n).map(rgField).join('')+(n===5&&up&&RG.orig&&RG.orig.cierre?`<div class="rg-f w2"><button class="rgg-open" onclick="rgGanFetch('${escA(RG.found.tarea)}')">🏆 Datos del proyecto ganado (PROYECTOS GANADOS 2026)</button></div>`:'');h+=`<section class="rg-sec"><div class="rg-sh"><span class="rg-n">${n}</span><div><div class="rg-sht">${t}</div><div class="rg-shd">${d}</div></div></div><div class="rg-fs">${fs}</div></section>`;});
+    RG_SECS.filter(([n])=>!(n===5&&!up)).forEach(([n,t,d])=>{const fs=RG_F.filter(f=>f.s===n).map(rgField).join('')+(n===5&&up&&RG.orig&&RG.orig.cierre?`<div class="rg-f w2"><button class="rgg-open" onclick="rgGanFetch('${escA(RG.found.tarea)}')">🏆 Datos del proyecto ganado (PROYECTOS GANADOS)</button></div>`:'');h+=`<section class="rg-sec"><div class="rg-sh"><span class="rg-n">${n}</span><div><div class="rg-sht">${t}</div><div class="rg-shd">${d}</div></div></div><div class="rg-fs">${fs}</div></section>`;});
     h+=`</div><aside class="rg-side" id="rg-side">${rgSideHtml()}</aside></div>`;
   }
   root.innerHTML=h;
@@ -3843,7 +3849,7 @@ function rgRefreshSide(){RG._chk=rgCheck();const d=document.getElementById('rg-s
   const m=document.getElementById('rg-res');if(m){m.className='rg-res'+(RG.msg?(RG.msg.ok?' ok':' ko'):'');m.innerHTML=RG.msg?RG.msg.html:'';m.style.display=RG.msg?'':'none';}}
 function rgSideDyn(){
   const v=RG.v,up=RG.mode==='update',{E,W}=RG._chk||rgCheck();
-  const g=up?(RG.found&&RG.found.gestor):v.gestor,hoja=g?g+' 2026':'—';
+  const g=up?(RG.found&&RG.found.gestor):v.gestor,hoja=up?((RG.found&&RG.found.hoja)||'—'):(g?g+' '+new Date().getFullYear():'—');   // v9.16 — hoja del año en curso
   const data=rgPayloadData();const keys=Object.keys(data).filter(k=>!(up&&(k==='tarea')));
   const fmt=(k,x)=>k==='nrc'||k==='mrc'?fM(+x):k==='margen'?(x===''?'':(x*100).toFixed(1)+'%'):(k==='fechaA'||k==='fechaE'||k==='fechaPerd')&&x?x.split('-').reverse().join('/'):k==='gestor'?RG_GFULL[x]||x:x;
   const rows=keys.map(k=>`<tr><td>${esc(RG_HDR[k]||k)}</td><td>${up&&RG.orig?`<s>${esc(fmt(k,k==='margen'?(RG.orig[k]===''||RG.orig[k]==null?'':RG.orig[k]/100):RG.orig[k]??''))}</s> → `:''}<b>${esc(fmt(k,data[k]))}</b></td></tr>`).join('');
@@ -3872,7 +3878,7 @@ async function rgLoad(t){
   const ex=rgExisting(t);
   let d=null,hoja='',fila='';
   try{const r=await fetch(ENDPOINT_URL+'&action=registro&tarea='+encodeURIComponent(t),{credentials:'omit',redirect:'follow'});const j=await r.json();if(j&&j.ok){d=j.data;hoja=j.hoja;fila=j.fila;}}catch(e){}
-  if(!d&&ex){d={tarea:ex.tarea,gestor:ex.gestor,cliente:ex.cliente,estado:ex.estado,tipo:ex.tipo==='CON'?'CON INSPECCION':'SIN INSPECCION',nrc:ex.nrc,mrc:ex.mrc,asesor:ex.asesor,prod:ex.prod,seg:ex.seg,prob:ex.prob,margen:ex.margen,fechaA:dmy2ymd(ex.fechaA),fechaE:dmy2ymd(ex.fechaE),cierre:ex.cierre,fechaPerd:dmy2ymd(ex.fechaPerd)};hoja=ex.gestor+' 2026';}
+  if(!d&&ex){d={tarea:ex.tarea,gestor:ex.gestor,cliente:ex.cliente,estado:ex.estado,tipo:ex.tipo==='CON'?'CON INSPECCION':'SIN INSPECCION',nrc:ex.nrc,mrc:ex.mrc,asesor:ex.asesor,prod:ex.prod,seg:ex.seg,prob:ex.prob,margen:ex.margen,fechaA:dmy2ymd(ex.fechaA),fechaE:dmy2ymd(ex.fechaE),cierre:ex.cierre,fechaPerd:dmy2ymd(ex.fechaPerd)};hoja=ex.hoja||(ex.gestor+' '+(ex.anio||new Date().getFullYear()));}
   if(!d){RG.found=null;RG.msg={ok:false,html:`No se encontró la tarea <b>${esc(t)}</b>.`};rgRender();return;}
   const n={};Object.keys(d).forEach(k=>{let x=d[k];if(x===null||x===undefined)x='';
     if(k==='tipo'){x=/CON/i.test(x)?'CON INSPECCION':'SIN INSPECCION';}
@@ -3898,7 +3904,7 @@ async function rgSubmit(){
     const r=await fetch(rgBase(),{method:'POST',body:JSON.stringify(body),headers:{'Content-Type':'text/plain;charset=utf-8'},redirect:'follow',credentials:'omit'});
     const j=await r.json();RG.busy=false;
     if(j&&j.ok){
-      RG.msg={ok:true,html:`✓ ${j.action==='create'?'Registrada':'Actualizada'} la tarea <b>#${esc(j.tarea)}</b> en <b>${esc(j.hoja)}</b> fila ${j.fila}.${j.ganados?' Se registró también en PROYECTOS GANADOS 2026.':''}<br><span style="color:#94A3B8">Actualizando métricas del dashboard…</span>`};
+      RG.msg={ok:true,html:`✓ ${j.action==='create'?'Registrada':'Actualizada'} la tarea <b>#${esc(j.tarea)}</b> en <b>${esc(j.hoja)}</b> fila ${j.fila}.${j.ganados?' Se registró también en PROYECTOS GANADOS.':''}<br><span style="color:#94A3B8">Actualizando métricas del dashboard…</span>`};
       const last=RG.msg;lsSet('nw_rg_draft_v9',null);
       if(RG.mode==='create'){rgReset(true);}else{RG.orig=Object.assign({},RG.v);}
       if(j.avisos&&j.avisos.length)last.html+='<br>⚠ '+j.avisos.map(esc).join('<br>⚠ ');
@@ -3922,7 +3928,7 @@ function rgImpact(){
   const wk=d=>{const x=ymdLocal(d);x.setDate(x.getDate()-((x.getDay()+6)%7));return _dm(x);};
   if(a[0]!==b[0]){
     if(b[1]==='ab')L.push(`Pasa de <b>${a[0]}</b> a <b>Abierta</b>: entra al <b>Pipeline activo</b>, al Top 10 y a "Nuevas abiertas" de la semana del ${wk(v.fechaE||todayYmd())} en Cambios semanales.`);
-    else if(b[1]==='ga')L.push(`Pasa de <b>${a[0]}</b> a <b>Ganada</b>: sale del pipeline, suma a <b>Ganado</b> y al <b>win rate</b>, y aparece como ✓ Ganada esta semana (fecha de cierre = hoy en PROYECTOS GANADOS 2026).`);
+    else if(b[1]==='ga')L.push(`Pasa de <b>${a[0]}</b> a <b>Ganada</b>: sale del pipeline, suma a <b>Ganado</b> y al <b>win rate</b>, y aparece como ✓ Ganada esta semana (fecha de cierre = hoy en PROYECTOS GANADOS).`);
     else if(b[1]==='pe')L.push(`Pasa de <b>${a[0]}</b> a <b>Perdida</b>: sale del pipeline, suma a <b>Perdido</b>, baja el <b>win rate</b> y aparece como ✕ Perdida esta semana (día de registro de pérdida = ${rgFmtV('fechaPerd',v.fechaPerd||todayYmd())}).`);
     else if(b[1]==='ge')L.push(`Pasa de <b>${a[0]}</b> a <b>Sin oferta (Gestión Externa)</b>: deja de contar en Pendientes de despacho.`);
     else if(b[1]==='pd')L.push(`Pasa de <b>${a[0]}</b> a <b>Pendiente</b>: ${a[1]==='ab'?'sale del Pipeline activo y ':''}cuenta en Pendientes de despacho.`);
@@ -3934,7 +3940,7 @@ function rgImpact(){
   if(v.fechaA&&v.fechaA!==o.fechaA){const m1=o.fechaA?MESN[ymdLocal(o.fechaA).getMonth()]:'—',m2=MESN[ymdLocal(v.fechaA).getMonth()];
     L.push(`Día asignado: cambia el <b>periodo</b> en que se cuenta${m1!==m2?` (Mes ${m1} → ${m2})`:''}, el Ingreso de tareas y los tiempos de preventa/cotización. La hoja se reordena por fecha.`);}
   if(v.fechaE!==o.fechaE&&v.fechaE&&a[1]===b[1])L.push('Día entregado: cambia el Tiempo total de cotización y la semana en que figura como "→ Abierta".');
-  if(o.cierre&&!v.cierre)L.push('<span style="color:#FBBF24">Quitar la tarea de cierre devuelve la venta a NO; la fila en PROYECTOS GANADOS 2026 hay que revisarla a mano.</span>');
+  if(o.cierre&&!v.cierre)L.push('<span style="color:#FBBF24">Quitar la tarea de cierre devuelve la venta a NO; la fila en PROYECTOS GANADOS hay que revisarla a mano.</span>');
   return L;
 }
 function rgQuickHtml(){
@@ -3946,7 +3952,7 @@ function rgQuickHtml(){
       <div class="rq-sub">Estado: <b>${esc(v.estado||'—')}</b>${RG.auto==='estado'&&v.estado!==o.estado?' <span class="rg-chg">auto</span>':''}</div></div>
       <div class="rq-cls" id="rq-cls"><span class="sg sg-${a[1]}">${a[0]}</span>${a[0]!==b[0]?` <span class="rq-arr">→</span> <span class="sg sg-${b[1]}">${b[0]}</span>`:''}</div></div>
     <div class="rq-grid">${rgQKeys().map(k=>rgField(F(k))).join('')}</div>
-    ${o.cierre?`<button class="rgg-open" onclick="rgGanFetch('${escA(RG.found.tarea)}')">🏆 Datos del proyecto ganado (PROYECTOS GANADOS 2026)</button>`:''}
+    ${o.cierre?`<button class="rgg-open" onclick="rgGanFetch('${escA(RG.found.tarea)}')">🏆 Datos del proyecto ganado (PROYECTOS GANADOS)</button>`:''}
     <div class="rq-keys">Atajos: <b>Ctrl + Enter</b> guarda · los botones <b>Hoy</b> llenan la fecha con un click · escribe la siguiente #Tarea arriba para seguir</div>
   </section>
   <section class="rg-sec rq-imp" id="rq-imp"><div class="rg-sht">Impacto en el dashboard al guardar</div>${imp.length?`<ul>${imp.map(x=>`<li>${x}</li>`).join('')}</ul>`:'<div class="rg-help">Sin cambios todavía.</div>'}</section>`;
@@ -3961,15 +3967,31 @@ document.addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&e.key==='Ente
    y se escriben en PROYECTOS GANADOS 2026 en la fila de esa tarea de cierre; PROYECTO CLIENTE = cliente de la tarea. */
 let RGG=null;
 const RGG_DEF={tipoProyecto:['Privado','Público'],meses:[12,24,36,48,60],marcaCableado:['PANDUIT','FURUKAWA','COMMSCOPE','NEXANS','SIEMON','LEGRAND'],distribuidor:['STOCK TN','INTCOMEX'],fabricante:[]};
-function rggOpts(k){const extra=k==='fabricante'?[...((RG.cat||{}).fab1||[]),...RG_DEF.fab1]:[];
-  return [...new Set([...((RG.catGan||{})[k]||[]),...(RGG_DEF[k]||[]),...extra].flatMap(x=>k==='fabricante'?rgProds(x):[x]).map(x=>String(x).trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'es'));}
+function rggOpts(k){const extra=k==='fabricante'||k==='marca'?[...((RG.cat||{}).fab1||[]),...RG_DEF.fab1,...(k==='marca'?[...((RG.catGan||{}).marcaCableado||[]),...RGG_DEF.marcaCableado,...((RG.catGan||{}).fabricante||[])]:[])]:[];
+  return [...new Set([...((RG.catGan||{})[k]||[]),...(RGG_DEF[k]||[]),...extra].flatMap(x=>k==='fabricante'||k==='marca'||k==='distribuidor'?rgProds(x):[x]).map(x=>String(x).trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'es'));}
 /* v9.14 — productos de la tarea con su fabricante / vendor (lo ya guardado en FABRICANTES GANADOS 2026 tiene prioridad) */
+/* v9.15 — registro de oportunidad de la tarea cotizada (FABRICANTE 1/2 + REG OPE / DEAL) */
+const rggNorm=x=>String(x||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'').toUpperCase().replace(/\s+/g,' ').trim();
+const rggRegs=()=>((RGG&&RGG.info.registros)||[]);
+const rggRegTxt=()=>rggRegs().map(r=>(r.fabricante||'(sin fabricante)')+(r.deal?' · Deal '+r.deal:'')).join('; ');
+function rggRegFab(n){const f=rggRegs().map(r=>r.fabricante).filter(Boolean);return f.length?(f[n]||f[0]):'';}
+/* 'SIN' = no hubo registro · 'NO' = mismo fabricante del registro · 'SI' = cambió (pide motivo) */
+function rggCambio(fab){const f=rggRegs().map(r=>rggNorm(r.fabricante)).filter(Boolean);if(!f.length)return 'SIN';if(!String(fab||'').trim())return 'NO';return f.includes(rggNorm(fab))?'NO':'SI';}
+/* productos de la tarea con sus datos (lo ya guardado en FABRICANTES GANADOS 2026 tiene prioridad; si no, se sugiere el fabricante del registro) */
 function rggProdsIni(info,actual){
   const ps=(info.productos&&info.productos.length?info.productos:rgProds(info.prod));const lista=ps.length?ps:[''];
-  const prev=(actual&&actual.productos)||[];
-  return lista.map(p=>{const g=prev.find(x=>x.producto===p);return {producto:p,fabricante:g?g.fabricante:(lista.length===1&&actual&&actual.fabricante?actual.fabricante:'')};});
+  const prev=(actual&&actual.productos)||[],regs=(info.registros||[]).map(r=>r.fabricante).filter(Boolean),uno=lista.length===1&&actual;
+  return lista.map((p,n)=>{const g=prev.find(x=>x.producto===p);if(g)return {producto:p,fabricante:g.fabricante||'',distribuidor:g.distribuidor||'',marca:g.marca||'',motivo:g.motivo||''};
+    const rf=regs.length?(regs[n]||regs[0]):'';
+    return {producto:p,fabricante:rf||(uno&&actual.fabricante)||'',distribuidor:(uno||rgEsCab(p))&&actual?actual.distribuidor||'':'',marca:(uno||rgEsCab(p))&&actual?actual.marcaCableado||'':'',motivo:'',auto:!!rf};});
 }
-function rgGanFab(i,v){RGG.v.productos[i].fabricante=v;rgGanBtn();}
+function rgGanFab(i,k,v){const p=RGG.v.productos[i];p[k]=v;
+  if(k==='fabricante'){p.auto=false;const at=document.getElementById('rgg-auto-'+i);if(at)at.remove();const c=rggCambio(v),m=document.getElementById('rgg-mot-'+i),t=document.getElementById('rgg-tag-'+i);
+    if(m)m.style.display=c==='SI'?'':'none';if(t)t.innerHTML=rggTag(i);}
+  rgGanBtn();}
+function rggTag(i){const p=RGG.v.productos[i],c=rggCambio(p.fabricante);
+  if(c==='SIN')return '';if(c==='SI')return '<span class="rgg-t-chg">≠ distinto al registro</span>';
+  return p.fabricante?'<span class="rgg-t-ok">✓ igual al registro</span>':'';}
 async function rgGanFetch(tarea){
   try{const r=await fetch(ENDPOINT_URL+'&action=ganado&tarea='+encodeURIComponent(tarea),{credentials:'omit',redirect:'follow'});const j=await r.json();
     if(j&&j.ok){rgGanOpen(j.ganado,j.actual||{});return;}
@@ -3990,9 +4012,9 @@ function rgGanSet(k,v,render){RGG.v[k]=v;if(render)rgGanRender();else rgGanBtn()
 function rgGanErr(){const i=RGG.info,v=RGG.v,E=[];
   if(!String(v.tipoProyecto).trim())E.push('Elige el Tipo de Proyecto');
   if(i.pideContrato&&!(+v.tiempoContrato>0))E.push('Indica el tiempo de contrato (meses)');
-  const sinFab=v.productos.filter(p=>!String(p.fabricante||'').trim());
-  if(sinFab.length)E.push('Indica el fabricante de: '+sinFab.map(p=>p.producto||'la tarea').join(', '));
-  if(i.pideCableado&&(!String(v.distribuidor).trim()||!String(v.marcaCableado).trim()))E.push('Completa distribuidor y marca de cableado');
+  v.productos.forEach(p=>{const nom=p.producto||'la tarea',f=['fabricante','distribuidor','marca'].filter(k=>!String(p[k]||'').trim());
+    if(f.length)E.push(nom+': '+f.join(', '));
+    if(rggCambio(p.fabricante)==='SI'&&!String(p.motivo||'').trim())E.push(nom+': motivo del cambio de fabricante');});
   return E;}
 function rgGanBtn(){const b=document.getElementById('rgg-go');if(!b)return;const E=rgGanErr();b.disabled=!!E.length||RGG.busy;b.title=E.join(' · ');
   const h=document.getElementById('rgg-need');if(h)h.textContent=E.length?'Falta: '+E.join(' · '):'Listo para guardar';}
@@ -4003,7 +4025,7 @@ function rgGanRender(){
   const tp=rggOpts('tipoProyecto');
   const user=rgUser();
   ov.innerHTML=`<div class="rgg" role="dialog" aria-modal="true" aria-label="Datos del proyecto ganado">
-    <div class="rgg-h"><div class="rgg-ic">🏆</div><div><div class="rgg-t">Proyecto ganado · completa PROYECTOS GANADOS 2026</div>
+    <div class="rgg-h"><div class="rgg-ic">🏆</div><div><div class="rgg-t">Proyecto ganado · completa PROYECTOS GANADOS</div>
       <div class="rgg-st"><b>${esc(i.cliente)}</b> · tarea cotizada #${esc(i.tarea)} · tarea de cierre <b>#${esc(i.cierre)}</b>${i.filaGanados>0?` · fila ${i.filaGanados}`:''}</div></div>
       <button class="dw-x" onclick="rgGanClose()" title="Completar después (Esc)">✕</button></div>
     <div class="rgg-info"><span>Producto(s): <b>${esc(i.prod||'—')}</b></span><span>NRC: <b>${fM(+i.nrc||0)}</b></span><span>MRC: <b>${fM(+i.mrc||0)}</b></span>
@@ -4014,15 +4036,22 @@ function rgGanRender(){
       ${i.pideContrato?`<div class="rg-f"><label>Tiempo de contrato (meses) <i>*</i> <span class="rgg-why">la tarea tiene MRC ${fM(+i.mrc)}</span></label>
         <div class="rgg-row">${chips('tiempoContrato',RGG_DEF.meses,' m')}<input class="rg-in rgg-num" type="number" min="1" step="1" value="${escA(v.tiempoContrato)}" placeholder="Otro" oninput="rgGanSet('tiempoContrato',this.value)"></div></div>`
         :`<div class="rgg-skip">⏭ No se pide tiempo de contrato: la tarea cotizada no tiene MRC (MRC = $0).</div>`}
-      <div class="rg-f"><label>Fabricante / vendor por producto <i>*</i> <span class="rgg-why">${v.productos.length} producto${v.productos.length!==1?'s':''}</span></label>
-        <div class="rgg-fab">${v.productos.map((p,n)=>`<div class="rgg-fab-r"><span class="rgg-fab-p">${p.producto?esc(p.producto):'<i>Tarea sin producto registrado</i>'}</span>
-          <input class="rg-in" list="rgg-dl-fab" value="${escA(p.fabricante||'')}" placeholder="Ej. CISCO" oninput="rgGanFab(${n},this.value)"></div>`).join('')}</div>
+      <div class="rgg-reg ${rggRegs().length?'':'none'}">${rggRegs().length
+        ?`<b>📋 Registro de oportunidad de la cotización:</b> ${rggRegs().map(r=>`<span class="rgg-reg-i">${esc(r.fabricante||'(sin fabricante)')}${r.deal?` · Deal <b>${esc(r.deal)}</b>`:''}</span>`).join(' ')}<div class="rg-help">El fabricante se llenó con el del registro. Si lo cambias, explica el motivo.</div>`
+        :`<b>⚠ La tarea cotizada #${esc(i.tarea)} no tiene registro de oportunidad</b> (Fabricante 1/2 y Reg. OPE / Deal vacíos). Indica el fabricante con el que se cerró.`}</div>
+      <div class="rg-f"><label>Datos por producto <i>*</i> <span class="rgg-why">${v.productos.length} producto${v.productos.length!==1?'s':''}</span></label>
+        <div class="rgg-fab">${v.productos.map((p,n)=>`<div class="rgg-fab-c">
+          <div class="rgg-fab-p">${p.producto?esc(p.producto):'<i>Tarea sin producto registrado</i>'} <span id="rgg-tag-${n}">${rggTag(n)}</span></div>
+          <div class="rgg-g3"><div class="rg-f"><label>Fabricante / vendor <i>*</i>${p.auto?` <span class="rg-auto-tag" id="rgg-auto-${n}">del registro</span>`:''}</label><input class="rg-in" list="rgg-dl-fab" value="${escA(p.fabricante||'')}" placeholder="Ej. CISCO" oninput="rgGanFab(${n},'fabricante',this.value)"></div>
+            <div class="rg-f"><label>Distribuidor <i>*</i></label><input class="rg-in" list="rgg-dl-dis" value="${escA(p.distribuidor||'')}" placeholder="Ej. STOCK TN" oninput="rgGanFab(${n},'distribuidor',this.value)"></div>
+            <div class="rg-f"><label>Marca <i>*</i></label><input class="rg-in" list="rgg-dl-mar" value="${escA(p.marca||'')}" placeholder="Ej. CISCO / PANDUIT" oninput="rgGanFab(${n},'marca',this.value)"></div></div>
+          <div class="rg-f" id="rgg-mot-${n}" ${rggCambio(p.fabricante)==='SI'?'':'style="display:none"'}><label>Motivo del cambio de fabricante <i>*</i> <span class="rgg-why" style="color:#F59E0B">registro: ${esc(rggRegTxt())}</span></label>
+            <textarea class="rg-in" rows="2" placeholder="Ej. El cliente pidió cambiar a otra marca por precio / disponibilidad…" oninput="rgGanFab(${n},'motivo',this.value)">${esc(p.motivo||'')}</textarea></div>
+        </div>`).join('')}</div>
         <datalist id="rgg-dl-fab">${rggOpts('fabricante').map(x=>`<option value="${escA(x)}">`).join('')}</datalist>
-        <div class="rg-help">Se guarda una fila por producto en <b>FABRICANTES GANADOS 2026</b> para analizar los negocios cerrados por fabricante.</div></div>
-      ${i.pideCableado?`<div class="rgg-cab"><div class="rgg-why" style="margin-bottom:6px">Producto Cableado Estructurado → se piden además distribuidor y marca</div>
-        <div class="rgg-g3"><div class="rg-f"><label>Distribuidor <i>*</i></label>${dl('distribuidor','Ej. STOCK TN')}</div>
-        <div class="rg-f"><label>Marca de cableado <i>*</i></label>${dl('marcaCableado','Ej. FURUKAWA')}</div></div></div>`
-        :`<div class="rgg-skip">⏭ No se piden distribuidor ni marca de cableado: ningún producto es Cableado Estructurado.</div>`}
+        <datalist id="rgg-dl-dis">${rggOpts('distribuidor').map(x=>`<option value="${escA(x)}">`).join('')}</datalist>
+        <datalist id="rgg-dl-mar">${rggOpts('marca').map(x=>`<option value="${escA(x)}">`).join('')}</datalist>
+        <div class="rg-help">Se guarda una fila por producto en <b>FABRICANTES GANADOS</b> (histórico de todos los años), con el registro de oportunidad y el motivo si hubo cambio.</div></div>
       ${RG.key?'':`<div class="rg-f"><label>Clave de escritura</label><input class="rg-in" type="password" autocomplete="off" oninput="RG.key=this.value" placeholder="Clave definida en el Apps Script"></div>`}
       ${RGG.msg?`<div class="rg-res ${RGG.msg.ok?'ok':'ko'}">${RGG.msg.html}</div>`:''}
     </div>
@@ -4037,14 +4066,14 @@ async function rgGanSubmit(){
   if(!RG.key){RGG.msg={ok:false,html:'Ingresa la clave de escritura.'};rgGanRender();return;}
   const i=RGG.info,v=RGG.v,data={tarea:i.tarea,cierre:i.cierre,tipoProyecto:String(v.tipoProyecto).trim()};
   if(i.pideContrato)data.tiempoContrato=+v.tiempoContrato;
-  data.productos=v.productos.map(p=>({producto:p.producto,fabricante:String(p.fabricante||'').trim()}));   // v9.14
-  if(i.pideCableado){data.distribuidor=String(v.distribuidor).trim();data.marcaCableado=String(v.marcaCableado).trim();}
+  data.productos=v.productos.map(p=>({producto:p.producto,fabricante:String(p.fabricante||'').trim(),distribuidor:String(p.distribuidor||'').trim(),marca:String(p.marca||'').trim(),
+    motivo:rggCambio(p.fabricante)==='SI'?String(p.motivo||'').trim():''}));   // v9.15
   RGG.busy=true;RGG.msg=null;rgGanRender();
   try{
     const r=await fetch(rgBase(),{method:'POST',body:JSON.stringify({token:rgTok(),writeKey:RG.key,user:rgUser(),mode:'ganado',data}),headers:{'Content-Type':'text/plain;charset=utf-8'},redirect:'follow',credentials:'omit'});
     const j=await r.json();RGG.busy=false;
     if(j&&j.ok){const nf=(j.columnasNoEncontradas||[]).length?`<br>⚠ No encontré estas columnas en la hoja: ${j.columnasNoEncontradas.map(esc).join(', ')}`:'';
-      RG.msg={ok:true,html:`✓ Proyecto ganado <b>#${esc(j.cierre)}</b> completado en PROYECTOS GANADOS 2026 fila ${j.fila}.${nf}<br><span style="color:#94A3B8">Actualizando métricas del dashboard…</span>`};
+      RG.msg={ok:true,html:`✓ Proyecto ganado <b>#${esc(j.cierre)}</b> completado en ${esc(j.hoja||'PROYECTOS GANADOS')} fila ${j.fila}.${nf}<br><span style="color:#94A3B8">Actualizando métricas del dashboard…</span>`};
       RG.pendingReload=true;rgGanClose();rgRefreshSide();}
     else{RGG.msg={ok:false,html:'✕ '+esc((j&&j.error)||'Error desconocido')};rgGanRender();}
   }catch(e){RGG.busy=false;RGG.msg={ok:false,html:'✕ No se pudo conectar con el Apps Script ('+esc(e.message)+'). ¿Está publicada la v9.10?'};rgGanRender();}
