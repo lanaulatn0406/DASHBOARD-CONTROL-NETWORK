@@ -3801,7 +3801,7 @@ function rgRender(keepFocus){
     h+=`</div><aside class="rg-side" id="rg-side">${rgSideHtml()}</aside></div>`;
   }
   root.innerHTML=h;
-  if(fid){const el=document.getElementById(fid);if(el){el.focus();try{if(pos!=null)el.setSelectionRange(pos,pos);}catch(e){}}}
+  if(fid){const el=document.getElementById(fid);if(el){el.focus();try{if(pos!=null)el.setSelectionRange(pos,pos);else if(el.type==='number'){const v=el.value;el.value='';el.value=v;}}catch(e){}}}   // campos numéricos (NRC/MRC…) no exponen el cursor: al re-renderizar quedaba al inicio y "520" se escribía "025"; se deja al final
 }
 /* refresco parcial: no toca los campos de credenciales para no perder el foco */
 function rgRefreshSide(){RG._chk=rgCheck();const d=document.getElementById('rg-side-dyn');if(!d){rgRender();return;}
