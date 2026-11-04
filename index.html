@@ -709,6 +709,10 @@ textarea.rg-in{resize:vertical;min-height:64px}
 .rq-cls .sg{font-size:13px;padding:3px 10px}
 .rq-arr{color:#94A3B8;font-weight:800}
 .rq-grid{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));gap:10px}
+.rq-reg{margin-top:12px;border:1px solid #5B9FE844;background:#5B9FE80d;border-radius:10px;padding:10px 12px}
+.rq-reg-h{font-size:13px;font-weight:700;color:#CBD5E1;margin-bottom:8px}.rq-reg .rq-grid{grid-template-columns:repeat(4,minmax(0,1fr))}
+@media(max-width:800px){.rq-reg .rq-grid{grid-template-columns:1fr}}
+.od-reg{display:inline-block;background:#1F2229;border:1px solid #3A4055;border-radius:6px;padding:1px 8px;margin:2px 4px 2px 0;font-size:12.5px}
 @media(max-width:1400px){.rq-grid{grid-template-columns:repeat(3,minmax(0,1fr))}}
 @media(max-width:800px){.rq-grid{grid-template-columns:1fr}}
 .rq-grid .rg-f.w2{grid-column:auto}
@@ -3032,13 +3036,13 @@ function dwCsv(){
 function dwRenderOp(o,T,ST2,TL,SM,B){
   T.innerHTML=`<span class="tarea-tag" style="font-size:14px">#${esc(o.tarea||'—')}</span> ${esc(o.cliente||'—')}`;
   ST2.innerHTML=`<span class="sg sg-${o._seg}">${SEGL[o._seg]||''}</span> &nbsp;<span class="gdot" style="background:${GC[o.gestor]||'#64748B'}"></span>${GL[o.gestor]||o.gestor||''}`;
-  TL.innerHTML=`<button class="dw-btn pri" onclick="goTab('${o._seg}','ALL','${escA(String(o.tarea||''))}')">Abrir en su pestaña →</button>`+(['ab','ga','pe'].includes(o._seg)?`<button class="dw-btn" onclick="dwExcl('${o._seg}','${escA(String(o.id))}',0)">⊘ Excluir tarea</button><button class="dw-btn" onclick="dwExcl('${o._seg}','${escA(String(o.cliente||''))}',1)">⊘ Excluir cliente</button>`:'');TL.style.display='';
+  TL.innerHTML=`<button class="dw-btn pri" onclick="goTab('${o._seg}','ALL','${escA(String(o.tarea||''))}')">Abrir en su pestaña →</button><button class="dw-btn" onclick="dwEditQuick('${escA(String(o.tarea||''))}')" title="Editar estado, montos, productos y registros de oportunidad">⚡ Edición rápida</button>`+(['ab','ga','pe'].includes(o._seg)?`<button class="dw-btn" onclick="dwExcl('${o._seg}','${escA(String(o.id))}',0)">⊘ Excluir tarea</button><button class="dw-btn" onclick="dwExcl('${o._seg}','${escA(String(o.cliente||''))}',1)">⊘ Excluir cliente</button>`:'');TL.style.display='';
   SM.style.display='none';
   const razon=getTk(o.id,'razon_perdida',''),coment=getTk(o.id,'comentario',''),estTk=getTk(o.id,'estado','');
   const F=(l,v)=>`<div class="od-f"><div class="od-l">${l}</div><div class="od-v">${v==null||v===''?'—':v}</div></div>`;
   B.innerHTML=`<div class="od-grid">
     ${F('NRC',`<b style="color:#F59E0B">${fM(+o.nrc||0)}</b>`)}${F('MRC',fM(+o.mrc||0))}${F('Total',`<b>${fM(amt(o))}</b>`)}${F('% Prob. cierre',esc(o.prob))}
-    ${F('Estado (Sheet)',esc(o.estado))}${F('Tipo',esc(o.tipo)+' inspección')}${F('Asesor comercial',esc(o.asesor))}${F('Producto',esc(o.prod))}
+    ${F('Estado (Sheet)',esc(o.estado))}${F('Tipo',esc(o.tipo)+' inspección')}${F('Asesor comercial',esc(o.asesor))}${F('Producto',esc(o.prod))}${F('Registro(s) de oportunidad',(o.registros||[]).length?o.registros.map(r=>`<span class="od-reg">${esc(r.fabricante||'(sin fabricante)')}${r.deal?` · Deal <b>${esc(r.deal)}</b>`:''}</span>`).join(''):'<span style="color:#64748B">Sin registro</span>')}
     ${F('Día asignado',esc(o.fechaA))}${F('Día entregado',esc(o.fechaE))}${F('Tiempo en preventa',o.tpPre!=null&&o.tpPre!==''?o.tpPre+' d':'')}${F('Tiempo total cotización',o.tpTot!=null&&o.tpTot!==''?o.tpTot+' d':'')}
     ${F('Mes',esc(o.mes))}${F('Margen',esc(o.margen))}${F('Tarea notificación cierre',esc(o.cierre))}${o._seg==='pe'?F('Fecha pérdida',esc(o.fechaPerd||getTk(o.id,'fecha_perdida',''))):''}
     ${estTk?F('Estado seguimiento (dashboard)',esc(estTk)):''}
@@ -3048,6 +3052,8 @@ function dwRenderOp(o,T,ST2,TL,SM,B){
   ${razon?`<div class="od-l" style="margin-top:10px">Razón de pérdida</div><div class="od-seg" style="border-color:#E55C6C55">${esc(razon)}</div>`:''}`;
 }
 
+/* v9.23 — del detalle de una tarea a su actualización rápida */
+function dwEditQuick(t){dwClose();navTo('rg');rgMode('quick');setTimeout(()=>{const e=document.getElementById('rg-find');if(e)e.value=t;rgLoad(t);},60);}
 function dwExcl(seg,v,cli){if(!confirm(cli?`¿Excluir del análisis al cliente "${v}"?`:'¿Excluir esta tarea del análisis?'))return;addExcl(seg,cli?'cli:'+String(v).trim():String(v));dwClose();refreshExcl(seg);}
 /* ── navegar a la pestaña completa con filtros heredados ── */
 function goTab(seg,g,q,t2){
@@ -3741,7 +3747,7 @@ function rgCheck(){
 }
 /* datos que se envían: create = todo lo lleno; update = solo lo que cambió */
 function rgPayloadData(){
-  const v=RG.v,out={};const keys=RG.quick?[...rgQKeys(),'estado','fechaPerd']:RG_F.filter(f=>f.t!=='auto').map(f=>f.k);
+  const v=RG.v,out={};const keys=RG.quick?[...rgQKeys(),'estado','fechaPerd',...RG_QREG]:RG_F.filter(f=>f.t!=='auto').map(f=>f.k);
   keys.forEach(k=>{let x=v[k];if(x===undefined||x===null)return;x=typeof x==='string'?x.trim():x;
     if(RG.mode==='update'){const o=RG.orig?RG.orig[k]:undefined;if(String(o??'')===String(x??''))return;}else if(x==='')return;
     if(k==='nrc'||k==='mrc')x=x===''?'':+x;
@@ -3946,6 +3952,7 @@ async function rgIngAlta(){const n=RG.ingNew||{};const cod=String(n.codigo||'').
 /* ══════════ v9.9 — ACTUALIZACIÓN RÁPIDA (5 campos) ══════════ */
 const RG_QK=['estado','fechaA','fechaE','nrc','mrc','cierre','prod'];   // v9.17 — prod: cambiar / agregar / quitar productos
 const rgQKeys=()=>/PERDIDA/i.test(RG.v.estado||'')?[...RG_QK,'fechaPerd']:RG_QK;
+const RG_QREG=['fab1','deal1','fab2','deal2'];   // v9.23 — registro(s) de oportunidad en la actualización rápida
 function rgFmtV(k,x){if(x===undefined||x===null||x==='')return 'vacío';if(k==='nrc'||k==='mrc')return fM(+x);if(/^fecha/.test(k)&&String(x).includes('-'))return String(x).split('-').reverse().join('/');if(k==='margen')return x+'%';return String(x);}
 function rgClsOf(v){const e=String(v.estado||'').toUpperCase().trim();if(String(v.cierre||'').trim())return ['Ganada','ga'];if(e==='PERDIDA')return ['Perdida','pe'];if(NO_OFERTA_ESTADOS.includes(e))return ['Sin oferta','ge'];if(e==='OFERTA ENTREGADA A COMERCIAL')return ['Abierta','ab'];return ['Pendiente','pd'];}
 let _rgFindT;
@@ -3969,6 +3976,8 @@ function rgImpact(){
   if(v.fechaE!==o.fechaE&&v.fechaE&&a[1]===b[1])L.push('Día entregado: cambia el Tiempo total de cotización y la semana en que figura como "→ Abierta".');
   if(String(v.prod||'')!==String(o.prod||'')){const a2=rgProds(o.prod),b2=rgProds(v.prod),mas=b2.filter(x=>!a2.includes(x)),menos=a2.filter(x=>!b2.includes(x));
     L.push(`Productos: ${mas.length?`<b style="color:#02C39A">+ ${esc(mas.join(', '))}</b> `:''}${menos.length?`<b style="color:#F87171">− ${esc(menos.join(', '))}</b>`:''} → quedan <b>${b2.length}</b>${b2.length?` (${esc(b2.join(', '))})`:''}. Al ganar el proyecto se pedirá el fabricante de cada uno.`);}
+  {const ch=RG_QREG.filter(k=>String(v[k]??'').trim()!==String(o[k]??'').trim());   // v9.23
+   if(ch.length)L.push(`Registro de oportunidad: ${[1,2].map(i=>{const f=String(v['fab'+i]||'').trim(),d=String(v['deal'+i]||'').trim();return f||d?`<b>${esc(f||'(sin fabricante)')}${d?' · Deal '+esc(d):''}</b>`:'';}).filter(Boolean).join(' y ')||'<b>sin registro</b>'} → se usa para sugerir el fabricante al ganar el proyecto.`);}
   if(o.cierre&&!v.cierre)L.push('<span style="color:#FBBF24">Quitar la tarea de cierre devuelve la venta a NO; la fila en PROYECTOS GANADOS hay que revisarla a mano.</span>');
   return L;
 }
@@ -3982,6 +3991,8 @@ function rgQuickHtml(){
       <div class="rq-cls" id="rq-cls"><span class="sg sg-${a[1]}">${a[0]}</span>${a[0]!==b[0]?` <span class="rq-arr">→</span> <span class="sg sg-${b[1]}">${b[0]}</span>`:''}</div></div>
     <div class="rq-grid">${rgQKeys().filter(k=>k!=='prod').map(k=>rgField(F(k))).join('')}</div>
     <div class="rq-prod">${rgField(F('prod'))}</div>
+    <div class="rq-reg"><div class="rq-reg-h">📋 Registro(s) de oportunidad ${(()=>{const n=[1,2].filter(i=>String(v['fab'+i]||'').trim()||String(v['deal'+i]||'').trim()).length;return n?`<span class="rg-help">· ${n} registrado${n>1?'s':''}</span>`:'<span class="rg-help">· sin registro</span>';})()}</div>
+      <div class="rq-grid">${RG_QREG.map(k=>rgField(F(k))).join('')}</div></div>
     ${o.cierre?`<button class="rgg-open" onclick="rgGanFetch('${escA(RG.found.tarea)}')">🏆 Datos del proyecto ganado (PROYECTOS GANADOS)</button>`:''}
     <div class="rq-keys">Atajos: <b>Ctrl + Enter</b> guarda · los botones <b>Hoy</b> llenan la fecha con un click · escribe la siguiente #Tarea arriba para seguir</div>
   </section>
