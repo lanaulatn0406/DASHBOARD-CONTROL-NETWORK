@@ -191,6 +191,13 @@ body{background:#1F2229;color:#E2E8F0;font-family:'Segoe UI',system-ui,sans-seri
 .gmx-x,.gmx-lk{background:none;border:none;color:#5B9FE8;cursor:pointer;font-size:12px;padding:0}
 .gmx-x:hover,.gmx-lk:hover{text-decoration:underline}
 .gmx-stk{display:flex;height:6px;background:#3A4055;border-radius:3px;overflow:hidden;margin-top:6px}.gmx-stk i{display:block;height:100%}
+.gmx-ed{display:block;margin-top:5px;background:#3A4055;border:1px solid #4A5068;color:#E2E8F0;border-radius:6px;padding:2px 8px;font-size:12px;cursor:pointer;white-space:nowrap}
+.gmx-ed.todo{background:#F59E0B22;border-color:#F59E0B88;color:#FBBF24}.gmx-ed:hover{filter:brightness(1.25)}
+.gmx-falta{margin-top:4px;color:#F59E0B;font-size:11px;white-space:normal;max-width:170px}
+.gmx-todo{margin-top:8px;width:100%;background:#F59E0B1F;border:1px solid #F59E0B88;color:#FBBF24;border-radius:6px;padding:5px 8px;font-size:12px;font-weight:600;cursor:pointer}
+.gmx-todo:hover{filter:brightness(1.2)}
+.gmx-msg{display:flex;justify-content:space-between;gap:10px;align-items:flex-start;border-radius:8px;padding:8px 12px;margin-bottom:10px;font-size:13px;border:1px solid}
+.gmx-msg.ok{background:#02C39A1A;border-color:#02C39A66;color:#A7F3D0}.gmx-msg.ko{background:#E55C6C1A;border-color:#E55C6C66;color:#FCA5A5}.gmx-msg.info{background:#5B9FE81A;border-color:#5B9FE866;color:#BFDBFE}
 .gmx-warn{background:#F59E0B1A;border:1px solid #F59E0B66;color:#FBBF24;border-radius:8px;padding:8px 12px;margin-bottom:10px;font-size:13px}
 .ops-wrap{background:#272C35;border-radius:10px;border:1px solid #3A4055;overflow:hidden;margin-top:4px}
 .ops-hdr{background:#2D3240;padding:9px 14px;display:flex;align-items:center;justify-content:space-between;gap:8px}
@@ -1943,9 +1950,34 @@ let FAB_GAN=null;                    // null = el backend aún no envía fabGana
 let FAB_GAN_INFO=null;               // {hoja, filas} — backend v9.25
 const GAMX={prod:'',fab:'',dist:'',ase:'',tp:'',pend:false,keys:{}};
 let _gmxRows=[];
+let GMX_MSG=null;                    // v9.26 — aviso tras completar una ganada desde esta sección
+/* v9.26 — completar / editar una ganada vieja desde Ops Ganadas: abre el mismo formulario del
+   proyecto ganado (Registro → 🏆) prellenado con lo que ya existe. Escribe PROYECTOS GANADOS y
+   FABRICANTES GANADOS; al guardar se recarga el dashboard y la ganada pasa a "Por producto". */
+async function gmxEdit(tarea){
+  if(RG.key==null)RG.key=lsGet('nw_rg_key_v9','')||'';
+  if(!RG.catTried){RG.catTried=true;fetch(ENDPOINT_URL+'&action=catalogos',{credentials:'omit',redirect:'follow'}).then(r=>r.json()).then(j=>{if(j&&j.ganados)RG.catGan=j.ganados;if(j&&j.catalogos&&Object.keys(j.catalogos).length)RG.cat=j.catalogos;if(RGG)rgGanRender();}).catch(()=>{});}
+  GMX_MSG={ok:true,html:`Abriendo la ganada <b>#${esc(tarea)}</b>…`};renderGaMix(_gmxRows);
+  try{
+    const r=await fetch(ENDPOINT_URL+'&action=ganado&tarea='+encodeURIComponent(tarea),{credentials:'omit',redirect:'follow'});const j=await r.json();
+    if(!(j&&j.ok)){GMX_MSG={ok:false,html:'✕ '+esc((j&&j.error)||'No se pudo leer el proyecto ganado')};renderGaMix(_gmxRows);return;}
+    GMX_MSG=null;renderGaMix(_gmxRows);
+    const pide=!rgUser();rgGanOpen(j.ganado,j.actual||{});if(RGG){RGG.desdeGa=true;RGG.pideUser=pide;rgGanRender();}
+  }catch(e){GMX_MSG={ok:false,html:'✕ No se pudo conectar con el Apps Script ('+esc(e.message)+')'};renderGaMix(_gmxRows);}
+}
+/* Qué le falta a una ganada para contar completa en estas métricas */
+function gmxFalta(x){
+  const o=x.o,pg=o.pg||{},F=[];
+  if(x.src!=='det')F.push(x.L.some(l=>l.fabricante)?'fabricante por producto':'fabricante');
+  if(!x.L.some(l=>l.distribuidor)&&x.src!=='det')F.push('distribuidor');
+  if(!String(pg.tipoProyecto||'').trim())F.push('tipo de proyecto');
+  if((+o.mrc||0)>0&&!(parseFloat(String(pg.tiempoContrato||'').replace(',','.'))>0))F.push('meses de contrato');
+  if(x.reg==='SIN'&&x.src!=='det')F.push('registro de oportunidad');
+  return F;
+}
 const gmxNorm=s=>String(s||'').normalize('NFD').replace(/[̀-ͯ]/g,'').toUpperCase().replace(/\s+/g,' ').trim();
 const amtO=o=>(+o.nrc||0)+(+o.mrc||0);
-const GMX_VACIO=new Set(['','NA','N/A','N.A','N.A.','NO APLICA','NINGUNO','GENERICO','GENERICA','-','--','.','0','SIN FABRICANTE','SIN DATO','S/N']);
+const GMX_VACIO=new Set(['','NA','N/A','N.A','N.A.','NO APLICA','NINGUNO','GENERICO','GENERICA','-','--','.','0','SIN FABRICANTE','SIN DATO','S/N','NO DISPONIBLE','NO REGISTRADO','DESCONOCIDO']);
 const GMX_ALIAS={DIST:{'STOCK':'STOCK TN','STOCK TELCONET':'STOCK TN','TN':'STOCK TN'}};
 /* "HUAWEI / SIEMON, Cisco" → ['HUAWEI','SIEMON','Cisco'] sin vacíos ni NA */
 function gmxLista(v,alias){
@@ -2060,7 +2092,9 @@ function renderGaMix(rows){
   const el=document.getElementById('ga-mix'); if(!el)return;
   const idx=gmxIdx();
   let OPL=_gmxRows.map(o=>{const r=gmxLineas(o,idx);return {o,L:r.L,src:r.src,reg:gmxOpReg(o,r.L)};});
-  if(GAMX.pend)OPL=OPL.filter(x=>x.src==='none');
+  OPL.forEach(x=>x.falta=gmxFalta(x));
+  const nPend=OPL.filter(x=>x.falta.length).length;
+  if(GAMX.pend)OPL=OPL.filter(x=>x.falta.length);   // v9.26 — cola de ganadas por completar
   const opInfo=new Map(OPL.map(x=>[x.o,x]));
   /* En propuestas con detalle por producto, las selecciones de producto / fabricante / distribuidor
      también filtran las líneas (que no se cuelen los fabricantes de otro producto de la misma propuesta) */
@@ -2093,13 +2127,14 @@ function renderGaMix(rows){
   const lists={prod:prods,fab:fabs,dist:dists,ase:ases,tp:tps};
   const nombreSel=d=>{const a=lists[d].find(g=>g.k===GAMX[d]);return a?a.name:GAMX[d];};
   const sels=Object.keys(selLbl).filter(d=>GAMX[d]);
-  const selBar=(sels.length||GAMX.pend)?`<div class="gmx-sel"><span class="gmx-mut">Selección:</span>${sels.map(d=>`<button class="gmx-chip" onclick="gmxClr('${d}')">${selLbl[d]}: <b>${esc(nombreSel(d))}</b> ✕</button>`).join('')}${GAMX.pend?`<button class="gmx-chip" onclick="gmxPend()">Solo ganadas sin fabricante ✕</button>`:''}${sels.length>1?`<button class="gmx-x" onclick="gmxClr()">Quitar todo</button>`:''}</div>`
+  const selBar=(sels.length||GAMX.pend)?`<div class="gmx-sel"><span class="gmx-mut">Selección:</span>${sels.map(d=>`<button class="gmx-chip" onclick="gmxClr('${d}')">${selLbl[d]}: <b>${esc(nombreSel(d))}</b> ✕</button>`).join('')}${GAMX.pend?`<button class="gmx-chip" onclick="gmxPend()">Solo ganadas por completar ✕</button>`:''}${sels.length>1?`<button class="gmx-x" onclick="gmxClr()">Quitar todo</button>`:''}</div>`
     :`<div class="gmx-sel"><span class="gmx-mut">Haz clic en un producto, fabricante, distribuidor, asesor o tipo de proyecto para filtrar toda la sección.</span></div>`;
   /* KPIs acumulados */
   const kpis=`<div class="gmx-k">
     <div class="kc" style="border-top:2px solid #02C39A"><div class="kv">${nFab}<span style="font-size:16px;color:#64748B"> / ${nTot}</span></div><div class="kl">Ganadas con fabricante</div>
       <div class="gmx-stk"><i style="width:${pct(cSrc.det,nTot)}%;background:#02C39A"></i><i style="width:${pct(cSrc.pg,nTot)}%;background:#5B9FE8"></i></div>
-      <div class="ks"><span style="color:#02C39A">■</span> ${cSrc.det} por producto · <span style="color:#5B9FE8">■</span> ${cSrc.pg} resumen${cSrc.none?` · <button class="gmx-lk" onclick="gmxPend()">${GAMX.pend?'ver todas':`${cSrc.none} sin fabricante`}</button>`:''}</div></div>
+      <div class="ks"><span style="color:#02C39A">■</span> ${cSrc.det} por producto · <span style="color:#5B9FE8">■</span> ${cSrc.pg} resumen · ${cSrc.none} sin fabricante</div>
+      ${nPend||GAMX.pend?`<button class="gmx-todo" onclick="gmxPend()">${GAMX.pend?'← Ver todas las ganadas':`✎ Completar ${nPend} ganada${nPend!==1?'s':''} pendiente${nPend!==1?'s':''}`}</button>`:''}</div>
     <div class="kc" style="border-top:2px solid #5B9FE8"><div class="kv">${pct(cReg.CON,nTot).toFixed(0)}%</div><div class="kl">Propuestas con registro de oportunidad</div>
       <div class="ks"><span class="chip" style="color:#02C39A">${cReg.CON} con</span> <span class="chip" style="color:#E55C6C">${cReg.SIN} sin</span>${cReg.NOREQ?` <span class="chip" style="color:#94A3B8">${cReg.NOREQ} no req.</span>`:''}</div></div>
     <div class="kc" style="border-top:2px solid #F59E0B"><div class="kv">${linReg.length?pct(linReg.length-nCam,linReg.length).toFixed(0)+'%':'—'}</div><div class="kl">Ganadas con el fabricante del registro</div>
@@ -2143,7 +2178,7 @@ function renderGaMix(rows){
   const det=visX.slice().sort((a,b)=>amtO(b.o)-amtO(a.o)).map(x=>{const o=x.o,L=x.L,rs=L.length,R=GMX_OPREG[x.reg],S=GMX_SRC[x.src];
     const regTxt=(o.registros||[]).map(r=>(r.fabricante||'')+(r.deal?' · '+r.deal:'')).filter(Boolean).join('; ');
     const tcv=gmxTCV(o),tp=gmxTipo(o);
-    return L.map((l,j)=>`<tr>${j===0?`<td rowspan="${rs}" class="gmx-tk">#${esc(o.tarea)}<div>${gmxBadge(S[0],S[1],S[2])}</div></td><td rowspan="${rs}"><div class="gmx-nm">${esc(o.cliente||'—')}</div><div class="gmx-mut">${esc(o.asesor||'Sin asesor')} · ${esc(GL[o.gestor]||o.gestor||'')}${tp?' · '+esc(tp):''}</div></td>
+    return L.map((l,j)=>`<tr>${j===0?`<td rowspan="${rs}" class="gmx-tk">#${esc(o.tarea)}<div>${gmxBadge(S[0],S[1],S[2])}</div>${o.cierre?`<button class="gmx-ed${x.falta.length?' todo':''}" onclick="gmxEdit('${escA(o.tarea)}')" title="Abrir el formulario del proyecto ganado de esta tarea">✎ ${x.falta.length?'Completar':'Editar'}</button>`:'<div class="gmx-mut" title="Sin tarea de notificación de cierre">sin tarea de cierre</div>'}${x.falta.length?`<div class="gmx-falta">Falta: ${x.falta.map(esc).join(' · ')}</div>`:''}</td><td rowspan="${rs}"><div class="gmx-nm">${esc(o.cliente||'—')}</div><div class="gmx-mut">${esc(o.asesor||'Sin asesor')} · ${esc(GL[o.gestor]||o.gestor||'')}${tp?' · '+esc(tp):''}</div></td>
         <td rowspan="${rs}" class="r">${fM(amtO(o))}${tcv!=null&&tcv!==amtO(o)?`<div class="gmx-mut">TCV ${fK(tcv)}</div>`:''}</td><td rowspan="${rs}">${gmxBadge(R[0],R[1])}${regTxt?`<div class="gmx-mut">${esc(regTxt)}</div>`:''}</td>`:''}
       <td>${l.producto?esc(l.producto):`<span class="gmx-mut">${L.some(z=>z.producto)?'(propuesta)':'(sin producto)'}</span>`}</td>
       <td>${esc(l.fabricante)||'<span class="gmx-mut">—</span>'}</td>
@@ -2152,7 +2187,9 @@ function renderGaMix(rows){
   const detalle=`<div class="gmx-card"><div class="gmx-h"><span>Detalle por propuesta · productos, fabricante, distribuidor y registro</span><span class="gmx-mut">${visX.length} propuesta${visX.length!==1?'s':''}</span></div>
     <div class="gmx-sc" style="max-height:520px"><table class="gmx-t"><thead><tr><th>#Tarea · fuente</th><th>Cliente · Asesor · Ing. · Tipo</th><th class="r">Monto</th><th>Registro oportunidad</th><th>Producto</th><th>Fabricante / Vendor</th><th>Distribuidor</th><th>Resultado del registro</th></tr></thead>
     <tbody>${det||'<tr><td colspan="8" class="gmx-mut" style="padding:12px">Sin propuestas para esta selección.</td></tr>'}</tbody></table></div></div>`;
-  el.innerHTML=aviso+selBar+kpis+matriz+rankings+detalle;
+  const msg=GMX_MSG?`<div class="gmx-msg ${GMX_MSG.ok?'ok':'ko'}">${GMX_MSG.html}<button class="gmx-x" onclick="GMX_MSG=null;renderGaMix(_gmxRows)">✕</button></div>`:'';
+  const cola=GAMX.pend?`<div class="gmx-msg info">✎ <b>Ganadas por completar</b>, de mayor a menor monto. Con <b>Completar</b> se abre el formulario del proyecto ganado ya prellenado con lo que existe (fabricante del resumen, registro de oportunidad, tipo y meses). Si no se conoce el distribuidor de una ganada vieja, elige <b>NO DISPONIBLE</b>.</div>`:'';
+  el.innerHTML=aviso+msg+selBar+kpis+cola+(GAMX.pend?detalle+matriz+rankings:matriz+rankings+detalle);
 }
 
 /* ── GET MOVIDAS ── */
@@ -4265,7 +4302,7 @@ document.addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&e.key==='Ente
    · Fabricante / vendor (= marca) y distribuidor de cada producto; si no hay registro de oportunidad, se pregunta si se quiere registrar (v9.22)
    y se escriben en PROYECTOS GANADOS 2026 en la fila de esa tarea de cierre; PROYECTO CLIENTE = cliente de la tarea. */
 let RGG=null;
-const RGG_DEF={tipoProyecto:['Privado','Público'],meses:[12,24,36,48,60],marcaCableado:['PANDUIT','FURUKAWA','COMMSCOPE','NEXANS','SIEMON','LEGRAND'],distribuidor:['STOCK TN','INTCOMEX'],fabricante:[]};
+const RGG_DEF={tipoProyecto:['Privado','Público'],meses:[12,24,36,48,60],marcaCableado:['PANDUIT','FURUKAWA','COMMSCOPE','NEXANS','SIEMON','LEGRAND'],distribuidor:['STOCK TN','INTCOMEX','NO DISPONIBLE'],fabricante:[]};   // v9.26 — NO DISPONIBLE: ganadas viejas sin el dato (no cuenta en rankings)
 function rggOpts(k){const extra=k==='fabricante'||k==='marca'?[...((RG.cat||{}).fab1||[]),...RG_DEF.fab1,...(k==='marca'?[...((RG.catGan||{}).marcaCableado||[]),...RGG_DEF.marcaCableado,...((RG.catGan||{}).fabricante||[])]:[])]:[];
   return [...new Set([...((RG.catGan||{})[k]||[]),...(RGG_DEF[k]||[]),...extra].flatMap(x=>k==='fabricante'||k==='marca'||k==='distribuidor'?rgProds(x):[x]).map(x=>String(x).trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'es'));}
 /* v9.14 — productos de la tarea con su fabricante / vendor (lo ya guardado en FABRICANTES GANADOS 2026 tiene prioridad) */
@@ -4366,6 +4403,7 @@ function rgGanRender(){
         <datalist id="rgg-dl-dis">${rggOpts('distribuidor').map(x=>`<option value="${escA(x)}">`).join('')}</datalist>
         <div class="rg-help">Se guarda una fila por producto en <b>FABRICANTES GANADOS</b> (histórico de todos los años), con el registro de oportunidad y el motivo si hubo cambio.</div></div>
       ${RG.key?'':`<div class="rg-f"><label>Clave de escritura</label><input class="rg-in" type="password" autocomplete="off" oninput="RG.key=this.value" placeholder="Clave definida en el Apps Script"></div>`}
+      ${RGG.pideUser?`<div class="rg-f"><label>Registrado por</label><input class="rg-in" value="${escA(RG.user||'')}" placeholder="Tu nombre" oninput="RG.user=this.value;lsSet('nw_rg_user_v9',this.value)"></div>`:''}
       ${RGG.msg?`<div class="rg-res ${RGG.msg.ok?'ok':'ko'}">${RGG.msg.html}</div>`:''}
     </div>
     <div class="rgg-f"><span id="rgg-need" class="rg-help"></span><button class="rg-sec-btn" onclick="rgGanClose()">Completar después</button>
@@ -4389,7 +4427,8 @@ async function rgGanSubmit(){
     const j=await r.json();RGG.busy=false;
     if(j&&j.ok){const nf=(j.columnasNoEncontradas||[]).length?`<br>⚠ No encontré estas columnas en la hoja: ${j.columnasNoEncontradas.map(esc).join(', ')}`:'';
       RG.msg={ok:true,html:`✓ Proyecto ganado <b>#${esc(j.cierre)}</b> completado en ${esc(j.hoja||'PROYECTOS GANADOS')} fila ${j.fila}.${nf}<br><span style="color:#94A3B8">Actualizando métricas del dashboard…</span>`};
-      RG.pendingReload=true;rgGanClose();rgRefreshSide();}
+      if(RGG.desdeGa)GMX_MSG={ok:true,html:`✓ Ganada <b>#${esc(i.tarea)}</b> completada (${v.productos.length} producto${v.productos.length!==1?'s':''}). Las métricas se recalcularon con el dato nuevo.`};   // v9.26
+      RG.pendingReload=true;const deGa=RGG.desdeGa;rgGanClose();if(!deGa)rgRefreshSide();}
     else{RGG.msg={ok:false,html:'✕ '+esc((j&&j.error)||'Error desconocido')};rgGanRender();}
   }catch(e){RGG.busy=false;RGG.msg={ok:false,html:'✕ No se pudo conectar con el Apps Script ('+esc(e.message)+'). ¿Está publicada la v9.10?'};rgGanRender();}
 }
