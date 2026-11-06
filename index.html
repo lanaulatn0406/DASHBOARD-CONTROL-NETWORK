@@ -193,6 +193,7 @@ body{background:#1F2229;color:#E2E8F0;font-family:'Segoe UI',system-ui,sans-seri
 .gmx-stk{display:flex;height:6px;background:#3A4055;border-radius:3px;overflow:hidden;margin-top:6px}.gmx-stk i{display:block;height:100%}
 .gmx-ed{display:block;margin-top:5px;background:#3A4055;border:1px solid #4A5068;color:#E2E8F0;border-radius:6px;padding:2px 8px;font-size:12px;cursor:pointer;white-space:nowrap}
 .gmx-ed.todo{background:#F59E0B22;border-color:#F59E0B88;color:#FBBF24}.gmx-ed:hover{filter:brightness(1.25)}
+.gmx-opc{margin-top:3px;color:#64748B;font-size:11px;white-space:normal;max-width:170px}
 .gmx-falta{margin-top:4px;color:#F59E0B;font-size:11px;white-space:normal;max-width:170px}
 .gmx-todo{margin-top:8px;width:100%;background:#F59E0B1F;border:1px solid #F59E0B88;color:#FBBF24;border-radius:6px;padding:5px 8px;font-size:12px;font-weight:600;cursor:pointer}
 .gmx-todo:hover{filter:brightness(1.2)}
@@ -1965,15 +1966,24 @@ async function gmxEdit(tarea){
     const pide=!rgUser();rgGanOpen(j.ganado,j.actual||{});if(RGG){RGG.desdeGa=true;RGG.pideUser=pide;rgGanRender();}
   }catch(e){GMX_MSG={ok:false,html:'✕ No se pudo conectar con el Apps Script ('+esc(e.message)+')'};renderGaMix(_gmxRows);}
 }
-/* Qué le falta a una ganada para contar completa en estas métricas */
+/* Qué le falta a una ganada. PENDIENTE (cuenta en la cola) = lo que las métricas necesitan:
+   fabricante (de cualquier fuente: el resumen de PROYECTOS GANADOS vale), tipo de proyecto y,
+   si tiene MRC, meses de contrato. OPCIONAL = mejora el detalle pero no la deja pendiente:
+   distribuidor, registro de oportunidad y fabricante por producto (propuestas con varios productos). */
 function gmxFalta(x){
   const o=x.o,pg=o.pg||{},F=[];
-  if(x.src!=='det')F.push(x.L.some(l=>l.fabricante)?'fabricante por producto':'fabricante');
-  if(!x.L.some(l=>l.distribuidor)&&x.src!=='det')F.push('distribuidor');
-  if(!String(pg.tipoProyecto||'').trim())F.push('tipo de proyecto');
-  if((+o.mrc||0)>0&&!(parseFloat(String(pg.tiempoContrato||'').replace(',','.'))>0))F.push('meses de contrato');
-  if(x.reg==='SIN'&&x.src!=='det')F.push('registro de oportunidad');
+  if(!x.L.some(l=>l.fabricante))F.push('fabricante');
+  if(!String(pg.tipoProyecto||'').trim()&&x.src!=='det')F.push('tipo de proyecto');
+  if((+o.mrc||0)>0&&!(parseFloat(String(pg.tiempoContrato||'').replace(',','.'))>0)&&x.src!=='det')F.push('meses de contrato');
   return F;
+}
+function gmxOpcional(x){
+  if(x.src==='det')return [];
+  const O=[];
+  if(x.L.some(l=>l.fabricante)&&x.L.some(l=>!l.producto&&l.fabricante))O.push('fabricante por producto');
+  if(!x.L.some(l=>l.distribuidor))O.push('distribuidor');
+  if(x.reg==='SIN')O.push('registro de oportunidad');
+  return O;
 }
 const gmxNorm=s=>String(s||'').normalize('NFD').replace(/[̀-ͯ]/g,'').toUpperCase().replace(/\s+/g,' ').trim();
 const amtO=o=>(+o.nrc||0)+(+o.mrc||0);
@@ -2178,7 +2188,7 @@ function renderGaMix(rows){
   const det=visX.slice().sort((a,b)=>amtO(b.o)-amtO(a.o)).map(x=>{const o=x.o,L=x.L,rs=L.length,R=GMX_OPREG[x.reg],S=GMX_SRC[x.src];
     const regTxt=(o.registros||[]).map(r=>(r.fabricante||'')+(r.deal?' · '+r.deal:'')).filter(Boolean).join('; ');
     const tcv=gmxTCV(o),tp=gmxTipo(o);
-    return L.map((l,j)=>`<tr>${j===0?`<td rowspan="${rs}" class="gmx-tk">#${esc(o.tarea)}<div>${gmxBadge(S[0],S[1],S[2])}</div>${o.cierre?`<button class="gmx-ed${x.falta.length?' todo':''}" onclick="gmxEdit('${escA(o.tarea)}')" title="Abrir el formulario del proyecto ganado de esta tarea">✎ ${x.falta.length?'Completar':'Editar'}</button>`:'<div class="gmx-mut" title="Sin tarea de notificación de cierre">sin tarea de cierre</div>'}${x.falta.length?`<div class="gmx-falta">Falta: ${x.falta.map(esc).join(' · ')}</div>`:''}</td><td rowspan="${rs}"><div class="gmx-nm">${esc(o.cliente||'—')}</div><div class="gmx-mut">${esc(o.asesor||'Sin asesor')} · ${esc(GL[o.gestor]||o.gestor||'')}${tp?' · '+esc(tp):''}</div></td>
+    return L.map((l,j)=>`<tr>${j===0?`<td rowspan="${rs}" class="gmx-tk">#${esc(o.tarea)}<div>${gmxBadge(S[0],S[1],S[2])}</div>${o.cierre?`<button class="gmx-ed${x.falta.length?' todo':''}" onclick="gmxEdit('${escA(o.tarea)}')" title="Abrir el formulario del proyecto ganado de esta tarea">✎ ${x.falta.length?'Completar':'Editar'}</button>`:'<div class="gmx-mut" title="Sin tarea de notificación de cierre">sin tarea de cierre</div>'}${x.falta.length?`<div class="gmx-falta">Falta: ${x.falta.map(esc).join(' · ')}</div>`:''}${(()=>{const op=gmxOpcional(x);return op.length?`<div class="gmx-opc" title="No la deja pendiente: mejora el detalle de las métricas">Opcional: ${op.map(esc).join(' · ')}</div>`:'';})()}</td><td rowspan="${rs}"><div class="gmx-nm">${esc(o.cliente||'—')}</div><div class="gmx-mut">${esc(o.asesor||'Sin asesor')} · ${esc(GL[o.gestor]||o.gestor||'')}${tp?' · '+esc(tp):''}</div></td>
         <td rowspan="${rs}" class="r">${fM(amtO(o))}${tcv!=null&&tcv!==amtO(o)?`<div class="gmx-mut">TCV ${fK(tcv)}</div>`:''}</td><td rowspan="${rs}">${gmxBadge(R[0],R[1])}${regTxt?`<div class="gmx-mut">${esc(regTxt)}</div>`:''}</td>`:''}
       <td>${l.producto?esc(l.producto):`<span class="gmx-mut">${L.some(z=>z.producto)?'(propuesta)':'(sin producto)'}</span>`}</td>
       <td>${esc(l.fabricante)||'<span class="gmx-mut">—</span>'}</td>
@@ -2188,7 +2198,7 @@ function renderGaMix(rows){
     <div class="gmx-sc" style="max-height:520px"><table class="gmx-t"><thead><tr><th>#Tarea · fuente</th><th>Cliente · Asesor · Ing. · Tipo</th><th class="r">Monto</th><th>Registro oportunidad</th><th>Producto</th><th>Fabricante / Vendor</th><th>Distribuidor</th><th>Resultado del registro</th></tr></thead>
     <tbody>${det||'<tr><td colspan="8" class="gmx-mut" style="padding:12px">Sin propuestas para esta selección.</td></tr>'}</tbody></table></div></div>`;
   const msg=GMX_MSG?`<div class="gmx-msg ${GMX_MSG.ok?'ok':'ko'}">${GMX_MSG.html}<button class="gmx-x" onclick="GMX_MSG=null;renderGaMix(_gmxRows)">✕</button></div>`:'';
-  const cola=GAMX.pend?`<div class="gmx-msg info">✎ <b>Ganadas por completar</b>, de mayor a menor monto. Con <b>Completar</b> se abre el formulario del proyecto ganado ya prellenado con lo que existe (fabricante del resumen, registro de oportunidad, tipo y meses). Si no se conoce el distribuidor de una ganada vieja, elige <b>NO DISPONIBLE</b>.</div>`:'';
+  const cola=GAMX.pend?`<div class="gmx-msg info">✎ <b>Ganadas por completar</b> (sin fabricante, sin tipo de proyecto o con MRC sin meses de contrato), de mayor a menor monto. Las que ya tienen esos datos en PROYECTOS GANADOS no aparecen aquí. Con <b>Completar</b> se abre el formulario del proyecto ganado ya prellenado con lo que existe (fabricante del resumen, registro de oportunidad, tipo y meses). Si no se conoce el distribuidor de una ganada vieja, elige <b>NO DISPONIBLE</b>.</div>`:'';
   el.innerHTML=aviso+msg+selBar+kpis+cola+(GAMX.pend?detalle+matriz+rankings:matriz+rankings+detalle);
 }
 
