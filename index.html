@@ -169,6 +169,28 @@ body{background:#1F2229;color:#E2E8F0;font-family:'Segoe UI',system-ui,sans-seri
 .wb{height:5px;background:#3A4055;border-radius:3px;margin-top:4px;overflow:hidden}
 .wf{height:100%;border-radius:3px}
 /* ops detail table */
+/* v9.24 — Ops Ganadas · Productos · Fabricantes · Distribuidores */
+.gmx-k{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:12px;margin-bottom:12px}
+.gmx-g2{display:grid;grid-template-columns:repeat(auto-fit,minmax(min(100%,420px),1fr));gap:12px;margin-bottom:12px}
+.gmx-card{background:#272C35;border:1px solid #3A4055;border-radius:10px;padding:12px 14px;min-width:0}
+.gmx-h{font-size:13px;font-weight:700;color:#94A3B8;text-transform:uppercase;letter-spacing:.5px;margin-bottom:8px;display:flex;justify-content:space-between;gap:8px;align-items:center;flex-wrap:wrap}
+.gmx-i{opacity:.6;cursor:help}
+.gmx-sc{overflow:auto;max-height:380px}
+.gmx-t{width:100%;border-collapse:collapse;font-size:13px}
+.gmx-t th{position:sticky;top:0;background:#272C35;padding:6px 8px;font-size:11px;text-transform:uppercase;letter-spacing:.4px;color:#64748B;text-align:left;border-bottom:1px solid #3A4055;white-space:nowrap}
+.gmx-t td{padding:6px 8px;border-bottom:1px solid #3A405566;color:#CBD5E1;vertical-align:top}
+.gmx-t .r{text-align:right;white-space:nowrap}
+.gmx-t tr.ck{cursor:pointer}.gmx-t tr.ck:hover td{background:#2F3542}.gmx-t tr.on td{background:#02C39A1F}
+.gmx-n{color:#64748B;width:24px}.gmx-nm{color:#E2E8F0;font-weight:600}.gmx-tk{color:#94A3B8;white-space:nowrap}
+.gmx-bar{height:5px;background:#3A4055;border-radius:3px;overflow:hidden;margin-top:4px;min-width:60px}.gmx-bar i{display:block;height:100%;background:#02C39A;border-radius:3px}
+.gmx-c{display:inline-block;padding:1px 7px;border-radius:8px;font-size:12px;background:#3A4055;color:#E2E8F0;margin:1px 4px 1px 0;white-space:nowrap}.gmx-c b{color:#02C39A}
+.gmx-b{display:inline-block;padding:1px 7px;border-radius:8px;font-size:12px;font-weight:600;border:1px solid;white-space:nowrap}
+.gmx-mut{color:#64748B;font-size:12px}
+.gmx-sel{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin-bottom:10px}
+.gmx-chip{background:#02C39A1F;border:1px solid #02C39A66;color:#E2E8F0;border-radius:12px;padding:2px 10px;font-size:12px;cursor:pointer}
+.gmx-x,.gmx-lk{background:none;border:none;color:#5B9FE8;cursor:pointer;font-size:12px;padding:0}
+.gmx-x:hover,.gmx-lk:hover{text-decoration:underline}
+.gmx-warn{background:#F59E0B1A;border:1px solid #F59E0B66;color:#FBBF24;border-radius:8px;padding:8px 12px;margin-bottom:10px;font-size:13px}
 .ops-wrap{background:#272C35;border-radius:10px;border:1px solid #3A4055;overflow:hidden;margin-top:4px}
 .ops-hdr{background:#2D3240;padding:9px 14px;display:flex;align-items:center;justify-content:space-between;gap:8px}
 .ops-ttl{font-size:15px;font-weight:700;color:#94A3B8;text-transform:uppercase;letter-spacing:.5px}
@@ -1093,6 +1115,8 @@ textarea.rg-in{resize:vertical;min-height:64px}
   <div class="cg3" id="ga-charts"></div>
   <div class="sttl" style="color:#02C39A">📐 Por Ing. de Diseño</div>
   <div class="gd4" id="ga-gestores"></div>
+  <div class="sttl" style="color:#02C39A">🏭 Productos · Fabricantes · Distribuidores</div>
+  <div id="ga-mix"></div>
   <div class="sttl" style="color:#02C39A">📋 Detalle de Oportunidades Ganadas</div>
   <div class="ops-wrap">
     <div class="ops-hdr">
@@ -1900,6 +1924,169 @@ function renderGestores(seg,totTab,col,filt){
   document.getElementById(`${seg}-gestores`).innerHTML=html||'<div style="color:#64748B;padding:16px">Sin datos para este filtro.</div>';
 }
 
+/* ══ v9.24 — OPS GANADAS · Productos · Fabricantes · Distribuidores ══════════════════
+   Fuente: hoja FABRICANTES GANADOS (data.fabGanados: una fila por producto de cada ganada,
+   con fabricante, distribuidor y si respetó el registro de oportunidad).
+   Se calcula sobre las MISMAS ganadas de la tabla de detalle (filtros de la barra + exclusiones).
+   Monto por producto / fabricante / distribuidor = monto (NRC+MRC) de las propuestas que lo incluyen:
+   una propuesta con 2 productos suma su monto en ambos (el Sheet no tiene monto por producto).
+   Ganadas sin filas en FABRICANTES GANADOS (cerradas antes de v9.14 o sin completar el proyecto
+   ganado) cuentan como "pendientes de detalle": sus productos salen de PRODUCTOS de la tarea. */
+let FAB_GAN=null;                    // null = el backend aún no envía fabGanados (anterior a v9.24)
+const GAMX={prod:'',fab:'',dist:'',ase:'',pend:false,keys:{}};
+let _gmxRows=[];
+const gmxNorm=s=>String(s||'').normalize('NFD').replace(/[̀-ͯ]/g,'').toUpperCase().replace(/\s+/g,' ').trim();
+const amtO=o=>(+o.nrc||0)+(+o.mrc||0);
+const GMX_REG={NO:['✓ Respetó registro','#02C39A','Se ganó con el fabricante del registro de oportunidad'],
+  SI:['⇄ Cambió fabricante','#F59E0B','Se ganó con un fabricante distinto al del registro de oportunidad'],
+  'SIN REGISTRO':['Sin registro','#E55C6C','La cotización no tenía registro de oportunidad'],
+  'NO REQUERIDO':['No requerido','#94A3B8','El Ing. de Diseño indicó que no se necesitaba registro']};
+const GMX_OPREG={CON:['Con registro','#02C39A'],SIN:['Sin registro','#E55C6C'],NOREQ:['No requerido','#94A3B8']};
+const gmxBadge=(t,c,tip)=>`<span class="gmx-b" style="color:${c};border-color:${c}66;background:${c}1A"${tip?` title="${escA(tip)}"`:''}>${esc(t)}</span>`;
+function gmxIdx(){
+  const m={};
+  (FAB_GAN||[]).forEach(r=>{[r.tarea&&String(r.tarea).trim(),r.cierre&&'c:'+String(r.cierre).trim()].forEach(k=>{if(k)(m[k]=m[k]||[]).push(r);});});
+  return m;
+}
+function gmxLineas(o,idx){
+  const det=idx[String(o.tarea||'').trim()]||(o.cierre?idx['c:'+String(o.cierre).trim()]:null);
+  if(det&&det.length)return det.map(d=>Object.assign({},d,{ok:true}));
+  const ps=String(o.prod||'').split(/\s*,\s*/).map(s=>s.trim()).filter(Boolean);
+  const rf=(o.registros||[]).map(r=>r.fabricante).filter(Boolean).join(', ');
+  return (ps.length?ps:['(sin producto)']).map(p=>({producto:p,fabricante:'',distribuidor:'',cambio:'',motivo:'',registro:'',ok:false,regFab:rf}));
+}
+/* Registro de oportunidad a nivel propuesta: CON / SIN / NOREQ */
+function gmxOpReg(o,L){
+  if(L.some(l=>l.ok)){
+    if(L.some(l=>l.cambio==='NO'||l.cambio==='SI'))return 'CON';
+    if(L.some(l=>l.cambio==='NO REQUERIDO'))return 'NOREQ';
+  }
+  return (o.registros||[]).some(r=>r.fabricante||r.deal)?'CON':'SIN';
+}
+/* Agrupa líneas {o,l} por una clave (normalizada: "Cisco" = "CISCO") */
+function gmxAgg(items,keyFn){
+  const m=new Map();
+  items.forEach(it=>{
+    const raw=String(keyFn(it)||'').trim(); if(!raw)return;
+    const k=gmxNorm(raw); let g=m.get(k);
+    if(!g){g={k,lbl:{},ops:new Set(),monto:0,n:0,ok:0,reg:0,cam:0,items:[]};m.set(k,g);}
+    g.lbl[raw]=(g.lbl[raw]||0)+1; g.n++; g.items.push(it);
+    if(!g.ops.has(it.o)){g.ops.add(it.o);g.monto+=amtO(it.o);}
+    if(it.l.ok){g.ok++; if(it.l.cambio==='NO'||it.l.cambio==='SI')g.reg++; if(it.l.cambio==='SI')g.cam++;}
+  });
+  return [...m.values()].map(g=>Object.assign(g,{name:Object.entries(g.lbl).sort((a,b)=>b[1]-a[1])[0][0],nOps:g.ops.size}))
+    .sort((a,b)=>b.monto-a.monto||b.nOps-a.nOps);
+}
+const GMX_DIM={prod:it=>it.l.producto,fab:it=>it.l.ok?it.l.fabricante:'',dist:it=>it.l.ok?it.l.distribuidor:'',ase:it=>it.o.asesor};
+/* Filtro cruzado: cada panel aplica las selecciones de los OTROS paneles */
+function gmxPass(it,except){
+  return Object.keys(GMX_DIM).every(d=>d===except||!GAMX[d]||gmxNorm(GMX_DIM[d](it))===GAMX[d]);
+}
+function gmxSet(dim,i){const k=(GAMX.keys[dim]||[])[i];if(k==null)return;GAMX[dim]=GAMX[dim]===k?'':k;renderGaMix(_gmxRows);}
+function gmxClr(dim){if(dim)GAMX[dim]='';else['prod','fab','dist','ase'].forEach(d=>GAMX[d]='');renderGaMix(_gmxRows);}
+function gmxPend(){GAMX.pend=!GAMX.pend;renderGaMix(_gmxRows);}
+function gmxTop(arr,tot,n){
+  if(!arr.length)return '<span class="gmx-mut">—</span>';
+  return arr.slice(0,n).map(g=>`<span class="gmx-c">${esc(g.name)} <b>${pct(g.n,tot).toFixed(0)}%</b></span>`).join('')+(arr.length>n?`<span class="gmx-mut"> +${arr.length-n}</span>`:'');
+}
+function gmxRank(dim,title,tip,arr,cols,base){
+  GAMX.keys[dim]=arr.map(g=>g.k);
+  const mx=Math.max(1,...arr.map(g=>g.monto)),tot=base||1;
+  const sel=GAMX[dim];
+  const rows=arr.map((g,i)=>`<tr class="ck${sel===g.k?' on':''}" onclick="gmxSet('${dim}',${i})">
+      <td class="gmx-n">${i+1}</td><td><div class="gmx-nm">${esc(g.name)}</div><div class="gmx-bar"><i style="width:${(g.monto/mx*100).toFixed(1)}%"></i></div></td>
+      ${cols.map(c=>`<td class="r">${c[1](g,tot)}</td>`).join('')}</tr>`).join('');
+  return `<div class="gmx-card"><div class="gmx-h"><span title="${escA(tip)}">${title} <span class="gmx-i">ⓘ</span></span>${sel?`<button class="gmx-x" onclick="gmxClr('${dim}')">✕ quitar selección</button>`:`<span class="gmx-mut">${arr.length}</span>`}</div>
+    <div class="gmx-sc"><table class="gmx-t"><thead><tr><th>#</th><th>Nombre</th>${cols.map(c=>`<th class="r">${c[0]}</th>`).join('')}</tr></thead>
+    <tbody>${rows||'<tr><td colspan="9" class="gmx-mut" style="padding:12px">Sin datos para esta selección.</td></tr>'}</tbody></table></div></div>`;
+}
+function renderGaMix(rows){
+  _gmxRows=rows||[];
+  const el=document.getElementById('ga-mix'); if(!el)return;
+  const idx=gmxIdx();
+  const OPL=_gmxRows.map(o=>{const L=gmxLineas(o,idx);return {o,L,ok:L.some(l=>l.ok),reg:gmxOpReg(o,L)};});
+  const opInfo=new Map(OPL.map(x=>[x.o,x]));
+  let all=[];OPL.forEach(x=>x.L.forEach(l=>all.push({o:x.o,l})));
+  if(GAMX.pend)all=all.filter(it=>!opInfo.get(it.o).ok);
+  const vis=all.filter(it=>gmxPass(it,''));
+  const opsVis=[...new Set(vis.map(it=>it.o))];
+  const nTot=opsVis.length,nOk=opsVis.filter(o=>opInfo.get(o).ok).length;
+  const linOk=vis.filter(it=>it.l.ok),linReg=linOk.filter(it=>it.l.cambio==='NO'||it.l.cambio==='SI');
+  const cReg={CON:0,SIN:0,NOREQ:0};opsVis.forEach(o=>cReg[opInfo.get(o).reg]++);
+  const fabs=gmxAgg(all.filter(it=>gmxPass(it,'fab')),GMX_DIM.fab);
+  const dists=gmxAgg(all.filter(it=>gmxPass(it,'dist')),GMX_DIM.dist);
+  const prods=gmxAgg(all.filter(it=>gmxPass(it,'prod')),GMX_DIM.prod);
+  const ases=gmxAgg(all.filter(it=>gmxPass(it,'ase')),GMX_DIM.ase);
+  const montoVis=opsVis.reduce((s,o)=>s+amtO(o),0);
+  /* Base de los %: monto de las ganadas visibles (con detalle, para fabricante / distribuidor).
+     Una propuesta con varios fabricantes suma en cada uno, por eso los % no suman 100. */
+  const montoOk=opsVis.filter(o=>opInfo.get(o).ok).reduce((s,o)=>s+amtO(o),0);
+  const fabV=gmxAgg(vis,GMX_DIM.fab),distV=gmxAgg(vis,GMX_DIM.dist);
+  const lider=(a,lbl)=>a.length?`<div class="kv" style="font-size:22px">${esc(a[0].name)}</div><div class="kl">${lbl} líder (por monto)</div>
+      <div class="ks">${fK(a[0].monto)} · ${pct(a[0].monto,montoOk).toFixed(0)}% del monto con detalle · ${a[0].nOps} ganada${a[0].nOps!==1?'s':''}${a[1]?`<br>2.º ${esc(a[1].name)} · ${pct(a[1].monto,montoOk).toFixed(0)}%`:''}</div>`
+    :`<div class="kv" style="font-size:22px">—</div><div class="kl">${lbl} líder</div><div class="ks">Sin ganadas con detalle</div>`;
+  /* Aviso de backend / cobertura */
+  let aviso='';
+  if(FAB_GAN===null)aviso=`<div class="gmx-warn">⚠ El backend publicado aún no envía FABRICANTES GANADOS. Publica <b>Code.gs v9.24</b> para ver fabricantes y distribuidores; mientras tanto solo se muestran productos y asesores.</div>`;
+  const nPend=OPL.filter(x=>!x.ok).length;
+  /* Selección activa */
+  const selLbl={prod:'Producto',fab:'Fabricante',dist:'Distribuidor',ase:'Asesor'};
+  const nombreSel=(d)=>{const a={prod:prods,fab:fabs,dist:dists,ase:ases}[d].find(g=>g.k===GAMX[d]);return a?a.name:GAMX[d];};
+  const sels=Object.keys(selLbl).filter(d=>GAMX[d]);
+  const selBar=(sels.length||GAMX.pend)?`<div class="gmx-sel"><span class="gmx-mut">Selección:</span>${sels.map(d=>`<button class="gmx-chip" onclick="gmxClr('${d}')">${selLbl[d]}: <b>${esc(nombreSel(d))}</b> ✕</button>`).join('')}${GAMX.pend?`<button class="gmx-chip" onclick="gmxPend()">Solo pendientes de detalle ✕</button>`:''}${sels.length>1?`<button class="gmx-x" onclick="gmxClr()">Quitar todo</button>`:''}</div>`
+    :`<div class="gmx-sel"><span class="gmx-mut">Haz clic en un producto, fabricante, distribuidor o asesor para filtrar toda la sección.</span></div>`;
+  /* KPIs acumulados */
+  const kpis=`<div class="gmx-k">
+    <div class="kc" style="border-top:2px solid #02C39A"><div class="kv">${nOk}<span style="font-size:16px;color:#64748B"> / ${nTot}</span></div><div class="kl">Ganadas con detalle por producto</div>
+      <div class="wb"><div class="wf" style="width:${pct(nOk,nTot)}%;background:#02C39A"></div></div>
+      <div class="ks">${pct(nOk,nTot).toFixed(0)}% de cobertura${nPend?` · <button class="gmx-lk" onclick="gmxPend()">${GAMX.pend?'ver todas':`ver ${nPend} pendiente${nPend!==1?'s':''}`}</button>`:''}</div></div>
+    <div class="kc" style="border-top:2px solid #5B9FE8"><div class="kv">${pct(cReg.CON,nTot).toFixed(0)}%</div><div class="kl">Propuestas con registro de oportunidad</div>
+      <div class="ks"><span class="chip" style="color:#02C39A">${cReg.CON} con</span> <span class="chip" style="color:#E55C6C">${cReg.SIN} sin</span>${cReg.NOREQ?` <span class="chip" style="color:#94A3B8">${cReg.NOREQ} no req.</span>`:''}</div></div>
+    <div class="kc" style="border-top:2px solid #F59E0B"><div class="kv">${linReg.length?pct(linReg.length-linReg.filter(it=>it.l.cambio==='SI').length,linReg.length).toFixed(0)+'%':'—'}</div><div class="kl">Productos que respetaron el registro</div>
+      <div class="ks">${linReg.filter(it=>it.l.cambio==='SI').length} de ${linReg.length} producto${linReg.length!==1?'s':''} con registro se ganaron con otro fabricante</div></div>
+    <div class="kc" style="border-top:2px solid #A78BFA">${lider(fabV,'Fabricante')}</div>
+    <div class="kc" style="border-top:2px solid #2DC48D">${lider(distV,'Distribuidor')}</div>
+  </div>`;
+  /* Matriz producto × fabricante / distribuidor */
+  GAMX.keys.prod=prods.map(g=>g.k);
+  const mxP=Math.max(1,...prods.map(g=>g.monto));
+  const matriz=`<div class="gmx-card" style="margin-bottom:12px"><div class="gmx-h"><span title="Por cada producto ganado: qué fabricantes y distribuidores se usaron (% sobre los productos con detalle) y cuántos tenían registro de oportunidad. Clic en una fila para filtrar.">Producto · fabricantes y distribuidores más representativos <span class="gmx-i">ⓘ</span></span>${GAMX.prod?`<button class="gmx-x" onclick="gmxClr('prod')">✕ quitar selección</button>`:''}</div>
+    <div class="gmx-sc"><table class="gmx-t"><thead><tr><th>Producto</th><th class="r">Ganadas</th><th class="r">Monto propuestas</th><th>Fabricantes</th><th>Distribuidores</th><th class="r">Con registro</th></tr></thead><tbody>
+    ${prods.map((g,i)=>{const its=g.items.filter(it=>it.l.ok);const fa=gmxAgg(its,GMX_DIM.fab),di=gmxAgg(its,GMX_DIM.dist);
+      return `<tr class="ck${GAMX.prod===g.k?' on':''}" onclick="gmxSet('prod',${i})"><td><div class="gmx-nm">${esc(g.name)}</div><div class="gmx-bar"><i style="width:${(g.monto/mxP*100).toFixed(1)}%"></i></div></td>
+        <td class="r">${g.nOps}${g.ok<g.n?`<div class="gmx-mut">${g.n-g.ok} sin detalle</div>`:''}</td><td class="r">${fM(g.monto)}</td>
+        <td>${g.ok?gmxTop(fa,g.ok,3):'<span class="gmx-mut">pendiente</span>'}</td><td>${g.ok?gmxTop(di,g.ok,3):'<span class="gmx-mut">pendiente</span>'}</td>
+        <td class="r">${g.ok?pct(g.reg,g.ok).toFixed(0)+'%':'—'}${g.cam?`<div style="color:#F59E0B;font-size:12px">${g.cam} cambio${g.cam!==1?'s':''}</div>`:''}</td></tr>`;}).join('')||'<tr><td colspan="6" class="gmx-mut" style="padding:12px">Sin ganadas para estos filtros.</td></tr>'}
+    </tbody></table></div></div>`;
+  const cMonto=['Monto',(g,t)=>`${fM(g.monto)}<div class="gmx-mut">${pct(g.monto,t).toFixed(1)}%</div>`];
+  const cOps=['Ganadas',g=>g.nOps];
+  const cReg2=['Con registro',g=>g.ok?`${pct(g.reg,g.ok).toFixed(0)}%${g.cam?`<div style="color:#F59E0B;font-size:12px">${g.cam} cambio${g.cam!==1?'s':''}</div>`:''}`:'—'];
+  const cProds=['Productos',g=>new Set(g.items.map(it=>gmxNorm(it.l.producto))).size];
+  const rankings=`<div class="gmx-g2">
+    ${gmxRank('fab','Ranking de fabricantes / vendor','Fabricante con el que se ganó cada producto (FABRICANTES GANADOS). Monto = propuestas que lo incluyen. Con registro = % de sus productos ganados con registro de oportunidad. % = sobre el monto de las ganadas con detalle (una propuesta con varios fabricantes suma en cada uno).',fabs,[cOps,cProds,cMonto,cReg2],montoOk)}
+    ${gmxRank('dist','Ranking de distribuidores','Distribuidor de cada producto ganado (FABRICANTES GANADOS). Monto = propuestas que lo incluyen. % = sobre el monto de las ganadas con detalle.',dists,[cOps,cProds,cMonto,cReg2],montoOk)}
+  </div>
+  <div class="gmx-g2">${gmxRank('ase','Ranking de asesores comerciales','Ganadas por asesor comercial. Margen = promedio de MARGEN de sus ganadas con dato. Registro = % de sus propuestas con registro de oportunidad.',ases,[cOps,cMonto,
+      ['NRC / MRC',g=>{let n=0,m=0;g.ops.forEach(o=>{n+=+o.nrc||0;m+=+o.mrc||0;});return `${fK(n)}<div class="gmx-mut">${fK(m)} MRC</div>`;}],
+      ['Margen',g=>{const v=[...g.ops].map(o=>margN(o.margen)).filter(x=>x!=null);return v.length?(v.reduce((s,x)=>s+x,0)/v.length).toFixed(1)+'%':'—';}],
+      ['Registro',g=>{const a=[...g.ops];return pct(a.filter(o=>opInfo.get(o).reg==='CON').length,a.length).toFixed(0)+'%';}]],montoVis)}</div>`;
+  /* Detalle individual: una fila por producto de cada propuesta */
+  const porOp=new Map();vis.forEach(it=>{(porOp.get(it.o)||porOp.set(it.o,[]).get(it.o)).push(it.l);});
+  const ordOps=[...porOp.keys()].sort((a,b)=>amtO(b)-amtO(a));
+  const det=ordOps.map(o=>{const L=porOp.get(o),inf=opInfo.get(o),rs=L.length,R=GMX_OPREG[inf.reg];
+    const regTxt=(o.registros||[]).map(r=>(r.fabricante||'')+(r.deal?' · '+r.deal:'')).filter(Boolean).join('; ');
+    return L.map((l,j)=>`<tr>${j===0?`<td rowspan="${rs}" class="gmx-tk">#${esc(o.tarea)}</td><td rowspan="${rs}"><div class="gmx-nm">${esc(o.cliente||'—')}</div><div class="gmx-mut">${esc(o.asesor||'Sin asesor')} · ${esc(GL[o.gestor]||o.gestor||'')}</div></td>
+        <td rowspan="${rs}" class="r">${fM(amtO(o))}</td><td rowspan="${rs}">${gmxBadge(R[0],R[1])}${regTxt?`<div class="gmx-mut">${esc(regTxt)}</div>`:''}</td>`:''}
+      <td>${esc(l.producto||'—')}</td>
+      <td>${l.ok?esc(l.fabricante||'—'):`<span class="gmx-mut">${l.regFab?'Reg.: '+esc(l.regFab):'—'}</span>`}</td>
+      <td>${l.ok?esc(l.distribuidor||'—'):'<span class="gmx-mut">—</span>'}</td>
+      <td>${l.ok?(GMX_REG[l.cambio]?gmxBadge(GMX_REG[l.cambio][0],GMX_REG[l.cambio][1],l.cambio==='SI'&&l.motivo?'Motivo: '+l.motivo:GMX_REG[l.cambio][2]):'—'):gmxBadge('Pendiente de detalle','#64748B','Completa el proyecto ganado en Registro → 🏆 Datos del proyecto ganado')}</td></tr>`).join('');}).join('');
+  const detalle=`<div class="gmx-card"><div class="gmx-h"><span>Detalle por propuesta · productos, fabricante, distribuidor y registro</span><span class="gmx-mut">${ordOps.length} propuesta${ordOps.length!==1?'s':''} · ${vis.length} producto${vis.length!==1?'s':''}</span></div>
+    <div class="gmx-sc" style="max-height:520px"><table class="gmx-t"><thead><tr><th>#Tarea</th><th>Cliente · Asesor · Ing.</th><th class="r">Monto</th><th>Registro oportunidad</th><th>Producto</th><th>Fabricante / Vendor</th><th>Distribuidor</th><th>Resultado del registro</th></tr></thead>
+    <tbody>${det||'<tr><td colspan="8" class="gmx-mut" style="padding:12px">Sin propuestas para esta selección.</td></tr>'}</tbody></table></div></div>`;
+  el.innerHTML=aviso+selBar+kpis+matriz+rankings+detalle;
+}
+
 /* ── GET MOVIDAS ── */
 function getPeMovidas(){return[...OPS.ab,...OPS.ga].filter(o=>isPerdida(o.id));}
 
@@ -1934,6 +2121,7 @@ function renderOpsTable(seg,filt){
     }
     return true;
   });
+  if(seg==='ga')renderGaMix(rows);   // v9.24 — productos · fabricantes · distribuidores (mismas ganadas que la tabla)
   // Para tab ab: Top 20 por gestor cuando no hay búsqueda; búsqueda muestra todo
   let displayRows = rows;
   let limitMsg = '';
@@ -2835,6 +3023,7 @@ async function initDashboard(){
     // Populate OPS
     OPS.ab = (data.abiertas   || []);
     OPS.ga = (data.ganadas    || []);
+    FAB_GAN = Array.isArray(data.fabGanados) ? data.fabGanados : null;   // v9.24 — FABRICANTES GANADOS
     OPS.pd  = (data.pendientes || []);  // Pendientes de despachar cotización
     OPS.pe  = [];                        // Perdidas gestionadas desde el dashboard (localStorage)
     OPS.per = (data.perdidas   || []);  // Perdidas desde Sheet (estado='PERDIDA')
