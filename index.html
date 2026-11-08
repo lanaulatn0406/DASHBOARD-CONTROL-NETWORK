@@ -826,6 +826,9 @@ textarea.rg-in{resize:vertical;min-height:64px}
 .rgg-skip{font-size:12px;color:#64748B;background:#1F222988;border:1px dashed #3A4055;border-radius:8px;padding:8px 10px}
 .rgg-cab{border:1px solid #3A4055;border-radius:10px;padding:10px 12px}
 .rgg-fab{display:flex;flex-direction:column;gap:6px}
+.rgg-int{border:1px dashed #A78BFA88;border-radius:10px;padding:10px 12px;display:flex;flex-direction:column;gap:8px;background:#A78BFA0D}
+.rgg-chips-s button{padding:4px 10px;font-size:12px}
+.rgg-int-otro{max-width:200px;padding:4px 8px!important;font-size:12px!important}
 .rgg-fab-r{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:10px;align-items:center}
 .rgg-fab-c{border:1px solid #3A4055;border-radius:10px;padding:10px 12px;display:flex;flex-direction:column;gap:8px}
 .rgg-reg{background:#5B9FE814;border:1px solid #5B9FE855;color:#CBD5E1;border-radius:9px;padding:9px 12px;font-size:13px;line-height:1.5}
@@ -2009,6 +2012,7 @@ async function gmxEdit(tarea){
    distribuidor, registro de oportunidad y fabricante por producto (propuestas con varios productos). */
 function gmxFalta(x){
   const o=x.o,pg=o.pg||{},F=[];
+  gmxProds(o).filter(esIntegral).forEach(P=>{if(!x.L.some(l=>l.integral===P))F.push('desagregar '+P);});   // v9.32
   if(!x.L.some(l=>l.fabricante))F.push('fabricante');
   if(!String(pg.tipoProyecto||'').trim()&&x.src!=='det')F.push('tipo de proyecto');
   if((+o.mrc||0)>0&&!(parseFloat(String(pg.tiempoContrato||'').replace(',','.'))>0)&&x.src!=='det')F.push('meses de contrato');
@@ -2065,7 +2069,7 @@ const gmxProds=o=>String(o.prod||'').split(/\s*,\s*/).map(s=>s.trim()).filter(Bo
    producto '' = línea a nivel propuesta (fabricante/distribuidor que no se puede atar a un producto). */
 function gmxLineas(o,idx){
   const det=idx[String(o.tarea||'').trim()]||(o.cierre?idx['c:'+String(o.cierre).trim()]:null);
-  if(det&&det.length)return {src:'det',L:det.map(d=>({producto:d.producto,fabricante:gmxLista(d.fabricante,GMX_ALIAS.FAB)[0]||'',distribuidor:gmxLista(d.distribuidor,GMX_ALIAS.DIST)[0]||'',cambio:d.cambio,motivo:d.motivo,src:'det'}))};
+  if(det&&det.length)return {src:'det',L:det.map(d=>({producto:d.producto,integral:d.integral||'',fabricante:gmxLista(d.fabricante,GMX_ALIAS.FAB)[0]||'',distribuidor:gmxLista(d.distribuidor,GMX_ALIAS.DIST)[0]||'',cambio:d.cambio,motivo:d.motivo,src:'det'}))};
   const P=gmxProds(o),pg=o.pg||{};
   const regs=(o.registros||[]).map(r=>gmxLista(r.fabricante,GMX_ALIAS.FAB)[0]).filter(Boolean);
   const F=gmxLista([pg.fabricante,pg.marcaCableado].filter(Boolean).join(','),GMX_ALIAS.FAB),D=gmxLista(pg.distribuidor,GMX_ALIAS.DIST);
@@ -2198,6 +2202,9 @@ function gmxQRow(x){
   const chb=(k,opts,suf)=>opts.map(v=>`<button class="${String(s[k])===String(v)?'on':''}" onclick="gmxQSet('${id}','${k}','${escA(String(v))}',this)">${esc(String(v))}${suf||''}</button>`).join('');
   const ch=(k,opts,suf)=>`<div class="gq-ch">${chb(k,opts,suf)}</div>`;
   const regs=gmxQRegs(o);
+  if(x.falta.some(f=>f.startsWith('desagregar ')))return `<div class="gq-r"><div><div class="gmx-nm">#${esc(t)} · ${esc(o.cliente||'—')}</div><div class="gmx-mut">${esc(o.asesor||'Sin asesor')} · ${fM(amtO(o))}${mrc>0?` · MRC ${fM(mrc)}`:''}</div></div>
+    <div style="grid-column:2/5;color:#C4B5FD;font-size:13px">🧩 <b>Proyecto Integral Multivertical</b>: hay que desagregarlo en los productos que lo integran (cada uno con su fabricante y distribuidor). Se hace en el formulario completo.<div class="gmx-falta" style="max-width:none">Falta: ${x.falta.map(esc).join(' · ')}</div></div>
+    <div class="gq-act"><button class="gq-save" onclick="gmxEdit('${id}')">🧩 Desagregar</button></div></div>`;   // v9.32
   const fab=s.prods?s.prods.map((p,i)=>`<div class="gq-p"><span class="gq-pn" title="${escA(p.producto||'Tarea sin producto')}">${esc(p.producto||'(sin producto)')}</span>
       <input class="gq-in" list="gq-dl-fab" value="${escA(p.fabricante)}" placeholder="Fabricante" title="${p.sug?'Sugerido del registro de oportunidad':'Fabricante / vendor'}" oninput="gmxQProd('${id}',${i},'fabricante',this.value)">
       <input class="gq-in" list="gq-dl-dis" value="${escA(p.distribuidor)}" placeholder="Distribuidor" oninput="gmxQProd('${id}',${i},'distribuidor',this.value)">
@@ -2224,7 +2231,7 @@ function gmxQuickHtml(visX,vt){
   const nTot=grupos.reduce((s,g)=>s+g.n,0);
   const top=`<div class="gq-top">${!RG.key?`<span>🔑 Clave de escritura:</span><input type="password" autocomplete="off" placeholder="Clave del Apps Script" oninput="RG.key=this.value;lsSet('nw_rg_key_v9',this.value)">`:''}
     ${!rgUser()?`<span>Registrado por:</span><input placeholder="Tu nombre" oninput="RG.user=this.value;lsSet('nw_rg_user_v9',this.value)">`:''}
-    <span>Solo las ganadas por completar (sin fabricante, sin tipo de proyecto o con MRC sin meses). Elige, escribe y <b>💾 Guardar</b>; si no se conoce el distribuidor de una ganada vieja, escribe <b>NO DISPONIBLE</b>. Para registrar un registro de oportunidad nuevo o casos especiales usa <b>✎ Formulario</b>.${sinCierre?` <span style="color:#F59E0B">${sinCierre} sin tarea de cierre: regístrala primero en Registro.</span>`:''}</span></div>`;
+    <span>Solo las ganadas por completar (sin fabricante, sin tipo de proyecto, con MRC sin meses o con un Proyecto Integral Multivertical sin desagregar). Elige, escribe y <b>💾 Guardar</b>; si no se conoce el distribuidor de una ganada vieja, escribe <b>NO DISPONIBLE</b>. Para registrar un registro de oportunidad nuevo o casos especiales usa <b>✎ Formulario</b>.${sinCierre?` <span style="color:#F59E0B">${sinCierre} sin tarea de cierre: regístrala primero en Registro.</span>`:''}</span></div>`;
   const body=grupos.map(({g,a,n})=>{const open=GMX_QOPEN.has(g),monto=a.filter(x=>!GMX_QOK.has(String(x.o.tarea))).reduce((s,x)=>s+amtO(x.o),0),ok=a.length-n;
     return `<div class="gq-g"><button class="gq-gh" onclick="gmxQGrp('${escA(g)}')"><span class="gdot" style="background:${GC[g]||'#64748B'}"></span>${esc(GL[g]||g)}
       ${n?`<span class="gq-n">${n} pendiente${n!==1?'s':''}</span><span class="gmx-mut">${fM(monto)}</span>`:''}${ok?`<span class="gq-ok">✓ ${ok} guardada${ok!==1?'s':''}</span>`:''}<span class="gq-c">${open?'▾ Ocultar':'▸ Completar'}</span></button>
@@ -2348,7 +2355,7 @@ function renderGaMix(rows){
     const tcv=gmxTCV(o),tp=gmxTipo(o);
     return L.map((l,j)=>`<tr>${j===0?`<td rowspan="${rs}" class="gmx-tk">#${esc(o.tarea)}<div>${gmxBadge(S[0],S[1],S[2])}</div>${o.cierre?`<button class="gmx-ed${x.falta.length?' todo':''}" onclick="gmxEdit('${escA(o.tarea)}')" title="Abrir el formulario del proyecto ganado de esta tarea">✎ ${x.falta.length?'Completar':'Editar'}</button>`:'<div class="gmx-mut" title="Sin tarea de notificación de cierre">sin tarea de cierre</div>'}${x.falta.length?`<div class="gmx-falta">Falta: ${x.falta.map(esc).join(' · ')}</div>`:''}${(()=>{const op=gmxOpcional(x);return op.length?`<div class="gmx-opc" title="No la deja pendiente: mejora el detalle de las métricas">Opcional: ${op.map(esc).join(' · ')}</div>`:'';})()}</td><td rowspan="${rs}"><div class="gmx-nm">${esc(o.cliente||'—')}</div><div class="gmx-mut">${esc(o.asesor||'Sin asesor')} · ${esc(GL[o.gestor]||o.gestor||'')}${tp?' · '+esc(tp):''}</div></td>
         <td rowspan="${rs}" class="r">${fM(amtO(o))}${tcv!=null&&tcv!==amtO(o)?`<div class="gmx-mut">TCV ${fK(tcv)}</div>`:''}</td><td rowspan="${rs}">${gmxBadge(R[0],R[1])}${regTxt?`<div class="gmx-mut">${esc(regTxt)}</div>`:''}</td>`:''}
-      <td>${l.producto?esc(l.producto):`<span class="gmx-mut">${L.some(z=>z.producto)?'(propuesta)':'(sin producto)'}</span>`}</td>
+      <td>${l.producto?esc(l.producto):`<span class="gmx-mut">${L.some(z=>z.producto)?'(propuesta)':'(sin producto)'}</span>`}${l.integral?`<div class="gmx-mut">🧩 de ${esc(l.integral)}</div>`:''}</td>
       <td>${esc(l.fabricante)||'<span class="gmx-mut">—</span>'}</td>
       <td>${esc(l.distribuidor)||'<span class="gmx-mut">—</span>'}</td>
       <td>${GMX_REG[l.cambio]?gmxBadge(GMX_REG[l.cambio][0],GMX_REG[l.cambio][1],l.cambio==='SI'&&l.motivo?'Motivo: '+l.motivo:GMX_REG[l.cambio][2]+(l.src==='pg'?' (deducido del resumen de PROYECTOS GANADOS)':'')):'<span class="gmx-mut">—</span>'}</td></tr>`).join('');}).join('');
@@ -4550,13 +4557,27 @@ function rggRegFab(n){const f=rggRegs().map(r=>r.fabricante).filter(Boolean);ret
 /* 'SIN' = no hubo registro · 'NO' = mismo fabricante del registro · 'SI' = cambió (pide motivo) */
 function rggCambio(fab){const f=rggRegs().map(r=>rggNorm(r.fabricante)).filter(Boolean);if(!f.length)return 'SIN';if(!String(fab||'').trim())return 'NO';return f.includes(rggNorm(fab))?'NO':'SI';}
 /* productos de la tarea con sus datos (lo ya guardado en FABRICANTES GANADOS 2026 tiene prioridad; si no, se sugiere el fabricante del registro) */
+/* v9.32 — "Proyecto Integral Multivertical" se desagrega: se eligen los productos que lo integran y cada uno
+   lleva su fabricante / distribuidor (filas {producto, integral:'<producto integral>'} en v.productos). */
+const esIntegral=p=>rggNorm(p).includes('PROYECTO INTEGRAL MULTIVERTICAL');
+const rggIntOpts=()=>[...new Set([...((RG.cat||{}).prod||[]),...RG_DEF.prod].map(x=>String(x).trim()).filter(x=>x&&!esIntegral(x)))].sort((a,b)=>a.localeCompare(b,'es'));
+function rggIntToggle(P,comp){
+  comp=String(comp||'').trim();if(!RGG||!comp)return;const L=RGG.v.productos,i=L.findIndex(x=>x.integral===P&&rggNorm(x.producto)===rggNorm(comp));
+  if(i>=0)L.splice(i,1);
+  else{const rf=rggRegFab(0);let at=L.length;for(let k=L.length-1;k>=0;k--)if(L[k].integral===P){at=k+1;break;}
+    L.splice(at,0,{producto:comp,integral:P,fabricante:rf,distribuidor:'',marca:'',motivo:'',auto:!!rf});}
+  rgGanRender();
+}
 function rggProdsIni(info,actual){
   const ps=(info.productos&&info.productos.length?info.productos:rgProds(info.prod));const lista=ps.length?ps:[''];
-  const prev=(actual&&actual.productos)||[],regs=(info.registros||[]).map(r=>r.fabricante).filter(Boolean),uno=lista.length===1&&actual;
-  return lista.map((p,n)=>{const g=prev.find(x=>x.producto===p);if(g)return {producto:p,fabricante:g.fabricante||'',distribuidor:g.distribuidor||'',marca:g.marca||'',motivo:g.motivo||''};
+  const prev=(actual&&actual.productos)||[],regs=(info.registros||[]).map(r=>r.fabricante).filter(Boolean),uno=lista.length===1&&actual&&!esIntegral(lista[0]);
+  return lista.flatMap((p,n)=>{
+    if(esIntegral(p))return prev.filter(x=>x.integral===p).map(g=>({producto:g.producto,integral:p,fabricante:g.fabricante||'',distribuidor:g.distribuidor||'',marca:g.marca||'',motivo:g.motivo||''}));   // v9.32
+    const g=prev.find(x=>x.producto===p&&!x.integral);if(g)return {producto:p,fabricante:g.fabricante||'',distribuidor:g.distribuidor||'',marca:g.marca||'',motivo:g.motivo||''};
     const rf=regs.length?(regs[n]||regs[0]):'';
     return {producto:p,fabricante:rf||(uno&&actual.fabricante)||'',distribuidor:(uno||rgEsCab(p))&&actual?actual.distribuidor||'':'',marca:(uno||rgEsCab(p))&&actual?actual.marcaCableado||'':'',motivo:'',auto:!!rf};});
 }
+const rggIntegrales=()=>{if(!RGG)return [];const i=RGG.info,ps=(i.productos&&i.productos.length?i.productos:rgProds(i.prod));return ps.filter(esIntegral);};
 function rgGanFab(i,k,v){const p=RGG.v.productos[i];p[k]=v;
   if(k==='fabricante'){p.auto=false;const at=document.getElementById('rgg-auto-'+i);if(at)at.remove();const c=rggCambio(v),m=document.getElementById('rgg-mot-'+i),t=document.getElementById('rgg-tag-'+i);
     if(m)m.style.display=c==='SI'?'':'none';if(t)t.innerHTML=rggTag(i);}
@@ -4586,6 +4607,7 @@ function rgGanErr(){const i=RGG.info,v=RGG.v,E=[];
   if(i.pideContrato&&!(+v.tiempoContrato>0))E.push('Indica el tiempo de contrato (meses)');
   if(rggSinReg()){const n=v.reg||{};if(!n.op)E.push('Indica si quieres registrar un registro de oportunidad');
     else if(n.op==='si'){if(!String(n.fabricante||'').trim())E.push('Registro de oportunidad: fabricante');if(!String(n.deal||'').trim())E.push('Registro de oportunidad: #Reg OPE / Deal');}}
+  rggIntegrales().forEach(P=>{if(!v.productos.some(x=>x.integral===P))E.push(P+': elige los productos que lo integran');});   // v9.32
   v.productos.forEach(p=>{const nom=p.producto||'la tarea',f=['fabricante','distribuidor'].filter(k=>!String(p[k]||'').trim());
     if(f.length)E.push(nom+': '+f.join(', '));
     if(rggCambio(p.fabricante)==='SI'&&!String(p.motivo||'').trim())E.push(nom+': motivo del cambio de fabricante');});
@@ -4621,13 +4643,19 @@ function rgGanRender(){
             <div class="rg-help">Se guarda en la tarea cotizada (FABRICANTE 1 y REG OPE / DEAL) y su fabricante se sugiere en los productos.</div>`
            :v.reg.op==='no'?`<div class="rg-help">Se registra como <b>NO REQUERIDO</b>. Indica abajo el fabricante con el que se cerró.</div>`:''}</div>`}
       <div class="rg-f"><label>Datos por producto <i>*</i> <span class="rgg-why">${v.productos.length} producto${v.productos.length!==1?'s':''}</span></label>
-        <div class="rgg-fab">${v.productos.map((p,n)=>`<div class="rgg-fab-c">
+        <div class="rgg-fab">${(()=>{const card=(p,n)=>`<div class="rgg-fab-c">
           <div class="rgg-fab-p">${p.producto?esc(p.producto):'<i>Tarea sin producto registrado</i>'} <span id="rgg-tag-${n}">${rggTag(n)}</span></div>
           <div class="rgg-g3"><div class="rg-f"><label>Fabricante / vendor <i>*</i>${p.auto?` <span class="rg-auto-tag" id="rgg-auto-${n}">del registro</span>`:''}</label><input class="rg-in" list="rgg-dl-fab" value="${escA(p.fabricante||'')}" placeholder="Ej. CISCO / PANDUIT" title="Fabricante / vendor = marca" oninput="rgGanFab(${n},'fabricante',this.value)"></div>
             <div class="rg-f"><label>Distribuidor <i>*</i></label><input class="rg-in" list="rgg-dl-dis" value="${escA(p.distribuidor||'')}" placeholder="Ej. STOCK TN" oninput="rgGanFab(${n},'distribuidor',this.value)"></div></div>
           <div class="rg-f" id="rgg-mot-${n}" ${rggCambio(p.fabricante)==='SI'?'':'style="display:none"'}><label>Motivo del cambio de fabricante <i>*</i> <span class="rgg-why" style="color:#F59E0B">registro: ${esc(rggRegTxt())}</span></label>
             <textarea class="rg-in" rows="2" placeholder="Ej. El cliente pidió cambiar a otra marca por precio / disponibilidad…" oninput="rgGanFab(${n},'motivo',this.value)">${esc(p.motivo||'')}</textarea></div>
-        </div>`).join('')}</div>
+        </div>`;
+          const idx=v.productos.map((p,n)=>[p,n]);
+          return idx.filter(([p])=>!p.integral).map(([p,n])=>card(p,n)).join('')+rggIntegrales().map(P=>{const sel=idx.filter(([p])=>p.integral===P),ops=rggIntOpts(),extra=sel.map(([p])=>p.producto).filter(x=>!ops.some(o=>rggNorm(o)===rggNorm(x)));
+            return `<div class="rgg-int"><div class="rgg-fab-p">🧩 ${esc(P)} <span class="rgg-why">desagrégalo: elige los productos que lo integran${sel.length?` · ${sel.length} elegido${sel.length!==1?'s':''}`:''}</span></div>
+              <div class="rgg-chips rgg-chips-s">${[...ops,...extra].map(o=>`<button class="${sel.some(([p])=>rggNorm(p.producto)===rggNorm(o))?'on':''}" onclick="rggIntToggle('${escA(P)}','${escA(o)}')">${esc(o)}</button>`).join('')}
+                <input class="rg-in rgg-int-otro" placeholder="Otro producto + Enter" onkeydown="if(event.key==='Enter'){event.preventDefault();event.stopPropagation();rggIntToggle('${escA(P)}',this.value)}"></div>
+              ${sel.length?sel.map(([p,n])=>card(p,n)).join(''):'<div class="rg-help" style="color:#F59E0B">Elige al menos un producto: cada uno pide su fabricante / vendor y distribuidor.</div>'}</div>`;}).join('');})()}</div>
         <datalist id="rgg-dl-fab">${rggOpts('marca').map(x=>`<option value="${escA(x)}">`).join('')}</datalist>
         <datalist id="rgg-dl-dis">${rggOpts('distribuidor').map(x=>`<option value="${escA(x)}">`).join('')}</datalist>
         <div class="rg-help">Se guarda una fila por producto en <b>FABRICANTES GANADOS</b> (histórico de todos los años), con el registro de oportunidad y el motivo si hubo cambio.</div></div>
@@ -4646,7 +4674,7 @@ async function rgGanSubmit(){
   if(!RG.key){RGG.msg={ok:false,html:'Ingresa la clave de escritura.'};rgGanRender();return;}
   const i=RGG.info,v=RGG.v,data={tarea:i.tarea,cierre:i.cierre,tipoProyecto:String(v.tipoProyecto).trim()};
   if(i.pideContrato)data.tiempoContrato=+v.tiempoContrato;
-  data.productos=v.productos.map(p=>({producto:p.producto,fabricante:String(p.fabricante||'').trim(),distribuidor:String(p.distribuidor||'').trim(),marca:String(p.fabricante||'').trim(),   // v9.22 — marca = fabricante / vendor
+  data.productos=v.productos.map(p=>({producto:p.producto,integral:p.integral||'',fabricante:String(p.fabricante||'').trim(),distribuidor:String(p.distribuidor||'').trim(),marca:String(p.fabricante||'').trim(),   // v9.22 — marca = fabricante / vendor
 
     motivo:rggCambio(p.fabricante)==='SI'?String(p.motivo||'').trim():''}));   // v9.15
   if(rggSinReg()){const n=v.reg||{};data.registro=n.op==='si'?{opcion:'si',fabricante:String(n.fabricante||'').trim(),deal:String(n.deal||'').trim()}:{opcion:'no'};}   // v9.22
