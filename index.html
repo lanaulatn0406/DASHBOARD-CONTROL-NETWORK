@@ -4302,7 +4302,7 @@ function rgProdAddIn(ev,el){const v=String(el.value||'').trim();if(!v)return;if(
 /* v9.37 — productos agrupados por naturaleza de cobro (solo presentación). MRC = recurrente (alquiler, renta,
    servicios mensuales); el resto NRC = pago único. Clasificación según cómo se cotizan en el Sheet; para mover un
    producto de grupo, agregarlo / quitarlo de PROD_MRC. */
-const PROD_MRC=['WIFI Alquiler Equipos','Renta Equipo','WIFI Portal Cautivo','WIFI SSID','NETWORK (Producto Financiero)','Monitoreo de Red LAN'];
+const PROD_MRC=['WIFI Alquiler Equipos','Renta Equipo','WIFI Portal Cautivo','WIFI SSID','NETWORK (Producto Financiero)','Monitoreo de Red LAN','Networking LAN','Soporte NETWORK'];   // Networking LAN y Soporte NETWORK = MRC (confirmado por Network, 2026-11-08)
 const esProdMRC=p=>PROD_MRC.some(x=>catKey(x)===catKey(p));
 function prodGrupos(lista,fn,cls){
   const g=[['🔁 MRC · recurrente (mensual)','#5B9FE8',lista.filter(esProdMRC)],['💵 NRC · pago único','#F59E0B',lista.filter(p=>!esProdMRC(p))]];
