@@ -739,6 +739,9 @@ textarea.rg-in{resize:vertical;min-height:64px}
 .rg-pre .rg-in{border:none;background:none}
 .rg-f.err .rg-pre{border-color:#E55C6C}
 .rg-chips{display:flex;gap:6px;flex-wrap:wrap}
+.rg-chk{display:flex;align-items:center;gap:8px;flex-wrap:wrap;background:#1F2229;border:1px solid #3A4055;border-radius:8px;padding:8px 12px;font-size:14px;color:#CBD5E1;cursor:pointer}
+.rg-chk.on{border-color:#A78BFA;background:#A78BFA1A;color:#E2E8F0}
+.rg-chk input{width:16px;height:16px;accent-color:#A78BFA}
 .rg-chips button{background:#1F2229;border:1px solid #3A4055;color:#CBD5E1;border-radius:999px;padding:5px 12px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit}
 .rg-chips button.on{background:#5B9FE8;border-color:#5B9FE8;color:#fff}
 .rg-auto{background:#1F222988;border:1px dashed #3A4055;border-radius:8px;padding:8px 10px;font-size:13px;color:#94A3B8;min-height:36px}
@@ -2012,7 +2015,7 @@ async function gmxEdit(tarea){
    distribuidor, registro de oportunidad y fabricante por producto (propuestas con varios productos). */
 function gmxFalta(x){
   const o=x.o,pg=o.pg||{},F=[];
-  gmxProds(o).filter(P=>esIntegral(P)&&intObligatorio(P,o)).forEach(P=>{if(!x.L.some(l=>l.integral===P))F.push('desagregar '+P);});   // v9.32
+  prodsGanado(gmxProds(o),o.multiv).filter(esIntegral).forEach(P=>{if(!x.L.some(l=>l.integral===P))F.push('desagregar '+P);});   // v9.32
   if(!x.L.some(l=>l.fabricante))F.push('fabricante');
   if(!String(pg.tipoProyecto||'').trim()&&x.src!=='det')F.push('tipo de proyecto');
   if((+o.mrc||0)>0&&!(parseFloat(String(pg.tiempoContrato||'').replace(',','.'))>0)&&x.src!=='det')F.push('meses de contrato');
@@ -2170,7 +2173,7 @@ function gmxQState(x){
   const pg=o.pg||{},needFab=x.falta.includes('fabricante');
   const dist=gmxLista(pg.distribuidor,GMX_ALIAS.DIST)[0]||'',reg=gmxQRegs(o)[0]||'';
   return GMX_Q[t]={tipo:gmxQTipo(pg.tipoProyecto),meses:parseFloat(String(pg.tiempoContrato||'').replace(',','.'))>0?String(pg.tiempoContrato):'',
-    prods:needFab?(gmxProds(o).length?gmxProds(o):['']).map(p=>({producto:p,fabricante:reg,distribuidor:dist,motivo:'',sug:!!reg})):null};
+    prods:needFab?prodsGanado(gmxProds(o),o.multiv).map(p=>({producto:p,fabricante:reg,distribuidor:dist,motivo:'',sug:!!reg})):null};
 }
 function gmxQErr(o,s){
   const E=[];if(!s.tipo)E.push('tipo de proyecto');
@@ -2203,7 +2206,7 @@ function gmxQRow(x){
   const ch=(k,opts,suf)=>`<div class="gq-ch">${chb(k,opts,suf)}</div>`;
   const regs=gmxQRegs(o);
   if(x.falta.some(f=>f.startsWith('desagregar ')))return `<div class="gq-r"><div><div class="gmx-nm">#${esc(t)} · ${esc(o.cliente||'—')}</div><div class="gmx-mut">${esc(o.asesor||'Sin asesor')} · ${fM(amtO(o))}${mrc>0?` · MRC ${fM(mrc)}`:''}</div></div>
-    <div style="grid-column:2/5;color:#C4B5FD;font-size:13px">🧩 <b>${esc(gmxProds(o).filter(P=>esIntegral(P)&&intObligatorio(P,o)).join(' y '))}</b>: hay que desagregarlo en los productos que lo integran (cada uno con su fabricante y distribuidor). Se hace en el formulario completo.<div class="gmx-falta" style="max-width:none">Falta: ${x.falta.map(esc).join(' · ')}</div></div>
+    <div style="grid-column:2/5;color:#C4B5FD;font-size:13px">🧩 <b>${esc(prodsGanado(gmxProds(o),o.multiv).filter(esIntegral).join(' y '))}</b>: hay que desagregarlo en los productos que lo integran (cada uno con su fabricante y distribuidor). Se hace en el formulario completo.<div class="gmx-falta" style="max-width:none">Falta: ${x.falta.map(esc).join(' · ')}</div></div>
     <div class="gq-act"><button class="gq-save" onclick="gmxEdit('${id}')">🧩 Desagregar</button></div></div>`;   // v9.32
   const fab=s.prods?s.prods.map((p,i)=>`<div class="gq-p"><span class="gq-pn" title="${escA(p.producto||'Tarea sin producto')}">${esc(p.producto||'(sin producto)')}</span>
       <input class="gq-in" list="gq-dl-fab" value="${escA(p.fabricante)}" placeholder="Fabricante" title="${p.sug?'Sugerido del registro de oportunidad':'Fabricante / vendor'}" oninput="gmxQProd('${id}',${i},'fabricante',this.value)">
@@ -2231,7 +2234,7 @@ function gmxQuickHtml(visX,vt){
   const nTot=grupos.reduce((s,g)=>s+g.n,0);
   const top=`<div class="gq-top">${!RG.key?`<span>🔑 Clave de escritura:</span><input type="password" autocomplete="off" placeholder="Clave del Apps Script" oninput="RG.key=this.value;lsSet('nw_rg_key_v9',this.value)">`:''}
     ${!rgUser()?`<span>Registrado por:</span><input placeholder="Tu nombre" oninput="RG.user=this.value;lsSet('nw_rg_user_v9',this.value)">`:''}
-    <span>Solo las ganadas por completar (sin fabricante, sin tipo de proyecto, con MRC sin meses o con un Proyecto Integral sin desagregar: Multivertical siempre, Network solo los ganados desde el 08/11/2026). Elige, escribe y <b>💾 Guardar</b>; si no se conoce el distribuidor de una ganada vieja, escribe <b>NO DISPONIBLE</b>. Para registrar un registro de oportunidad nuevo o casos especiales usa <b>✎ Formulario</b>.${sinCierre?` <span style="color:#F59E0B">${sinCierre} sin tarea de cierre: regístrala primero en Registro.</span>`:''}</span></div>`;
+    <span>Solo las ganadas por completar (sin fabricante, sin tipo de proyecto, con MRC sin meses o con un Proyecto Integral Network / Multivertical sin desagregar en sus productos). Elige, escribe y <b>💾 Guardar</b>; si no se conoce el distribuidor de una ganada vieja, escribe <b>NO DISPONIBLE</b>. Para registrar un registro de oportunidad nuevo o casos especiales usa <b>✎ Formulario</b>.${sinCierre?` <span style="color:#F59E0B">${sinCierre} sin tarea de cierre: regístrala primero en Registro.</span>`:''}</span></div>`;
   const body=grupos.map(({g,a,n})=>{const open=GMX_QOPEN.has(g),monto=a.filter(x=>!GMX_QOK.has(String(x.o.tarea))).reduce((s,x)=>s+amtO(x.o),0),ok=a.length-n;
     return `<div class="gq-g"><button class="gq-gh" onclick="gmxQGrp('${escA(g)}')"><span class="gdot" style="background:${GC[g]||'#64748B'}"></span>${esc(GL[g]||g)}
       ${n?`<span class="gq-n">${n} pendiente${n!==1?'s':''}</span><span class="gmx-mut">${fM(monto)}</span>`:''}${ok?`<span class="gq-ok">✓ ${ok} guardada${ok!==1?'s':''}</span>`:''}<span class="gq-c">${open?'▾ Ocultar':'▸ Completar'}</span></button>
@@ -2318,6 +2321,12 @@ function renderGaMix(rows){
     <div class="kc" style="border-top:2px solid #2DC48D">${lider(distV,'Distribuidor',montoDist,opsConDist.length)}</div>
     <div class="kc" style="border-top:2px solid #F472B6"><div class="kv" style="font-size:22px">${fK(tcvTot)}</div><div class="kl">Valor total de contratos (TCV)</div>
       <div class="ks">NRC + MRC × meses · ${tcvOk.length} de ${nTot} ganadas${tcvOk.length<nTot?` <span class="gmx-mut">(${nTot-tcvOk.length} con MRC sin tiempo de contrato)</span>`:''}</div></div>
+    ${(()=>{/* v9.33 — Proyecto Integral Network implícito: 2 o más productos de Network (o el producto heredado); Multivertical = check */
+      const nNet=x=>new Set([...x.L.map(l=>l.producto),...gmxProds(x.o)].filter(p=>p&&!esIntegral(p)).map(gmxNorm)).size;
+      const iN=visX.filter(x=>nNet(x)>=2||gmxProds(x.o).some(p=>rggNorm(p).includes('PROYECTO INTEGRAL NETWORK'))),mV=visX.filter(x=>x.o.multiv==='SI');
+      const m=a=>a.reduce((s,x)=>s+amtO(x.o),0);
+      return `<div class="kc" style="border-top:2px solid #A78BFA"><div class="kv">${iN.length}<span style="font-size:16px;color:#64748B"> / ${nTot}</span></div><div class="kl">Proyectos integrales Network</div>
+        <div class="ks" title="Ganadas con 2 o más productos de Network (incluye las que se registraron con el producto Proyecto Integral Network)">${fK(m(iN))} · ${pct(m(iN),montoVis).toFixed(0)}% del monto · 2 o más productos<br>🧩 Multivertical: <b>${mV.length}</b> · ${fK(m(mV))}</div></div>`;})()}
   </div>`;
   /* Matriz producto × fabricante / distribuidor (todas las líneas de las propuestas con ese producto) */
   GAMX.keys.prod=prods.map(g=>g.k);
@@ -3311,6 +3320,7 @@ async function initDashboard(){
     OPS.per = (data.perdidas   || []);  // Perdidas desde Sheet (estado='PERDIDA')
     TOTAL_REGISTROS_NETWORK = data.totalRegistrosNetwork || 0;
     [...OPS.ab,...OPS.ga,...OPS.pd,...OPS.per].forEach(o=>{const a=ASESOR_ALIAS[asesorKey(o.asesor)];if(a)o.asesor=a;});   // v9.29
+    [...OPS.ab,...OPS.ga,...OPS.pd,...OPS.per].forEach(o=>{if(!o.multiv&&/PROYECTO INTEGRAL MULTIVERTICAL/i.test(String(o.prod||'').normalize('NFD').replace(/[\u0300-\u036f]/g,'')))o.multiv='SI';});   // v9.33
     aplicarIngenieros(data.ingenieros, [...OPS.ab,...OPS.ga,...OPS.pd,...OPS.per]);   // v9.18 — lista de ingenieros (hoja INGENIEROS)
     // Diagnóstico — eliminar cuando todo funcione
     console.log('[NW] Backend response keys:', Object.keys(data));
@@ -4173,7 +4183,8 @@ const RG_F=[
   {k:'cliente',l:'Cliente / Nombre de la propuesta CRM',t:'text',req:1,s:1,w:2,ph:'Ej. PROVEFRUT – Renovación de switches'},
   {k:'tipo',l:'CON / SIN inspección',t:'seg',opts:['SIN INSPECCION','CON INSPECCION'],lbl:['SIN inspección','CON inspección'],req:1,s:1},
   {k:'asesor',l:'Asesor comercial',t:'list',s:1},
-  {k:'prod',l:'Producto(s)',t:'multi',s:1,w:2,help:'Puedes elegir uno o varios. Al ganar el proyecto se pedirá el fabricante / vendor de cada uno.'},
+  {k:'prod',l:'Producto(s) de Network',t:'multi',s:1,w:2,help:'Puedes elegir uno o varios. Con 2 o más se considera Proyecto Integral Network automáticamente. Al ganar el proyecto se pedirá el fabricante / vendor de cada uno.'},
+  {k:'multiv',l:'Proyecto Integral Multivertical',t:'check',s:1,w:2},   // v9.33 — columna PROYECTO MULTIVERTICAL (SI / NO)
   {k:'fechaA',l:'Día asignado a la vertical',t:'date',req:1,s:2},
   {k:'fechaE',l:'Día entregado',t:'date',s:2,help:'Al llenarlo, el Estado pasa a "OFERTA ENTREGADA A COMERCIAL" (igual que en el Sheet).'},
   {k:'mes',l:'Mes (automático)',t:'auto',s:2},
@@ -4214,12 +4225,12 @@ const RG_PROD_EXCL=['PRODUCTOS','PRODUCTO'];   // encabezado colado en el desple
 const rgProds=s=>[...new Set(String(s||'').split(/\s*[,;]\s*/).map(x=>x.trim()).filter(Boolean))];
 const rgEsCab=p=>/CABLEADO\s*ESTRUCTURADO/i.test(String(p||'').normalize('NFD').replace(/[\u0300-\u036f]/g,''));
 function rgProdAddIn(ev,el){const v=String(el.value||'').trim();if(!v)return;if((!ev||!ev.inputType||ev.inputType==='insertReplacementText')&&rgOpts('prod').includes(v))rgProdToggle(v);}
-function rgProdToggle(p){p=String(p||'').trim();if(!p)return;const a=rgProds(RG.v.prod),i=a.indexOf(p);if(i>=0)a.splice(i,1);else a.push(p);rgSet('prod',a.join(', '));}
+function rgProdToggle(p){p=String(p||'').trim();if(!p)return;RG.prodTouched=true;if(rggNorm(p).includes('PROYECTO INTEGRAL MULTIVERTICAL')){rgSet('multiv','SI');return;}/* v9.33 */const a=rgProds(RG.v.prod),i=a.indexOf(p);if(i>=0)a.splice(i,1);else a.push(p);rgSet('prod',a.join(', '));}
 function rgOpts(k){
   const key=k==='fab2'?'fab1':k;const c=(RG.cat&&(RG.cat[k]||RG.cat[key]))||[];
   const data=[...OPS.ab,...OPS.ga,...OPS.per,...OPS.pd];
   const fromData=k==='asesor'?data.map(o=>(o.asesor||'').trim()):k==='prod'?data.flatMap(o=>rgProds(o.prod)):k==='estado'?data.map(o=>(o.estado||'').trim()):[];
-  const excl=k==='prod'?x=>!RG_PROD_EXCL.includes(String(x).trim().toUpperCase()):()=>true;   // v9.17 — no ofrecer "Productos" (encabezado)
+  const excl=k==='prod'?x=>!RG_PROD_EXCL.includes(String(x).trim().toUpperCase())&&!esIntegral(x):()=>true;   // v9.33 — los integrales ya no son productos   // v9.17 — no ofrecer "Productos" (encabezado)
   return [...new Set([...c,...(RG_DEF[key]||[]),...fromData].filter(Boolean).filter(excl))].sort((a,b)=>String(a).localeCompare(String(b),'es'));
 }
 function rgExisting(t){t=String(t||'').trim();if(!t)return null;for(const s of ['ab','ga','per','pd']){const o=OPS[s].find(x=>String(x.tarea)===t);if(o)return Object.assign({},o,{_s:s});}return null;}
@@ -4241,7 +4252,7 @@ function rgSet(k,val,noRender){
   if(k==='estado'&&/PERDIDA/i.test(val)&&(!RG.v.fechaPerd||!(RG.orig&&/PERDIDA/i.test(RG.orig.estado||''))))RG.v.fechaPerd=todayYmd();   // al pasar a PERDIDA: fecha de hoy (editable)
   if(k==='gestor'&&RG.mode==='create'&&GL[val]){RG.user=GL[val];const u=document.getElementById('rg-user');if(u)u.value=RG.user;}
   rgSave();
-  const RER=['estado','fechaE','fechaA','cierre','gestor','tipo','prob','fechaPerd','prod'];   // (en actualización rápida se re-renderiza siempre)   // campos que cambian otros campos o botones
+  const RER=['estado','fechaE','fechaA','cierre','gestor','tipo','prob','fechaPerd','prod','multiv'];   // (en actualización rápida se re-renderiza siempre)   // campos que cambian otros campos o botones
   if(noRender||!RER.includes(k)){rgRefreshSide();return;}
   rgRender();
 }
@@ -4272,6 +4283,9 @@ function rgCheck(){
   if(v.cierre&&/PERDIDA/i.test(v.estado||''))E.push(['cierre','No puede tener tarea de cierre (venta) y estado PERDIDA a la vez']);
   if(v.margen!==undefined&&v.margen!==''&&(+v.margen<0||+v.margen>100))E.push(['margen','Margen entre 0 y 100 %']);
   ['asesor','estado'].forEach(k=>{if(v[k]&&RG.cat&&RG.cat[k]&&!RG.cat[k].includes(v[k]))W.push([k,`"${v[k]}" no está en la lista del Sheet`]);});
+  {const ps=rgProds(v.prod),dura=!up||RG.prodTouched,net=ps.filter(x=>!esIntegral(x));   // v9.33
+   if(ps.some(x=>rggNorm(x).includes('PROYECTO INTEGRAL NETWORK')))(dura?E:W).push(['prod','"Proyecto Integral Network" ya no es un producto: quítalo y elige los productos de Network que integran la tarea (con 2 o más se considera integral automáticamente)']);
+   if(v.multiv==='SI'&&!net.length)(dura?E:W).push(['prod','Proyecto multivertical: elige los productos de Network que considera']);}
   if(v.prod&&RG.cat&&RG.cat.prod){const fu=rgProds(v.prod).filter(x=>!RG.cat.prod.includes(x));if(fu.length)W.push(['prod',`${fu.map(x=>'"'+x+'"').join(', ')} no está en la lista del Sheet`]);}
   return {E,W};
 }
@@ -4311,6 +4325,7 @@ function rgField(f){
       ${sel.length?`<div class="rg-help">Seleccionados (${sel.length}): <b style="color:#E2E8F0">${esc(sel.join(', '))}</b></div>`:''}${RG.quick?`<button type="button" class="rg-mini" style="margin-top:6px" onclick="RG.prodAll=0;rgRender()">Vista compacta</button>`:''}`;}
   else if(f.t==='list'){const o=rgOpts(f.k);inp=`<input id="${id}" data-k="${f.k}" class="rg-in" list="dl-${f.k}" value="${escA(val)}" placeholder="Escribe o elige…" oninput="rgInput(this)" onchange="rgSet('${f.k}',this.value)"><datalist id="dl-${f.k}">${o.map(x=>`<option value="${escA(x)}">`).join('')}</datalist>`;}
   else if(f.t==='seg')inp=`<div class="rg-seg">${f.opts.map((o,i)=>`<button class="${val===o?'on':''}" onclick="rgSet('${f.k}','${o}')">${f.lbl?f.lbl[i]:o}</button>`).join('')}</div>`;
+  else if(f.t==='check')inp=`<label class="rg-chk${val==='SI'?' on':''}"><input type="checkbox" ${val==='SI'?'checked':''} onchange="rgSet('${f.k}',this.checked?'SI':'NO')"> 🧩 Es un <b>Proyecto Integral Multivertical</b> <span class="rg-help">— igual elige arriba los productos de Network que considera</span></label>`;   // v9.33
   else if(f.t==='chips'){const o=(RG.cat&&RG.cat.prob)||RG_DEF.prob;inp=`<div class="rg-chips">${o.map(x=>`<button class="${String(val)===String(x)?'on':''}" onclick="rgSet('prob',${String(val)===String(x)?"''":`'${escA(x)}'`})">${esc(x)}</button>`).join('')}</div>`;}
   else if(f.t==='gestor')inp=`<div class="rg-seg rg-g">${GKEYS.filter(g=>ING_ACTIVO[g]!==false||val===g).map(g=>`<button class="${val===g?'on':''}" ${ro?'disabled':''} onclick="rgSet('gestor','${g}')"><span class="gdot" style="background:${GC[g]}"></span>${GL[g]}</button>`).join('')}</div>`;
   else if(f.t==='auto'){
@@ -4394,7 +4409,10 @@ async function rgLoad(t){
     if(k==='prob'&&x!==''&&typeof x==='number')x=Math.round(x*100)+'%';
     if(k==='gestor'&&x&&x.length>2)x=abrevG(x);
     n[k]=typeof x==='number'?x:String(x);});
-  RG.user=GL[n.gestor]||n.gestor||null;RG.v=Object.assign({},n);RG.orig=Object.assign({},n);RG.found={tarea:t,hoja,fila,gestor:n.gestor};rgSave();rgRender();
+  if(!n.multiv&&ex&&ex.multiv)n.multiv=ex.multiv;
+  RG.prodTouched=false;RG.user=GL[n.gestor]||n.gestor||null;RG.v=Object.assign({},n);RG.orig=Object.assign({},n);
+  {const ps=rgProds(n.prod);if(ps.some(x=>rggNorm(x).includes('PROYECTO INTEGRAL MULTIVERTICAL'))){RG.v.multiv='SI';RG.v.prod=ps.filter(x=>!rggNorm(x).includes('PROYECTO INTEGRAL MULTIVERTICAL')).join(', ');}}   // v9.33 — el producto pasa al check al guardar
+  RG.found={tarea:t,hoja,fila,gestor:n.gestor};rgSave();rgRender();
 }
 const abrevG=s=>{const nn=x=>String(x).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').trim(),k=nn(s);if(GKEYS.includes(String(s).toUpperCase()))return String(s).toUpperCase();
   return GKEYS.find(g=>nn(GL[g])===k||nn(RG_GFULL[g]||'')===k)||String(s).slice(0,2).toUpperCase();};   // v9.18 — según la lista de ingenieros
@@ -4480,7 +4498,7 @@ async function rgIngAlta(){const n=RG.ingNew||{};const cod=String(n.codigo||'').
   try{await initDashboard();}catch(err){}if(RG.msg&&RG.msg.ok)RG.msg.html=RG.msg.html.replace(/<br><span[^>]*>Actualizando el dashboard…<\/span>/,'');if(RG.mode==='ing')rgRender();}
 
 /* ══════════ v9.9 — ACTUALIZACIÓN RÁPIDA (5 campos) ══════════ */
-const RG_QK=['estado','fechaA','fechaE','nrc','mrc','prob','cierre','prod'];   // v9.31 — prob: % de probabilidad de cierre con un click   // v9.17 — prod: cambiar / agregar / quitar productos
+const RG_QK=['estado','fechaA','fechaE','nrc','mrc','prob','cierre','prod','multiv'];   // v9.31 — prob: % de probabilidad de cierre con un click   // v9.17 — prod: cambiar / agregar / quitar productos
 const rgQKeys=()=>/PERDIDA/i.test(RG.v.estado||'')?[...RG_QK,'fechaPerd']:RG_QK;
 const RG_QREG=['fab1','deal1','fab2','deal2'];   // v9.23 — registro(s) de oportunidad en la actualización rápida
 function rgFmtV(k,x){if(x===undefined||x===null||x==='')return 'vacío';if(k==='nrc'||k==='mrc')return fM(+x);if(/^fecha/.test(k)&&String(x).includes('-'))return String(x).split('-').reverse().join('/');if(k==='margen')return x+'%';return String(x);}
@@ -4520,8 +4538,8 @@ function rgQuickHtml(){
       <div class="rq-sub"><span class="tarea-tag" style="font-size:12px">#${esc(RG.found.tarea)}</span> <span class="gdot" style="background:${GC[g]||'#64748B'}"></span>${esc(GL[g]||g||'')} · ${esc(RG.found.hoja||'')}${RG.found.fila?' fila '+RG.found.fila:''} · ${esc((v.tipo||'').replace(' INSPECCION',''))} · ${esc(v.asesor||'')}</div>
       <div class="rq-sub">Estado: <b>${esc(v.estado||'—')}</b>${RG.auto==='estado'&&v.estado!==o.estado?' <span class="rg-chg">auto</span>':''}</div></div>
       <div class="rq-cls" id="rq-cls"><span class="sg sg-${a[1]}">${a[0]}</span>${a[0]!==b[0]?` <span class="rq-arr">→</span> <span class="sg sg-${b[1]}">${b[0]}</span>`:''}</div></div>
-    <div class="rq-grid">${rgQKeys().filter(k=>k!=='prod').map(k=>rgField(F(k))).join('')}</div>
-    <div class="rq-prod">${rgField(F('prod'))}</div>
+    <div class="rq-grid">${rgQKeys().filter(k=>k!=='prod'&&k!=='multiv').map(k=>rgField(F(k))).join('')}</div>
+    <div class="rq-prod">${rgField(F('prod'))}${rgField(F('multiv'))}</div>
     <div class="rq-reg"><div class="rq-reg-h">📋 Registro(s) de oportunidad ${(()=>{const n=[1,2].filter(i=>String(v['fab'+i]||'').trim()||String(v['deal'+i]||'').trim()).length;return n?`<span class="rg-help">· ${n} registrado${n>1?'s':''}</span>`:'<span class="rg-help">· sin registro</span>';})()}</div>
       <div class="rq-grid">${RG_QREG.map(k=>rgField(F(k))).join('')}</div></div>
     ${o.cierre?`<button class="rgg-open" onclick="rgGanFetch('${escA(RG.found.tarea)}')">🏆 Datos del proyecto ganado (PROYECTOS GANADOS)</button>`:''}
@@ -4560,12 +4578,15 @@ function rggCambio(fab){const f=rggRegs().map(r=>rggNorm(r.fabricante)).filter(B
 /* v9.32 — "Proyecto Integral Multivertical" y "Proyecto Integral Network" se desagregan: se eligen los productos que lo integran y cada uno
    lleva su fabricante / distribuidor (filas {producto, integral:'<producto integral>'} en v.productos). */
 const esIntegral=p=>{const n=rggNorm(p);return n.includes('PROYECTO INTEGRAL MULTIVERTICAL')||n.includes('PROYECTO INTEGRAL NETWORK');};
-/* Proyecto Integral Network: solo los cierres nuevos (ganados desde INT_NET_DESDE) se desagregan; los ganados
-   antes siguen con el producto tal cual y no quedan pendientes. Multivertical: siempre (también los antiguos). */
-const INT_NET_DESDE=new Date(2026,10,8);
-function intObligatorio(P,o){
-  if(!rggNorm(P).includes('PROYECTO INTEGRAL NETWORK'))return true;
-  const f=o&&o.fechaGan?parseFechaA(o.fechaGan):null;return !(f&&f<INT_NET_DESDE);
+/* v9.33 — productos que se piden al ganar (mismo criterio que productosGanado() del backend): el check
+   multivertical no es un producto salvo que la tarea no tenga productos de Network (entonces se desagrega como
+   "Proyecto Integral Multivertical"); un "Proyecto Integral Network" heredado siempre se desagrega. */
+const PROD_MULTIV='Proyecto Integral Multivertical';
+const esMultivP=p=>rggNorm(p).includes('PROYECTO INTEGRAL MULTIVERTICAL');
+function prodsGanado(prods,multiv){
+  const norm=prods.filter(p=>!esIntegral(p));let out=prods.filter(p=>!(esMultivP(p)&&norm.length));
+  if((multiv===true||multiv==='SI'||prods.some(esMultivP))&&!norm.length&&!out.some(esMultivP))out.push(PROD_MULTIV);
+  return out.length?out:[''];
 }
 const rggIntOpts=()=>[...new Set([...((RG.cat||{}).prod||[]),...RG_DEF.prod].map(x=>String(x).trim()).filter(x=>x&&!esIntegral(x)))].sort((a,b)=>a.localeCompare(b,'es'));
 function rggIntToggle(P,comp){
@@ -4576,7 +4597,7 @@ function rggIntToggle(P,comp){
   rgGanRender();
 }
 function rggProdsIni(info,actual){
-  const ps=(info.productos&&info.productos.length?info.productos:rgProds(info.prod));const lista=ps.length?ps:[''];
+  const lista=RGG&&RGG.prods||[''];   // v9.33
   const prev=(actual&&actual.productos)||[],regs=(info.registros||[]).map(r=>r.fabricante).filter(Boolean),uno=lista.length===1&&actual&&!rggIntegrales().includes(lista[0]);
   return lista.flatMap((p,n)=>{
     if(rggIntegrales().includes(p))return prev.filter(x=>x.integral===p).map(g=>({producto:g.producto,integral:p,fabricante:g.fabricante||'',distribuidor:g.distribuidor||'',marca:g.marca||'',motivo:g.motivo||''}));   // v9.32
@@ -4600,8 +4621,9 @@ async function rgGanFetch(tarea){
 }
 function rgGanOpen(info,actual){
   RGG={info,v:Object.assign({tipoProyecto:'',tiempoContrato:'',fabricante:'',distribuidor:'',marcaCableado:''},actual||{},{reg:{op:'',fabricante:'',deal:''}}),msg:null,busy:false};
-  {const ps=(info.productos&&info.productos.length?info.productos:rgProds(info.prod)),op=(OPS.ga||[]).find(o=>String(o.tarea)===String(info.tarea)),prev=(actual&&actual.productos)||[];
-   RGG.intReq=ps.filter(p=>esIntegral(p)&&(intObligatorio(p,op)||prev.some(x=>x.integral===p)));}   // v9.32 — integrales a desagregar en esta ganada
+  {const op=(OPS.ga||[]).find(o=>String(o.tarea)===String(info.tarea));
+   RGG.prods=prodsGanado(info.productos&&info.productos.length?info.productos:rgProds(info.prod),info.multiv||(op&&op.multiv));
+   RGG.intReq=RGG.prods.filter(esIntegral);}   // v9.33 — integrales a desagregar en esta ganada
   RGG.v.productos=rggProdsIni(info,actual);
   let ov=document.getElementById('rgg-ov');
   if(!ov){ov=document.createElement('div');ov.id='rgg-ov';ov.className='rgg-ov';document.body.appendChild(ov);}
