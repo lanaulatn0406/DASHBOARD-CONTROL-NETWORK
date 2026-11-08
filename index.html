@@ -2079,7 +2079,7 @@ const gmxProds=o=>String(o.prod||'').split(/\s*,\s*/).map(s=>s.trim()).filter(Bo
    producto '' = línea a nivel propuesta (fabricante/distribuidor que no se puede atar a un producto). */
 function gmxLineas(o,idx){
   const det=idx[String(o.tarea||'').trim()]||(o.cierre?idx['c:'+String(o.cierre).trim()]:null);
-  if(det&&det.length)return {src:'det',L:det.map(d=>({producto:d.producto,integral:d.integral||'',fabricante:gmxLista(d.fabricante,GMX_ALIAS.FAB)[0]||'',distribuidor:gmxLista(d.distribuidor,GMX_ALIAS.DIST)[0]||'',cambio:d.cambio,motivo:d.motivo,src:'det'}))};
+  if(det&&det.length)return {src:'det',L:det.map(d=>({producto:d.producto,integral:d.integral||'',fabricante:gmxLista(d.fabricante,GMX_ALIAS.FAB).filter(f=>!catNoAplica(f,d.producto).length)[0]||'',distribuidor:gmxLista(d.distribuidor,GMX_ALIAS.DIST)[0]||'',cambio:d.cambio,motivo:d.motivo,src:'det'}))};
   const P=gmxProds(o),pg=o.pg||{};
   const regs=(o.registros||[]).map(r=>gmxLista(r.fabricante,GMX_ALIAS.FAB)[0]).filter(Boolean);
   const F=gmxLista([pg.fabricante,pg.marcaCableado].filter(Boolean).join(','),GMX_ALIAS.FAB),D=gmxLista(pg.distribuidor,GMX_ALIAS.DIST);
@@ -2087,8 +2087,8 @@ function gmxLineas(o,idx){
   const ln=(producto,fabricante,distribuidor)=>({producto,fabricante,distribuidor,cambio:fabricante?gmxCambio(fabricante,regs):'',motivo:'',src});
   const L=[];
   if(P.length<=1){
-    const p=P[0]||'';
-    (F.length?F:['']).forEach(f=>L.push(ln(p,f,D.length===1?D[0]:'')));
+    const p=P[0]||'',Fp=F.filter(f=>!catNoAplica(f,p).length);   // v9.36 — p. ej. Huawei no cuenta como fabricante de Cableado Estructurado
+    (Fp.length?Fp:['']).forEach(f=>L.push(ln(p,f,D.length===1?D[0]:'')));
     if(D.length>1)D.forEach(d=>L.push(ln('','',d)));
   }else{
     P.forEach(p=>L.push(ln(p,'','')));
@@ -2159,12 +2159,17 @@ function gmxRank(dim,title,tip,arr,cols,base){
    CAT_SEMILLA = misma lista inicial del backend, para depurar aunque el backend aún no envíe la base. */
 const CAT_SEMILLA={fab:[['Altala'],['Aruba'],['Cisco'],['Cisco Meraki','MERAKI'],['CommScope'],['Data Wifi','DATAWIFI'],['Fiberhome'],['Fortinet','Fortient'],['Forza'],['Furukawa'],['Grandstream','Gransdtream'],['HPE'],['Huawei'],['Legrand'],['Nexans'],['Nexxt'],['Panduit'],['Ruckus'],['Siemon','Siemmons','Siemons'],['Smart WiFi','SMART WIFI TN','SmartWifi'],['TP-Link','TP LINK','TPLINK'],['Trendnet'],['Ubiquiti'],['Vertiv'],['Victron Energy']],
   dist:[['STOCK TN','STOCK','STOCK TELCONET','TN'],['INTCOMEX'],['SERINTEC','SERIMTEC'],['TD SYNNEX','TDSYNNEX','SYNNEX'],['CARTIMEX'],['Huawei (directo)','HUAWEI'],['RENOVA ENERGY']]};
-let CAT={fab:CAT_SEMILLA.fab.map(([n,...a])=>({nombre:n,alias:a})),dist:CAT_SEMILLA.dist.map(([n,...a])=>({nombre:n,alias:a}))};
+const CAT_NO_APLICA_SEM={Huawei:['Cableado Estructurado']};   // v9.36 — "No aplica a productos" inicial
+let CAT={fab:CAT_SEMILLA.fab.map(([n,...a])=>({nombre:n,alias:a,noProd:CAT_NO_APLICA_SEM[n]||[]})),dist:CAT_SEMILLA.dist.map(([n,...a])=>({nombre:n,alias:a}))};
 const catKey=x=>String(x||'').normalize('NFD').replace(/[̀-ͯ]/g,'').toUpperCase().replace(/[^A-Z0-9]/g,'');
 const catPartes=v=>String(v||'').split(/\s*(?:,|\/|;|\+|&|\sY\s|\s-\s)\s*/i).map(x=>x.trim()).filter(Boolean);
 const CAT_VACIO=new Set(['','NA','NOAPLICA','NINGUNO','GENERICO','GENERICA','SINDATO','NODISPONIBLE','DESCONOCIDO']);
-function catSetBase(b){if(!b)return;if(b.fabricantes&&b.fabricantes.length)CAT.fab=b.fabricantes;if(b.distribuidores&&b.distribuidores.length)CAT.dist=b.distribuidores;catRefreshLists();}
-const catNombres=t=>[...new Set(CAT[t].map(x=>x.nombre))].sort((a,b)=>a.localeCompare(b,'es'));
+function catSetBase(b){if(!b)return;if(b.fabricantes&&b.fabricantes.length)CAT.fab=b.fabricantes.map(x=>Object.assign({},x,{noProd:x.noProd!==undefined?x.noProd:(CAT_NO_APLICA_SEM[x.nombre]||[])}));   // v9.36 — backend v9.35 aún sin la columna
+  if(b.distribuidores&&b.distribuidores.length)CAT.dist=b.distribuidores;catRefreshLists();}
+const catNombres=(t,prod)=>[...new Set(CAT[t].filter(x=>!prod||!(x.noProd||[]).some(np=>catKey(np)===catKey(prod))).map(x=>x.nombre))].sort((a,b)=>a.localeCompare(b,'es'));
+/* v9.36 — fabricantes de v que no aplican a ese producto (columna "No aplica a productos" de la base) */
+function catNoAplica(v,prod){const kp=catKey(prod);if(!kp)return [];return catPartes(v).filter(p=>{const k=catKey(p);return CAT.fab.some(x=>(catKey(x.nombre)===k||(x.alias||[]).some(a=>catKey(a)===k))&&(x.noProd||[]).some(np=>catKey(np)===kp));});}
+const catDlFab=prod=>`<datalist id="dlf-${catKey(prod)||'x'}" data-prod="${escA(prod||'')}">${catNombres('fab',prod).map(x=>`<option value="${escA(x)}">`).join('')}</datalist>`;
 function catCanon(t,v){const k=catKey(v);if(!k)return '';for(const x of CAT[t]){if(catKey(x.nombre)===k||(x.alias||[]).some(a=>catKey(a)===k))return x.nombre;}return '';}
 function catLev(a,b){if(Math.abs(a.length-b.length)>2)return 9;const d=Array.from({length:a.length+1},(_,i)=>[i]);for(let j=1;j<=b.length;j++)d[0][j]=j;
   for(let i=1;i<=a.length;i++)for(let j=1;j<=b.length;j++)d[i][j]=Math.min(d[i-1][j]+1,d[i][j-1]+1,d[i-1][j-1]+(a[i-1]===b[j-1]?0:1));return d[a.length][b.length];}
@@ -2174,6 +2179,7 @@ function catParecido(t,v){const k=catKey(v);if(k.length<3)return '';let best='',
 function catRefreshLists(){
   const f=catNombres('fab').map(x=>`<option value="${escA(x)}">`).join(''),d=[...catNombres('dist'),'NO DISPONIBLE'].map(x=>`<option value="${escA(x)}">`).join('');
   ['rgg-dl-fab','gq-dl-fab','dl-fab1','dl-fab2'].forEach(id=>{const e=document.getElementById(id);if(e)e.innerHTML=f;});
+  document.querySelectorAll('datalist[data-prod]').forEach(e=>{e.innerHTML=catNombres('fab',e.dataset.prod).map(x=>`<option value="${escA(x)}">`).join('');});   // v9.36
   ['rgg-dl-dis','gq-dl-dis'].forEach(id=>{const e=document.getElementById(id);if(e)e.innerHTML=d;});
 }
 let _catN=0;
@@ -2184,10 +2190,11 @@ function catCheck(el){
   if(parts.length&&txt!==el.value.trim()){el.value=txt;el.dispatchEvent(new Event('input',{bubbles:true}));}
   const tgt=(el.id&&document.getElementById(el.id))||el;if(!tgt.dataset.cid)tgt.dataset.cid=cid;tgt.dataset.cat=t;
   const nuevos=canon.filter(p=>!CAT_VACIO.has(catKey(p))&&!catCanon(t,p)),lbl=t==='fab'?'fabricantes':'distribuidores';
+  const noAp=t==='fab'&&el.dataset.prod?catNoAplica(el.value,el.dataset.prod):[];   // v9.36
   let hint=tgt.nextElementSibling&&tgt.nextElementSibling.classList.contains('cat-hint')?tgt.nextElementSibling:null;
-  if(!nuevos.length){if(hint)hint.remove();return;}
+  if(!nuevos.length&&!noAp.length){if(hint)hint.remove();return;}
   if(!hint){hint=document.createElement('div');hint.className='cat-hint';tgt.after(hint);}
-  hint.innerHTML=nuevos.map(p=>{const s=catParecido(t,p);return `<div>«${esc(p)}» no está en la base de ${lbl}. ${s?`<button onclick="catUsar('${cid}','${escA(p)}','${escA(s)}')">¿Quisiste decir <b>${esc(s)}</b>?</button>`:''}<button class="add" onclick="catAlta('${cid}','${escA(p)}')">➕ Agregar a la base</button></div>`;}).join('');
+  hint.innerHTML=noAp.map(p=>`<div style="color:#F87171">✕ ${esc(p)} no es fabricante de ${esc(el.dataset.prod)}.</div>`).join('')+nuevos.map(p=>{const s=catParecido(t,p);return `<div>«${esc(p)}» no está en la base de ${lbl}. ${s?`<button onclick="catUsar('${cid}','${escA(p)}','${escA(s)}')">¿Quisiste decir <b>${esc(s)}</b>?</button>`:''}<button class="add" onclick="catAlta('${cid}','${escA(p)}')">➕ Agregar a la base</button></div>`;}).join('');
 }
 function catUsar(cid,p,s){const el=catEl(cid);if(!el)return;el.value=catPartes(el.value).map(x=>catKey(x)===catKey(p)?s:x).join(' / ');el.dispatchEvent(new Event('input',{bubbles:true}));catCheck(catEl(cid)||el);}
 async function catAlta(cid,p){
@@ -2242,7 +2249,8 @@ function gmxQErr(o,s){
   if((+o.mrc||0)>0&&!(+s.meses>0))E.push('meses de contrato');
   (s.prods||[]).forEach(p=>{const n=p.producto||'producto';
     if(!String(p.fabricante).trim())E.push(n+': fabricante');if(!String(p.distribuidor).trim())E.push(n+': distribuidor');
-    if(gmxQCambio(o,p.fabricante)&&!String(p.motivo).trim())E.push(n+': motivo del cambio de fabricante');});
+    if(gmxQCambio(o,p.fabricante)&&!String(p.motivo).trim())E.push(n+': motivo del cambio de fabricante');
+    catNoAplica(p.fabricante,p.producto).forEach(x=>E.push(x+' no es fabricante de '+p.producto));});   // v9.36
   return E;
 }
 const gmxQOp=t=>(_gmxRows||[]).find(o=>String(o.tarea)===String(t));
@@ -2271,7 +2279,7 @@ function gmxQRow(x){
     <div style="grid-column:2/5;color:#C4B5FD;font-size:13px">🧩 <b>${esc(prodsGanado(gmxProds(o),o.multiv).filter(esIntegral).join(' y '))}</b>: hay que desagregarlo en los productos que lo integran (cada uno con su fabricante y distribuidor). Se hace en el formulario completo.<div class="gmx-falta" style="max-width:none">Falta: ${x.falta.map(esc).join(' · ')}</div></div>
     <div class="gq-act"><button class="gq-save" onclick="gmxEdit('${id}')">🧩 Desagregar</button></div></div>`;   // v9.32
   const fab=s.prods?s.prods.map((p,i)=>`<div class="gq-p"><span class="gq-pn" title="${escA(p.producto||'Tarea sin producto')}">${esc(p.producto||'(sin producto)')}</span>
-      <input class="gq-in" data-cat="fab" list="gq-dl-fab" value="${escA(p.fabricante)}" placeholder="Fabricante" title="${p.sug?'Sugerido del registro de oportunidad':'Fabricante / vendor'}" oninput="gmxQProd('${id}',${i},'fabricante',this.value)">
+      ${catDlFab(p.producto)}<input class="gq-in" data-cat="fab" data-prod="${escA(p.producto||'')}" list="dlf-${catKey(p.producto)||'x'}" value="${escA(p.fabricante)}" placeholder="Fabricante" title="${p.sug?'Sugerido del registro de oportunidad':'Fabricante / vendor'}" oninput="gmxQProd('${id}',${i},'fabricante',this.value)">
       <input class="gq-in" data-cat="dist" list="gq-dl-dis" value="${escA(p.distribuidor)}" placeholder="Distribuidor" oninput="gmxQProd('${id}',${i},'distribuidor',this.value)">
       <input class="gq-in gq-mot" id="gq-mot-${id}-${i}" ${gmxQCambio(o,p.fabricante)?'':'style="display:none"'} value="${escA(p.motivo)}" placeholder="Motivo del cambio (registro: ${escA(regs.join(', '))})" oninput="gmxQProd('${id}',${i},'motivo',this.value)"></div>`).join('')
     :`<div class="gmx-mut">✓ Ya tiene fabricante: <b style="color:#CBD5E1">${esc([...new Set(x.L.map(l=>l.fabricante).filter(Boolean))].join(', '))}</b></div>`;
@@ -4750,7 +4758,8 @@ function rgGanErr(){const i=RGG.info,v=RGG.v,E=[];
   rggIntegrales().forEach(P=>{if(!v.productos.some(x=>x.integral===P))E.push(P+': elige los productos que lo integran');});   // v9.32
   v.productos.forEach(p=>{const nom=p.producto||'la tarea',f=['fabricante','distribuidor'].filter(k=>!String(p[k]||'').trim());
     if(f.length)E.push(nom+': '+f.join(', '));
-    if(rggCambio(p.fabricante)==='SI'&&!String(p.motivo||'').trim())E.push(nom+': motivo del cambio de fabricante');});
+    if(rggCambio(p.fabricante)==='SI'&&!String(p.motivo||'').trim())E.push(nom+': motivo del cambio de fabricante');
+    catNoAplica(p.fabricante,p.producto).forEach(x=>E.push(x+' no es fabricante de '+p.producto));});   // v9.36
   return E;}
 function rgGanBtn(){const b=document.getElementById('rgg-go');if(!b)return;const E=rgGanErr();b.disabled=!!E.length||RGG.busy;b.title=E.join(' · ');
   const h=document.getElementById('rgg-need');if(h)h.textContent=E.length?'Falta: '+E.join(' · '):'Listo para guardar';}
@@ -4785,7 +4794,7 @@ function rgGanRender(){
       <div class="rg-f"><label>Datos por producto <i>*</i> <span class="rgg-why">${v.productos.length} producto${v.productos.length!==1?'s':''}</span></label>
         <div class="rgg-fab">${(()=>{const card=(p,n)=>`<div class="rgg-fab-c">
           <div class="rgg-fab-p">${p.producto?esc(p.producto):'<i>Tarea sin producto registrado</i>'} <span id="rgg-tag-${n}">${rggTag(n)}</span></div>
-          <div class="rgg-g3"><div class="rg-f"><label>Fabricante / vendor <i>*</i>${p.auto?` <span class="rg-auto-tag" id="rgg-auto-${n}">del registro</span>`:''}</label><input class="rg-in" data-cat="fab" list="rgg-dl-fab" value="${escA(p.fabricante||'')}" placeholder="Ej. CISCO / PANDUIT" title="Fabricante / vendor = marca" oninput="rgGanFab(${n},'fabricante',this.value)"></div>
+          <div class="rgg-g3"><div class="rg-f"><label>Fabricante / vendor <i>*</i>${p.auto?` <span class="rg-auto-tag" id="rgg-auto-${n}">del registro</span>`:''}</label>${catDlFab(p.producto)}<input class="rg-in" data-cat="fab" data-prod="${escA(p.producto||'')}" list="dlf-${catKey(p.producto)||'x'}" value="${escA(p.fabricante||'')}" placeholder="Ej. CISCO / PANDUIT" title="Fabricante / vendor = marca" oninput="rgGanFab(${n},'fabricante',this.value)"></div>
             <div class="rg-f"><label>Distribuidor <i>*</i></label><input class="rg-in" data-cat="dist" list="rgg-dl-dis" value="${escA(p.distribuidor||'')}" placeholder="Ej. STOCK TN" oninput="rgGanFab(${n},'distribuidor',this.value)"></div></div>
           <div class="rg-f" id="rgg-mot-${n}" ${rggCambio(p.fabricante)==='SI'?'':'style="display:none"'}><label>Motivo del cambio de fabricante <i>*</i> <span class="rgg-why" style="color:#F59E0B">registro: ${esc(rggRegTxt())}</span></label>
             <textarea class="rg-in" rows="2" placeholder="Ej. El cliente pidió cambiar a otra marca por precio / disponibilidad…" oninput="rgGanFab(${n},'motivo',this.value)">${esc(p.motivo||'')}</textarea></div>
