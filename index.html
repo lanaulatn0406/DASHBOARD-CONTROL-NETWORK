@@ -225,6 +225,10 @@ body{background:#1F2229;color:#E2E8F0;font-family:'Segoe UI',system-ui,sans-seri
 .gq-save{background:#02C39A;border:0;color:#062019;border-radius:6px;padding:5px 10px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit}
 .gq-save:disabled{background:#3A4055;color:#64748B;cursor:not-allowed}
 .gq-err{grid-column:1/-1;color:#F87171;font-size:12px}
+.cat-hint{grid-column:1/-1;font-size:12px;color:#FBBF24;margin-top:4px;display:flex;flex-direction:column;gap:4px}
+.cat-hint button{background:#1E222A;border:1px solid #3A4055;color:#E2E8F0;border-radius:6px;padding:2px 8px;font-size:12px;cursor:pointer;margin-left:6px;font-family:inherit}
+.cat-hint button.add{border-color:#02C39A;color:#4AE3B5}
+.cat-hint .ok{color:#4AE3B5}
 .mvq-r{display:grid;grid-template-columns:minmax(200px,1fr) minmax(300px,3fr) auto;gap:10px;align-items:start;padding:8px 12px;border-top:1px solid #3A405588;font-size:13px}
 .mvq-n{background:#F59E0B;color:#1F2229;border-radius:9px;padding:0 6px;font-size:11px;margin-left:4px}
 @media (max-width:900px){.mvq-r{grid-template-columns:1fr}}
@@ -2003,7 +2007,7 @@ let GMX_MSG=null;                    // v9.26 — aviso tras completar una ganad
    FABRICANTES GANADOS; al guardar se recarga el dashboard y la ganada pasa a "Por producto". */
 async function gmxEdit(tarea){
   if(RG.key==null)RG.key=lsGet('nw_rg_key_v9','')||'';
-  if(!RG.catTried){RG.catTried=true;fetch(ENDPOINT_URL+'&action=catalogos',{credentials:'omit',redirect:'follow'}).then(r=>r.json()).then(j=>{if(j&&j.ganados)RG.catGan=j.ganados;if(j&&j.catalogos&&Object.keys(j.catalogos).length)RG.cat=j.catalogos;if(RGG)rgGanRender();}).catch(()=>{});}
+  if(!RG.catTried){RG.catTried=true;fetch(ENDPOINT_URL+'&action=catalogos',{credentials:'omit',redirect:'follow'}).then(r=>r.json()).then(j=>{if(j&&j.ganados)RG.catGan=j.ganados;if(j&&j.base)catSetBase(j.base);if(j&&j.catalogos&&Object.keys(j.catalogos).length)RG.cat=j.catalogos;if(RGG)rgGanRender();}).catch(()=>{});}
   GMX_MSG={ok:true,html:`Abriendo la ganada <b>#${esc(tarea)}</b>…`};renderGaMix(_gmxRows);
   try{
     const r=await fetch(ENDPOINT_URL+'&action=ganado&tarea='+encodeURIComponent(tarea),{credentials:'omit',redirect:'follow'});const j=await r.json();
@@ -2045,7 +2049,7 @@ function gmxLista(v,alias){
   const out=[],vistos=new Set();
   String(v||'').split(/\s*(?:,|\/|;|\+|&|\sY\s|\s-\s)\s*/i).forEach(x=>{
     x=x.trim(); const k=gmxNorm(x); if(GMX_VACIO.has(k))return;
-    const kc=k.replace(/[^A-Z0-9]/g,''), nom=alias&&(alias[k]||alias[kc])||x, kk=gmxNorm(nom);
+    const kc=k.replace(/[^A-Z0-9]/g,''), nom=(alias===GMX_ALIAS.FAB&&catCanon('fab',x))||(alias===GMX_ALIAS.DIST&&catCanon('dist',x))||alias&&(alias[k]||alias[kc])||x, kk=gmxNorm(nom);   // v9.35 — base de fabricantes / distribuidores
     if(!vistos.has(kk)){vistos.add(kk);out.push(nom);}
   });
   return out;
@@ -2148,6 +2152,61 @@ function gmxRank(dim,title,tip,arr,cols,base){
     <div class="gmx-sc"><table class="gmx-t"><thead><tr><th>#</th><th>Nombre</th>${cols.map(c=>`<th class="r">${c[0]}</th>`).join('')}</tr></thead>
     <tbody>${rows||'<tr><td colspan="9" class="gmx-mut" style="padding:12px">Sin datos para esta selección.</td></tr>'}</tbody></table></div></div>`;
 }
+/* ══ v9.35 — BASE DE FABRICANTES Y DISTRIBUIDORES DE LA VERTICAL ═════════════════════════════
+   Las listas de fabricante / distribuidor salen de la hoja FABRICANTES Y DISTRIBUIDORES (nombre + alias), sin
+   duplicados de mayúsculas ni errores de tipeo. Al escribir en un campo [data-cat]: una variante conocida se
+   corrige sola al nombre de la base; uno desconocido muestra "¿Quisiste decir…?" y "➕ Agregar a la base".
+   CAT_SEMILLA = misma lista inicial del backend, para depurar aunque el backend aún no envíe la base. */
+const CAT_SEMILLA={fab:[['Altala'],['Aruba'],['Cisco'],['Cisco Meraki','MERAKI'],['CommScope'],['Data Wifi','DATAWIFI'],['Fiberhome'],['Fortinet','Fortient'],['Forza'],['Furukawa'],['Grandstream','Gransdtream'],['HPE'],['Huawei'],['Legrand'],['Nexans'],['Nexxt'],['Panduit'],['Ruckus'],['Siemon','Siemmons','Siemons'],['Smart WiFi','SMART WIFI TN','SmartWifi'],['TP-Link','TP LINK','TPLINK'],['Trendnet'],['Ubiquiti'],['Vertiv'],['Victron Energy']],
+  dist:[['STOCK TN','STOCK','STOCK TELCONET','TN'],['INTCOMEX'],['SERINTEC','SERIMTEC'],['TD SYNNEX','TDSYNNEX','SYNNEX'],['CARTIMEX'],['Huawei (directo)','HUAWEI'],['RENOVA ENERGY']]};
+let CAT={fab:CAT_SEMILLA.fab.map(([n,...a])=>({nombre:n,alias:a})),dist:CAT_SEMILLA.dist.map(([n,...a])=>({nombre:n,alias:a}))};
+const catKey=x=>String(x||'').normalize('NFD').replace(/[̀-ͯ]/g,'').toUpperCase().replace(/[^A-Z0-9]/g,'');
+const catPartes=v=>String(v||'').split(/\s*(?:,|\/|;|\+|&|\sY\s|\s-\s)\s*/i).map(x=>x.trim()).filter(Boolean);
+const CAT_VACIO=new Set(['','NA','NOAPLICA','NINGUNO','GENERICO','GENERICA','SINDATO','NODISPONIBLE','DESCONOCIDO']);
+function catSetBase(b){if(!b)return;if(b.fabricantes&&b.fabricantes.length)CAT.fab=b.fabricantes;if(b.distribuidores&&b.distribuidores.length)CAT.dist=b.distribuidores;catRefreshLists();}
+const catNombres=t=>[...new Set(CAT[t].map(x=>x.nombre))].sort((a,b)=>a.localeCompare(b,'es'));
+function catCanon(t,v){const k=catKey(v);if(!k)return '';for(const x of CAT[t]){if(catKey(x.nombre)===k||(x.alias||[]).some(a=>catKey(a)===k))return x.nombre;}return '';}
+function catLev(a,b){if(Math.abs(a.length-b.length)>2)return 9;const d=Array.from({length:a.length+1},(_,i)=>[i]);for(let j=1;j<=b.length;j++)d[0][j]=j;
+  for(let i=1;i<=a.length;i++)for(let j=1;j<=b.length;j++)d[i][j]=Math.min(d[i-1][j]+1,d[i][j-1]+1,d[i-1][j-1]+(a[i-1]===b[j-1]?0:1));return d[a.length][b.length];}
+function catParecido(t,v){const k=catKey(v);if(k.length<3)return '';let best='',bd=9;
+  for(const x of CAT[t])for(const n of [x.nombre,...(x.alias||[])]){const kn=catKey(n);const dd=kn.startsWith(k)||k.startsWith(kn)?(kn.length>=4?1:9):catLev(k,kn);if(dd<bd&&dd<=(k.length>=6?2:1)){bd=dd;best=x.nombre;}}
+  return best;}
+function catRefreshLists(){
+  const f=catNombres('fab').map(x=>`<option value="${escA(x)}">`).join(''),d=[...catNombres('dist'),'NO DISPONIBLE'].map(x=>`<option value="${escA(x)}">`).join('');
+  ['rgg-dl-fab','gq-dl-fab','dl-fab1','dl-fab2'].forEach(id=>{const e=document.getElementById(id);if(e)e.innerHTML=f;});
+  ['rgg-dl-dis','gq-dl-dis'].forEach(id=>{const e=document.getElementById(id);if(e)e.innerHTML=d;});
+}
+let _catN=0;
+function catEl(cid){return document.querySelector(`[data-cid="${cid}"]`);}
+function catCheck(el){
+  const t=el.dataset.cat;if(!el.dataset.cid)el.dataset.cid='c'+(++_catN);const cid=el.dataset.cid,parts=catPartes(el.value);
+  const canon=parts.map(p=>catCanon(t,p)||p),txt=canon.join(' / ');
+  if(parts.length&&txt!==el.value.trim()){el.value=txt;el.dispatchEvent(new Event('input',{bubbles:true}));}
+  const tgt=(el.id&&document.getElementById(el.id))||el;if(!tgt.dataset.cid)tgt.dataset.cid=cid;tgt.dataset.cat=t;
+  const nuevos=canon.filter(p=>!CAT_VACIO.has(catKey(p))&&!catCanon(t,p)),lbl=t==='fab'?'fabricantes':'distribuidores';
+  let hint=tgt.nextElementSibling&&tgt.nextElementSibling.classList.contains('cat-hint')?tgt.nextElementSibling:null;
+  if(!nuevos.length){if(hint)hint.remove();return;}
+  if(!hint){hint=document.createElement('div');hint.className='cat-hint';tgt.after(hint);}
+  hint.innerHTML=nuevos.map(p=>{const s=catParecido(t,p);return `<div>«${esc(p)}» no está en la base de ${lbl}. ${s?`<button onclick="catUsar('${cid}','${escA(p)}','${escA(s)}')">¿Quisiste decir <b>${esc(s)}</b>?</button>`:''}<button class="add" onclick="catAlta('${cid}','${escA(p)}')">➕ Agregar a la base</button></div>`;}).join('');
+}
+function catUsar(cid,p,s){const el=catEl(cid);if(!el)return;el.value=catPartes(el.value).map(x=>catKey(x)===catKey(p)?s:x).join(' / ');el.dispatchEvent(new Event('input',{bubbles:true}));catCheck(catEl(cid)||el);}
+async function catAlta(cid,p){
+  const el=catEl(cid);if(!el)return;const t=el.dataset.cat,hint=el.nextElementSibling;
+  if(RG.key==null)RG.key=lsGet('nw_rg_key_v9','')||'';
+  if(!RG.key){if(hint)hint.insertAdjacentHTML('beforeend','<div style="color:#F87171">Ingresa la clave de escritura para agregar a la base.</div>');return;}
+  if(hint)hint.innerHTML=`<div>Agregando «${esc(p)}»…</div>`;
+  try{
+    const r=await fetch(rgBase(),{method:'POST',body:JSON.stringify({token:rgTok(),writeKey:RG.key,user:rgUser(),mode:'catalogo',data:{accion:'alta',tipo:t==='fab'?'FABRICANTE':'DISTRIBUIDOR',nombre:p}}),headers:{'Content-Type':'text/plain;charset=utf-8'},redirect:'follow',credentials:'omit'});
+    const j=await r.json();
+    if(j&&j.ok){if(j.base)catSetBase(j.base);if(!catCanon(t,j.nombre)){CAT[t].push({nombre:j.nombre,alias:[]});catRefreshLists();}
+      const e2=catEl(cid)||el;catCheck(e2);const h2=e2.nextElementSibling&&e2.nextElementSibling.classList.contains('cat-hint')?e2.nextElementSibling:null;
+      const ok=`<div class="ok">✓ «${esc(j.nombre)}» ${j.existe?'ya estaba':'agregado'} en la base de ${t==='fab'?'fabricantes':'distribuidores'}.</div>`;
+      if(h2)h2.insertAdjacentHTML('afterbegin',ok);else{const d=document.createElement('div');d.className='cat-hint';d.innerHTML=ok;e2.after(d);setTimeout(()=>d.remove(),4000);}}
+    else if(hint)hint.innerHTML=`<div style="color:#F87171">✕ ${esc((j&&j.error)||'No se pudo agregar')}</div>`;
+  }catch(e){if(hint)hint.innerHTML=`<div style="color:#F87171">✕ No se pudo conectar con el Apps Script (${esc(e.message)})</div>`;}
+}
+document.addEventListener('change',e=>{const el=e.target;if(el&&el.dataset&&el.dataset.cat)catCheck(el);},true);
+
 /* ══ v9.30 — COMPLETAR RÁPIDO POR ING. DE DISEÑO ══════════════════════════════════════
    Vista compacta del detalle: solo las ganadas pendientes (gmxFalta), agrupadas por el Ing. de
    Diseño que trabajó la oferta. Cada fila se completa en línea (tipo, meses, fabricante y
@@ -2161,7 +2220,7 @@ function gmxQGrp(g){GMX_QOPEN.has(g)?GMX_QOPEN.delete(g):GMX_QOPEN.add(g);lsSet(
 function gmxCatLoad(){
   if(RG.catTried)return;RG.catTried=true;
   fetch(ENDPOINT_URL+'&action=catalogos',{credentials:'omit',redirect:'follow'}).then(r=>r.json()).then(j=>{
-    if(j&&j.ganados)RG.catGan=j.ganados;if(j&&j.catalogos&&Object.keys(j.catalogos).length)RG.cat=j.catalogos;
+    if(j&&j.ganados)RG.catGan=j.ganados;if(j&&j.base)catSetBase(j.base);if(j&&j.catalogos&&Object.keys(j.catalogos).length)RG.cat=j.catalogos;
     const a=document.getElementById('gq-dl-fab'),b=document.getElementById('gq-dl-dis');
     if(a)a.innerHTML=rggOpts('marca').map(x=>`<option value="${escA(x)}">`).join('');
     if(b)b.innerHTML=rggOpts('distribuidor').map(x=>`<option value="${escA(x)}">`).join('');
@@ -2212,8 +2271,8 @@ function gmxQRow(x){
     <div style="grid-column:2/5;color:#C4B5FD;font-size:13px">🧩 <b>${esc(prodsGanado(gmxProds(o),o.multiv).filter(esIntegral).join(' y '))}</b>: hay que desagregarlo en los productos que lo integran (cada uno con su fabricante y distribuidor). Se hace en el formulario completo.<div class="gmx-falta" style="max-width:none">Falta: ${x.falta.map(esc).join(' · ')}</div></div>
     <div class="gq-act"><button class="gq-save" onclick="gmxEdit('${id}')">🧩 Desagregar</button></div></div>`;   // v9.32
   const fab=s.prods?s.prods.map((p,i)=>`<div class="gq-p"><span class="gq-pn" title="${escA(p.producto||'Tarea sin producto')}">${esc(p.producto||'(sin producto)')}</span>
-      <input class="gq-in" list="gq-dl-fab" value="${escA(p.fabricante)}" placeholder="Fabricante" title="${p.sug?'Sugerido del registro de oportunidad':'Fabricante / vendor'}" oninput="gmxQProd('${id}',${i},'fabricante',this.value)">
-      <input class="gq-in" list="gq-dl-dis" value="${escA(p.distribuidor)}" placeholder="Distribuidor" oninput="gmxQProd('${id}',${i},'distribuidor',this.value)">
+      <input class="gq-in" data-cat="fab" list="gq-dl-fab" value="${escA(p.fabricante)}" placeholder="Fabricante" title="${p.sug?'Sugerido del registro de oportunidad':'Fabricante / vendor'}" oninput="gmxQProd('${id}',${i},'fabricante',this.value)">
+      <input class="gq-in" data-cat="dist" list="gq-dl-dis" value="${escA(p.distribuidor)}" placeholder="Distribuidor" oninput="gmxQProd('${id}',${i},'distribuidor',this.value)">
       <input class="gq-in gq-mot" id="gq-mot-${id}-${i}" ${gmxQCambio(o,p.fabricante)?'':'style="display:none"'} value="${escA(p.motivo)}" placeholder="Motivo del cambio (registro: ${escA(regs.join(', '))})" oninput="gmxQProd('${id}',${i},'motivo',this.value)"></div>`).join('')
     :`<div class="gmx-mut">✓ Ya tiene fabricante: <b style="color:#CBD5E1">${esc([...new Set(x.L.map(l=>l.fabricante).filter(Boolean))].join(', '))}</b></div>`;
   return `<div class="gq-r">
@@ -4230,6 +4289,7 @@ const rgEsCab=p=>/CABLEADO\s*ESTRUCTURADO/i.test(String(p||'').normalize('NFD').
 function rgProdAddIn(ev,el){const v=String(el.value||'').trim();if(!v)return;if((!ev||!ev.inputType||ev.inputType==='insertReplacementText')&&rgOpts('prod').includes(v))rgProdToggle(v);}
 function rgProdToggle(p){p=String(p||'').trim();if(!p)return;RG.prodTouched=true;if(rggNorm(p).includes('PROYECTO INTEGRAL MULTIVERTICAL')){rgSet('multiv','SI');return;}/* v9.33 */const a=rgProds(RG.v.prod),i=a.indexOf(p);if(i>=0)a.splice(i,1);else a.push(p);rgSet('prod',a.join(', '));}
 function rgOpts(k){
+  if(k==='fab1'||k==='fab2')return catNombres('fab');   // v9.35 — base depurada de fabricantes
   const key=k==='fab2'?'fab1':k;const c=(RG.cat&&(RG.cat[k]||RG.cat[key]))||[];
   const data=[...OPS.ab,...OPS.ga,...OPS.per,...OPS.pd];
   const fromData=k==='asesor'?data.map(o=>(o.asesor||'').trim()):k==='prod'?data.flatMap(o=>rgProds(o.prod)):k==='estado'?data.map(o=>(o.estado||'').trim()):[];
@@ -4242,7 +4302,7 @@ function rgExisting(t){t=String(t||'').trim();if(!t)return null;for(const s of [
 function rgOpen(){
   if(!RG.loaded){const d=lsGet('nw_rg_draft_v9',null);RG.quick=!!(d&&d.quick);if(d&&d.mode==='update'){RG.mode='update';RG.v={};}else if(d&&d.v&&Object.keys(d.v).length){RG.v=d.v;if(!RG.v.estado)RG.v.estado=RG_ESTADO_INICIAL;RG.mode='create';RG.draft=true;}else rgReset(true);RG.loaded=true;}
   rgRender();
-  if(!RG.catTried){RG.catTried=true;fetch(ENDPOINT_URL+'&action=catalogos',{credentials:'omit',redirect:'follow'}).then(r=>r.json()).then(j=>{if(j&&j.ganados)RG.catGan=j.ganados;if(j&&j.catalogos&&Object.keys(j.catalogos).length){RG.cat=j.catalogos;rgRender();}}).catch(()=>{});}
+  if(!RG.catTried){RG.catTried=true;fetch(ENDPOINT_URL+'&action=catalogos',{credentials:'omit',redirect:'follow'}).then(r=>r.json()).then(j=>{if(j&&j.ganados)RG.catGan=j.ganados;if(j&&j.base)catSetBase(j.base);if(j&&j.catalogos&&Object.keys(j.catalogos).length){RG.cat=j.catalogos;rgRender();}}).catch(()=>{});}
 }
 function rgReset(silent){RG.user=null;RG.v={fechaA:todayYmd(),tipo:'SIN INSPECCION',estado:RG_ESTADO_INICIAL};RG.orig=null;RG.found=null;RG.draft=false;RG.msg=null;if(!silent){lsSet('nw_rg_draft_v9',null);rgRender();}}
 function rgMode(m){if(m==='ing'){RG.mode='ing';RG.quick=false;RG.msg=null;RG.ingEd={};rgRender();return;}if(m==='mv'){RG.mode='mv';RG.quick=false;RG.msg=null;rgRender();return;}RG.quick=m==='quick';if(m==='quick')m='update';RG.mode=m;RG.msg=null;if(m==='create'){rgReset(true);}else{RG.v={};RG.orig=null;RG.found=null;}rgSave();rgRender();setTimeout(()=>{const e=document.getElementById(m==='update'?'rg-find':'rg-tarea');if(e)e.focus();},30);}
@@ -4326,7 +4386,7 @@ function rgField(f){
     inp=`<div class="rg-chips rg-multi">${o.map(x=>{const on=sel.includes(x);return `<button type="button" class="${on?'on':''}" data-p="${escA(x)}" onclick="rgProdToggle(this.dataset.p)">${on?'✓ ':''}${esc(x)}</button>`;}).join('')}</div>
       <input id="${id}-otro" class="rg-in" style="margin-top:6px" placeholder="¿Otro producto? Escríbelo y presiona Enter" onkeydown="if(event.key==='Enter'){event.preventDefault();rgProdToggle(this.value);}">
       ${sel.length?`<div class="rg-help">Seleccionados (${sel.length}): <b style="color:#E2E8F0">${esc(sel.join(', '))}</b></div>`:''}${RG.quick?`<button type="button" class="rg-mini" style="margin-top:6px" onclick="RG.prodAll=0;rgRender()">Vista compacta</button>`:''}`;}
-  else if(f.t==='list'){const o=rgOpts(f.k);inp=`<input id="${id}" data-k="${f.k}" class="rg-in" list="dl-${f.k}" value="${escA(val)}" placeholder="Escribe o elige…" oninput="rgInput(this)" onchange="rgSet('${f.k}',this.value)"><datalist id="dl-${f.k}">${o.map(x=>`<option value="${escA(x)}">`).join('')}</datalist>`;}
+  else if(f.t==='list'){const o=rgOpts(f.k);inp=`<input id="${id}" data-k="${f.k}"${f.k==='fab1'||f.k==='fab2'?' data-cat="fab"':''} class="rg-in" list="dl-${f.k}" value="${escA(val)}" placeholder="Escribe o elige…" oninput="rgInput(this)" onchange="rgSet('${f.k}',this.value)"><datalist id="dl-${f.k}">${o.map(x=>`<option value="${escA(x)}">`).join('')}</datalist>`;}
   else if(f.t==='seg')inp=`<div class="rg-seg">${f.opts.map((o,i)=>`<button class="${val===o?'on':''}" onclick="rgSet('${f.k}','${o}')">${f.lbl?f.lbl[i]:o}</button>`).join('')}</div>`;
   else if(f.t==='check')inp=`<label class="rg-chk${val==='SI'?' on':''}"><input type="checkbox" ${val==='SI'?'checked':''} onchange="rgSet('${f.k}',this.checked?'SI':'NO')"> 🧩 Es un <b>Proyecto Integral Multivertical</b> <span class="rg-help">— igual elige arriba los productos de Network que considera</span></label>`;   // v9.33
   else if(f.t==='chips'){const o=(RG.cat&&RG.cat.prob)||RG_DEF.prob;inp=`<div class="rg-chips">${o.map(x=>`<button class="${String(val)===String(x)?'on':''}" onclick="rgSet('prob',${String(val)===String(x)?"''":`'${escA(x)}'`})">${esc(x)}</button>`).join('')}</div>`;}
@@ -4605,7 +4665,8 @@ document.addEventListener('keydown',e=>{if((e.ctrlKey||e.metaKey)&&e.key==='Ente
    y se escriben en PROYECTOS GANADOS 2026 en la fila de esa tarea de cierre; PROYECTO CLIENTE = cliente de la tarea. */
 let RGG=null;
 const RGG_DEF={tipoProyecto:['Privado','Público'],meses:[12,24,36,48,60],marcaCableado:['PANDUIT','FURUKAWA','COMMSCOPE','NEXANS','SIEMON','LEGRAND'],distribuidor:['STOCK TN','INTCOMEX','NO DISPONIBLE'],fabricante:[]};   // v9.26 — NO DISPONIBLE: ganadas viejas sin el dato (no cuenta en rankings)
-function rggOpts(k){const extra=k==='fabricante'||k==='marca'?[...((RG.cat||{}).fab1||[]),...RG_DEF.fab1,...(k==='marca'?[...((RG.catGan||{}).marcaCableado||[]),...RGG_DEF.marcaCableado,...((RG.catGan||{}).fabricante||[])]:[])]:[];
+function rggOpts(k){if(k==='fabricante'||k==='marca')return catNombres('fab');if(k==='distribuidor')return [...catNombres('dist'),'NO DISPONIBLE'];   // v9.35 — base depurada
+  const extra=k==='fabricante'||k==='marca'?[...((RG.cat||{}).fab1||[]),...RG_DEF.fab1,...(k==='marca'?[...((RG.catGan||{}).marcaCableado||[]),...RGG_DEF.marcaCableado,...((RG.catGan||{}).fabricante||[])]:[])]:[];
   return [...new Set([...((RG.catGan||{})[k]||[]),...(RGG_DEF[k]||[]),...extra].flatMap(x=>k==='fabricante'||k==='marca'||k==='distribuidor'?rgProds(x):[x]).map(x=>String(x).trim()).filter(Boolean))].sort((a,b)=>a.localeCompare(b,'es'));}
 /* v9.14 — productos de la tarea con su fabricante / vendor (lo ya guardado en FABRICANTES GANADOS 2026 tiene prioridad) */
 /* v9.15 — registro de oportunidad de la tarea cotizada (FABRICANTE 1/2 + REG OPE / DEAL) */
@@ -4717,15 +4778,15 @@ function rgGanRender(){
           <div style="margin-top:6px;color:#E2E8F0">¿Quieres registrar un registro de oportunidad para este negocio? <i style="color:#F59E0B">*</i></div>
           <div class="rgg-q"><button class="${v.reg.op==='si'?'on':''}" onclick="rgGanReg('op','si',1)">📋 Sí, registrarlo</button>
             <button class="${v.reg.op==='no'?'on':''}" onclick="rgGanReg('op','no',1)">No, no se necesitó para ganar el negocio</button></div>
-          ${v.reg.op==='si'?`<div class="rgg-newreg"><div class="rg-f"><label>Fabricante del registro <i>*</i></label><input class="rg-in" list="rgg-dl-fab" value="${escA(v.reg.fabricante||'')}" placeholder="Ej. CISCO" oninput="rgGanReg('fabricante',this.value)" onchange="rgGanRender()"></div>
+          ${v.reg.op==='si'?`<div class="rgg-newreg"><div class="rg-f"><label>Fabricante del registro <i>*</i></label><input class="rg-in" data-cat="fab" list="rgg-dl-fab" value="${escA(v.reg.fabricante||'')}" placeholder="Ej. CISCO" oninput="rgGanReg('fabricante',this.value)" onchange="rgGanRender()"></div>
             <div class="rg-f"><label>#Reg OPE / Deal <i>*</i></label><input class="rg-in" value="${escA(v.reg.deal||'')}" placeholder="Número del registro" oninput="rgGanReg('deal',this.value)"></div></div>
             <div class="rg-help">Se guarda en la tarea cotizada (FABRICANTE 1 y REG OPE / DEAL) y su fabricante se sugiere en los productos.</div>`
            :v.reg.op==='no'?`<div class="rg-help">Se registra como <b>NO REQUERIDO</b>. Indica abajo el fabricante con el que se cerró.</div>`:''}</div>`}
       <div class="rg-f"><label>Datos por producto <i>*</i> <span class="rgg-why">${v.productos.length} producto${v.productos.length!==1?'s':''}</span></label>
         <div class="rgg-fab">${(()=>{const card=(p,n)=>`<div class="rgg-fab-c">
           <div class="rgg-fab-p">${p.producto?esc(p.producto):'<i>Tarea sin producto registrado</i>'} <span id="rgg-tag-${n}">${rggTag(n)}</span></div>
-          <div class="rgg-g3"><div class="rg-f"><label>Fabricante / vendor <i>*</i>${p.auto?` <span class="rg-auto-tag" id="rgg-auto-${n}">del registro</span>`:''}</label><input class="rg-in" list="rgg-dl-fab" value="${escA(p.fabricante||'')}" placeholder="Ej. CISCO / PANDUIT" title="Fabricante / vendor = marca" oninput="rgGanFab(${n},'fabricante',this.value)"></div>
-            <div class="rg-f"><label>Distribuidor <i>*</i></label><input class="rg-in" list="rgg-dl-dis" value="${escA(p.distribuidor||'')}" placeholder="Ej. STOCK TN" oninput="rgGanFab(${n},'distribuidor',this.value)"></div></div>
+          <div class="rgg-g3"><div class="rg-f"><label>Fabricante / vendor <i>*</i>${p.auto?` <span class="rg-auto-tag" id="rgg-auto-${n}">del registro</span>`:''}</label><input class="rg-in" data-cat="fab" list="rgg-dl-fab" value="${escA(p.fabricante||'')}" placeholder="Ej. CISCO / PANDUIT" title="Fabricante / vendor = marca" oninput="rgGanFab(${n},'fabricante',this.value)"></div>
+            <div class="rg-f"><label>Distribuidor <i>*</i></label><input class="rg-in" data-cat="dist" list="rgg-dl-dis" value="${escA(p.distribuidor||'')}" placeholder="Ej. STOCK TN" oninput="rgGanFab(${n},'distribuidor',this.value)"></div></div>
           <div class="rg-f" id="rgg-mot-${n}" ${rggCambio(p.fabricante)==='SI'?'':'style="display:none"'}><label>Motivo del cambio de fabricante <i>*</i> <span class="rgg-why" style="color:#F59E0B">registro: ${esc(rggRegTxt())}</span></label>
             <textarea class="rg-in" rows="2" placeholder="Ej. El cliente pidió cambiar a otra marca por precio / disponibilidad…" oninput="rgGanFab(${n},'motivo',this.value)">${esc(p.motivo||'')}</textarea></div>
         </div>`;
