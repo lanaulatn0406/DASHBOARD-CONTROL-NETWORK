@@ -472,6 +472,11 @@ body{background:#1F2229;color:#E2E8F0;font-family:'Segoe UI',system-ui,sans-seri
 .dw-tbl tbody tr:hover td{background:#2D3240}
 .dw-tbl .num{font-variant-numeric:tabular-nums}
 /* op detail */
+.dwp{display:flex;flex-wrap:wrap;gap:4px;margin-top:4px}
+.dwp button{background:#1E222A;border:1px solid #3A4055;color:#CBD5E1;border-radius:6px;padding:2px 8px;font-size:12px;cursor:pointer;font-family:inherit}
+.dwp button.on{background:#5B9FE833;border-color:#5B9FE8;color:#fff;font-weight:700}
+.dwp button:disabled{opacity:.5;cursor:wait}
+.dwp-k{margin-top:6px;background:#1E222A;border:1px solid #3A4055;border-radius:6px;color:#E2E8F0;padding:3px 7px;font-size:12px;width:100%;box-sizing:border-box}
 .od-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;margin-top:14px}
 .od-f{background:#272C35;border:1px solid #3A4055;border-radius:9px;padding:9px 12px}
 .od-l{font-size:11px;color:#64748B;text-transform:uppercase;letter-spacing:.4px;font-weight:700}
@@ -3438,7 +3443,7 @@ function vgReset(){Object.assign(VG,{g:'ALL',t:'ALL',per:'ALL',asesor:'ALL',anio
 /* ══════════ DRAWER ══════════ */
 let dwStack=[];
 function vgOpen(kind,g,t){dwStack=[];dwPush({type:'list',kind,g:g||null,t:t||'',q:'',seg:'ALL',sort:null,dir:-1});}
-function dwPush(v){dwStack.push(v);dwRender();document.getElementById('dw').classList.add('open');document.getElementById('dw-ov').classList.add('open');}
+function dwPush(v){if(typeof DWP!=="undefined")DWP={busy:false,msg:null};dwStack.push(v);dwRender();document.getElementById('dw').classList.add('open');document.getElementById('dw-ov').classList.add('open');}
 function dwBack(){dwStack.pop();if(!dwStack.length)return dwClose();dwRender();}
 function dwClose(){dwStack=[];document.getElementById('dw').classList.remove('open');document.getElementById('dw-ov').classList.remove('open');}
 function dwCur(){return dwStack[dwStack.length-1];}
@@ -3501,7 +3506,7 @@ function dwRenderOp(o,T,ST2,TL,SM,B){
   const razon=getTk(o.id,'razon_perdida',''),coment=getTk(o.id,'comentario',''),estTk=getTk(o.id,'estado','');
   const F=(l,v)=>`<div class="od-f"><div class="od-l">${l}</div><div class="od-v">${v==null||v===''?'—':v}</div></div>`;
   B.innerHTML=`<div class="od-grid">
-    ${F('NRC',`<b style="color:#F59E0B">${fM(+o.nrc||0)}</b>`)}${F('MRC',fM(+o.mrc||0))}${F('Total',`<b>${fM(amt(o))}</b>`)}${F('% Prob. cierre',esc(o.prob))}
+    ${F('NRC',`<b style="color:#F59E0B">${fM(+o.nrc||0)}</b>`)}${F('MRC',fM(+o.mrc||0))}${F('Total',`<b>${fM(amt(o))}</b>`)}${F('% Prob. cierre',dwProbHtml(o))}
     ${F('Estado (Sheet)',esc(o.estado))}${F('Tipo',esc(o.tipo)+' inspección')}${F('Asesor comercial',esc(o.asesor))}${F('Producto',esc(o.prod))}${F('Registro(s) de oportunidad',(o.registros||[]).length?o.registros.map(r=>`<span class="od-reg">${esc(r.fabricante||'(sin fabricante)')}${r.deal?` · Deal <b>${esc(r.deal)}</b>`:''}</span>`).join(''):'<span style="color:#64748B">Sin registro</span>')}
     ${F('Día asignado',esc(o.fechaA))}${F('Día entregado',esc(o.fechaE))}${F('Tiempo en preventa',o.tpPre!=null&&o.tpPre!==''?o.tpPre+' d':'')}${F('Tiempo total cotización',o.tpTot!=null&&o.tpTot!==''?o.tpTot+' d':'')}
     ${F('Mes',esc(o.mes))}${F('Margen',esc(o.margen))}${F('Tarea notificación cierre',esc(o.cierre))}${o._seg==='pe'?F('Fecha pérdida',esc(o.fechaPerd||getTk(o.id,'fecha_perdida',''))):''}
@@ -3512,6 +3517,37 @@ function dwRenderOp(o,T,ST2,TL,SM,B){
   ${razon?`<div class="od-l" style="margin-top:10px">Razón de pérdida</div><div class="od-seg" style="border-color:#E55C6C55">${esc(razon)}</div>`:''}`;
 }
 
+/* v9.31 — % de probabilidad de cierre con un click desde el detalle de la tarea (Panel de Control).
+   Escribe solo esa celda (POST mode:'update' {tarea, prob}) y recalcula el dashboard con el dato local. */
+let DWP={busy:false,msg:null};
+const dwProbOpts=()=>(RG.cat&&RG.cat.prob&&RG.cat.prob.length?RG.cat.prob:RG_DEF.prob);
+function dwProbHtml(o){
+  if(RG.key==null)RG.key=lsGet('nw_rg_key_v9','')||'';
+  const cur=probN(o.prob),t=escA(String(o.tarea||''));
+  return `<div class="dwp">${dwProbOpts().map(x=>`<button class="${cur!=null&&probN(x)===cur?'on':''}" ${DWP.busy?'disabled':''} onclick="dwProbSet('${t}','${escA(x)}')">${esc(x)}</button>`).join('')}</div>
+    ${cur!=null&&!dwProbOpts().some(x=>probN(x)===cur)?`<div class="rg-help">Valor actual: ${esc(o.prob)}</div>`:''}
+    ${RG.key?'':`<input class="dwp-k" type="password" autocomplete="off" placeholder="Clave de escritura" oninput="RG.key=this.value;lsSet('nw_rg_key_v9',this.value)">`}
+    ${DWP.busy?'<div class="rg-help">Guardando…</div>':DWP.msg?`<div class="rg-help" style="color:${DWP.msg.ok?'#4AE3B5':'#F87171'}">${DWP.msg.html}</div>`:''}`;
+}
+async function dwProbSet(t,x){
+  if(DWP.busy)return;const cur=dwStack.length&&dwStack[dwStack.length-1].op;if(!cur)return;
+  if(probN(x)===probN(cur.prob)){DWP.msg={ok:true,html:'Sin cambios.'};dwRender();return;}
+  if(RG.key==null)RG.key=lsGet('nw_rg_key_v9','')||'';
+  if(!RG.key){DWP.msg={ok:false,html:'Escribe la clave de escritura.'};dwRender();return;}
+  DWP={busy:true,msg:null};dwRender();
+  try{
+    const r=await fetch(rgBase(),{method:'POST',body:JSON.stringify({token:rgTok(),writeKey:RG.key,user:rgUser()||GL[cur.gestor]||'',mode:'update',data:{tarea:t,prob:x}}),headers:{'Content-Type':'text/plain;charset=utf-8'},redirect:'follow',credentials:'omit'});
+    const j=await r.json();
+    if(j&&j.ok){
+      const antes=cur.prob||'sin %';
+      [OPS.ab,OPS.ga,OPS.pd,OPS.per,OPS.pe].forEach(a=>(a||[]).forEach(o=>{if(String(o.tarea)===String(t))o.prob=x;}));
+      dwStack.forEach(v=>{if(v.op&&String(v.op.tarea)===String(t))v.op.prob=x;});
+      DWP={busy:false,msg:{ok:true,html:`✓ Guardado en el Sheet: ${esc(antes)} → <b>${esc(x)}</b>`}};
+      try{buildD();buildRE();buildTop10();['ab','ga','pe'].forEach(s=>renderTab(s));renderPd();renderGe();updateBadges();}catch(e){console.error('[DWP]',e);}
+    }else DWP={busy:false,msg:{ok:false,html:'✕ '+esc((j&&j.error)||'Error desconocido')}};
+  }catch(e){DWP={busy:false,msg:{ok:false,html:'✕ No se pudo conectar con el Apps Script ('+esc(e.message)+')'}};}
+  if(dwStack.length)dwRender();
+}
 /* v9.23 — del detalle de una tarea a su actualización rápida */
 function dwEditQuick(t){dwClose();navTo('rg');rgMode('quick');setTimeout(()=>{const e=document.getElementById('rg-find');if(e)e.value=t;rgLoad(t);},60);}
 function dwExcl(seg,v,cli){if(!confirm(cli?`¿Excluir del análisis al cliente "${v}"?`:'¿Excluir esta tarea del análisis?'))return;addExcl(seg,cli?'cli:'+String(v).trim():String(v));dwClose();refreshExcl(seg);}
@@ -4437,7 +4473,7 @@ async function rgIngAlta(){const n=RG.ingNew||{};const cod=String(n.codigo||'').
   try{await initDashboard();}catch(err){}if(RG.msg&&RG.msg.ok)RG.msg.html=RG.msg.html.replace(/<br><span[^>]*>Actualizando el dashboard…<\/span>/,'');if(RG.mode==='ing')rgRender();}
 
 /* ══════════ v9.9 — ACTUALIZACIÓN RÁPIDA (5 campos) ══════════ */
-const RG_QK=['estado','fechaA','fechaE','nrc','mrc','cierre','prod'];   // v9.17 — prod: cambiar / agregar / quitar productos
+const RG_QK=['estado','fechaA','fechaE','nrc','mrc','prob','cierre','prod'];   // v9.31 — prob: % de probabilidad de cierre con un click   // v9.17 — prod: cambiar / agregar / quitar productos
 const rgQKeys=()=>/PERDIDA/i.test(RG.v.estado||'')?[...RG_QK,'fechaPerd']:RG_QK;
 const RG_QREG=['fab1','deal1','fab2','deal2'];   // v9.23 — registro(s) de oportunidad en la actualización rápida
 function rgFmtV(k,x){if(x===undefined||x===null||x==='')return 'vacío';if(k==='nrc'||k==='mrc')return fM(+x);if(/^fecha/.test(k)&&String(x).includes('-'))return String(x).split('-').reverse().join('/');if(k==='margen')return x+'%';return String(x);}
@@ -4460,6 +4496,7 @@ function rgImpact(){
     L.push(`Monto: NRC ${dn>=0?'+':''}${fM(dn)} · MRC ${dm>=0?'+':''}${fM(dm)} → impacta <b>${seg}</b>, Pipeline por tipo de inspección y Distribución por Ing.`);}
   if(v.fechaA&&v.fechaA!==o.fechaA){const m1=o.fechaA?MESN[ymdLocal(o.fechaA).getMonth()]:'—',m2=MESN[ymdLocal(v.fechaA).getMonth()];
     L.push(`Día asignado: cambia el <b>periodo</b> en que se cuenta${m1!==m2?` (Mes ${m1} → ${m2})`:''}, el Ingreso de tareas y los tiempos de preventa/cotización. La hoja se reordena por fecha.`);}
+  if(String(v.prob??'')!==String(o.prob??''))L.push(`% Probabilidad de cierre: <b>${esc(o.prob||'sin %')}</b> → <b>${esc(v.prob||'sin %')}</b> → impacta el <b>pipeline ponderado</b> y las tarjetas Alta / Media / Baja probabilidad.`);   // v9.31
   if(v.fechaE!==o.fechaE&&v.fechaE&&a[1]===b[1])L.push('Día entregado: cambia el Tiempo total de cotización y la semana en que figura como "→ Abierta".');
   if(String(v.prod||'')!==String(o.prod||'')){const a2=rgProds(o.prod),b2=rgProds(v.prod),mas=b2.filter(x=>!a2.includes(x)),menos=a2.filter(x=>!b2.includes(x));
     L.push(`Productos: ${mas.length?`<b style="color:#02C39A">+ ${esc(mas.join(', '))}</b> `:''}${menos.length?`<b style="color:#F87171">− ${esc(menos.join(', '))}</b>`:''} → quedan <b>${b2.length}</b>${b2.length?` (${esc(b2.join(', '))})`:''}. Al ganar el proyecto se pedirá el fabricante de cada uno.`);}
