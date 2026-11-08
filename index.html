@@ -746,9 +746,13 @@ textarea.rg-in{resize:vertical;min-height:64px}
 .rg-pre .rg-in{border:none;background:none}
 .rg-f.err .rg-pre{border-color:#E55C6C}
 .rg-chips{display:flex;gap:6px;flex-wrap:wrap}
-.rg-chk{display:flex;align-items:center;gap:8px;flex-wrap:wrap;background:#1F2229;border:1px solid #3A4055;border-radius:8px;padding:8px 12px;font-size:14px;color:#CBD5E1;cursor:pointer}
-.rg-chk.on{border-color:#A78BFA;background:#A78BFA1A;color:#E2E8F0}
-.rg-chk input{width:16px;height:16px;accent-color:#A78BFA}
+.pg-wrap{display:flex;flex-direction:column;gap:8px}
+.pg-grp{border-left:3px solid #3A4055;padding-left:10px}
+.pg-h{font-size:12px;font-weight:700;text-transform:uppercase;letter-spacing:.4px;margin-bottom:5px}
+.pg-h span{color:#64748B;font-weight:600;margin-left:4px}
+.rg-mv{display:flex;align-items:center;gap:8px;flex-wrap:wrap;background:#1F2229;border:1px solid #3A4055;border-radius:8px;padding:8px 12px;font-size:14px;color:#CBD5E1;cursor:pointer}
+.rg-mv.on{border-color:#A78BFA;background:#A78BFA1A;color:#E2E8F0}
+.rg-mv input{width:16px;height:16px;accent-color:#A78BFA}
 .rg-chips button{background:#1F2229;border:1px solid #3A4055;color:#CBD5E1;border-radius:999px;padding:5px 12px;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit}
 .rg-chips button.on{background:#5B9FE8;border-color:#5B9FE8;color:#fff}
 .rg-auto{background:#1F222988;border:1px dashed #3A4055;border-radius:8px;padding:8px 10px;font-size:13px;color:#94A3B8;min-height:36px}
@@ -4295,6 +4299,15 @@ const RG_PROD_EXCL=['PRODUCTOS','PRODUCTO','NA','N/A'];   // v9.34 — NA no es 
 const rgProds=s=>[...new Set(String(s||'').split(/\s*[,;]\s*/).map(x=>x.trim()).filter(Boolean))];
 const rgEsCab=p=>/CABLEADO\s*ESTRUCTURADO/i.test(String(p||'').normalize('NFD').replace(/[\u0300-\u036f]/g,''));
 function rgProdAddIn(ev,el){const v=String(el.value||'').trim();if(!v)return;if((!ev||!ev.inputType||ev.inputType==='insertReplacementText')&&rgOpts('prod').includes(v))rgProdToggle(v);}
+/* v9.37 — productos agrupados por naturaleza de cobro (solo presentación). MRC = recurrente (alquiler, renta,
+   servicios mensuales); el resto NRC = pago único. Clasificación según cómo se cotizan en el Sheet; para mover un
+   producto de grupo, agregarlo / quitarlo de PROD_MRC. */
+const PROD_MRC=['WIFI Alquiler Equipos','Renta Equipo','WIFI Portal Cautivo','WIFI SSID','NETWORK (Producto Financiero)','Monitoreo de Red LAN'];
+const esProdMRC=p=>PROD_MRC.some(x=>catKey(x)===catKey(p));
+function prodGrupos(lista,fn,cls){
+  const g=[['🔁 MRC · recurrente (mensual)','#5B9FE8',lista.filter(esProdMRC)],['💵 NRC · pago único','#F59E0B',lista.filter(p=>!esProdMRC(p))]];
+  return g.filter(x=>x[2].length).map(([t,c,a])=>`<div class="pg-grp" style="border-color:${c}66"><div class="pg-h" style="color:${c}">${t} <span>${a.length}</span></div><div class="${cls||'rg-chips rg-multi'}">${a.map(fn).join('')}</div></div>`).join('');
+}
 function rgProdToggle(p){p=String(p||'').trim();if(!p)return;RG.prodTouched=true;if(rggNorm(p).includes('PROYECTO INTEGRAL MULTIVERTICAL')){rgSet('multiv','SI');return;}/* v9.33 */const a=rgProds(RG.v.prod),i=a.indexOf(p);if(i>=0)a.splice(i,1);else a.push(p);rgSet('prod',a.join(', '));}
 function rgOpts(k){
   if(k==='fab1'||k==='fab2')return catNombres('fab');   // v9.35 — base depurada de fabricantes
@@ -4391,12 +4404,12 @@ function rgField(f){
         <datalist id="dl-prodadd">${o.map(x=>`<option value="${escA(x)}">`).join('')}</datalist>
         <button type="button" class="rg-mini" onclick="RG.prodAll=1;rgRender()">Ver lista completa</button></div>`;}
   else if(f.t==='multi'){const sel=rgProds(val),o=[...new Set([...rgOpts(f.k),...sel])];
-    inp=`<div class="rg-chips rg-multi">${o.map(x=>{const on=sel.includes(x);return `<button type="button" class="${on?'on':''}" data-p="${escA(x)}" onclick="rgProdToggle(this.dataset.p)">${on?'✓ ':''}${esc(x)}</button>`;}).join('')}</div>
+    inp=`<div class="pg-wrap">${prodGrupos(o,x=>{const on=sel.includes(x);return `<button type="button" class="${on?'on':''}" data-p="${escA(x)}" onclick="rgProdToggle(this.dataset.p)">${on?'✓ ':''}${esc(x)}</button>`;})}</div>
       <input id="${id}-otro" class="rg-in" style="margin-top:6px" placeholder="¿Otro producto? Escríbelo y presiona Enter" onkeydown="if(event.key==='Enter'){event.preventDefault();rgProdToggle(this.value);}">
       ${sel.length?`<div class="rg-help">Seleccionados (${sel.length}): <b style="color:#E2E8F0">${esc(sel.join(', '))}</b></div>`:''}${RG.quick?`<button type="button" class="rg-mini" style="margin-top:6px" onclick="RG.prodAll=0;rgRender()">Vista compacta</button>`:''}`;}
   else if(f.t==='list'){const o=rgOpts(f.k);inp=`<input id="${id}" data-k="${f.k}"${f.k==='fab1'||f.k==='fab2'?' data-cat="fab"':''} class="rg-in" list="dl-${f.k}" value="${escA(val)}" placeholder="Escribe o elige…" oninput="rgInput(this)" onchange="rgSet('${f.k}',this.value)"><datalist id="dl-${f.k}">${o.map(x=>`<option value="${escA(x)}">`).join('')}</datalist>`;}
   else if(f.t==='seg')inp=`<div class="rg-seg">${f.opts.map((o,i)=>`<button class="${val===o?'on':''}" onclick="rgSet('${f.k}','${o}')">${f.lbl?f.lbl[i]:o}</button>`).join('')}</div>`;
-  else if(f.t==='check')inp=`<label class="rg-chk${val==='SI'?' on':''}"><input type="checkbox" ${val==='SI'?'checked':''} onchange="rgSet('${f.k}',this.checked?'SI':'NO')"> 🧩 Es un <b>Proyecto Integral Multivertical</b> <span class="rg-help">— igual elige arriba los productos de Network que considera</span></label>`;   // v9.33
+  else if(f.t==='check')inp=`<label class="rg-mv${val==='SI'?' on':''}"><input type="checkbox" ${val==='SI'?'checked':''} onchange="rgSet('${f.k}',this.checked?'SI':'NO')"> 🧩 Es un <b>Proyecto Integral Multivertical</b> <span class="rg-help">— igual elige arriba los productos de Network que considera</span></label>`;   // v9.33
   else if(f.t==='chips'){const o=(RG.cat&&RG.cat.prob)||RG_DEF.prob;inp=`<div class="rg-chips">${o.map(x=>`<button class="${String(val)===String(x)?'on':''}" onclick="rgSet('prob',${String(val)===String(x)?"''":`'${escA(x)}'`})">${esc(x)}</button>`).join('')}</div>`;}
   else if(f.t==='gestor')inp=`<div class="rg-seg rg-g">${GKEYS.filter(g=>ING_ACTIVO[g]!==false||val===g).map(g=>`<button class="${val===g?'on':''}" ${ro?'disabled':''} onclick="rgSet('gestor','${g}')"><span class="gdot" style="background:${GC[g]}"></span>${GL[g]}</button>`).join('')}</div>`;
   else if(f.t==='auto'){
@@ -4539,7 +4552,7 @@ function rgMvHtml(){
   const row=([o,est])=>{const t=String(o.tarea),id=escA(t),sel=MVQ.sel[t]||[];
     if(MVQ.ok.has(t))return `<div class="gq-r done"><span>✓ <b>#${esc(t)}</b> · ${esc(o.cliente||'')} — productos: ${esc(o.prod)}</span></div>`;
     return `<div class="mvq-r"><div><div class="gmx-nm">#${esc(t)} · ${esc(o.cliente||'—')}</div><div class="gmx-mut">${est} · ${esc(o.estado||'')} · ${esc(o.asesor||'Sin asesor')}${amt(o)?' · '+fM(amt(o)):''}</div></div>
-      <div class="gq-ch">${opts.map(p=>`<button class="${sel.includes(p)?'on':''}" onclick="mvTog('${id}','${escA(p)}')">${sel.includes(p)?'✓ ':''}${esc(p)}</button>`).join('')}</div>
+      <div class="pg-wrap">${prodGrupos(opts,p=>`<button class="${sel.includes(p)?'on':''}" onclick="mvTog('${id}','${escA(p)}')">${sel.includes(p)?'✓ ':''}${esc(p)}</button>`,'gq-ch')}</div>
       <div class="gq-act"><button class="gq-save" ${!sel.length||MVQ.busy.has(t)?'disabled':''} onclick="mvSave('${id}')">${MVQ.busy.has(t)?'Guardando…':`💾 Guardar${sel.length?' ('+sel.length+')':''}`}</button>
         <button class="gmx-ed" style="margin:0" onclick="dwEditQuick('${id}')" title="Abrir en la actualización rápida">⚡ Abrir</button></div>
       ${MVQ.err[t]?`<div class="gq-err">✕ ${esc(MVQ.err[t])}</div>`:''}</div>`;};
@@ -4802,7 +4815,7 @@ function rgGanRender(){
           const idx=v.productos.map((p,n)=>[p,n]);
           return idx.filter(([p])=>!p.integral).map(([p,n])=>card(p,n)).join('')+rggIntegrales().map(P=>{const sel=idx.filter(([p])=>p.integral===P),ops=rggIntOpts(),extra=sel.map(([p])=>p.producto).filter(x=>!ops.some(o=>rggNorm(o)===rggNorm(x)));
             return `<div class="rgg-int"><div class="rgg-fab-p">🧩 ${esc(P)} <span class="rgg-why">desagrégalo: elige los productos que lo integran${sel.length?` · ${sel.length} elegido${sel.length!==1?'s':''}`:''}</span></div>
-              <div class="rgg-chips rgg-chips-s">${[...ops,...extra].map(o=>`<button class="${sel.some(([p])=>rggNorm(p.producto)===rggNorm(o))?'on':''}" onclick="rggIntToggle('${escA(P)}','${escA(o)}')">${esc(o)}</button>`).join('')}
+              <div class="pg-wrap">${prodGrupos([...ops,...extra],o=>`<button class="${sel.some(([p])=>rggNorm(p.producto)===rggNorm(o))?'on':''}" onclick="rggIntToggle('${escA(P)}','${escA(o)}')">${esc(o)}</button>`,'rgg-chips rgg-chips-s')}</div><div class="rgg-chips rgg-chips-s">
                 <input class="rg-in rgg-int-otro" placeholder="Otro producto + Enter" onkeydown="if(event.key==='Enter'){event.preventDefault();event.stopPropagation();rggIntToggle('${escA(P)}',this.value)}"></div>
               ${sel.length?sel.map(([p,n])=>card(p,n)).join(''):'<div class="rg-help" style="color:#F59E0B">Elige al menos un producto: cada uno pide su fabricante / vendor y distribuidor.</div>'}</div>`;}).join('');})()}</div>
         <datalist id="rgg-dl-fab">${rggOpts('marca').map(x=>`<option value="${escA(x)}">`).join('')}</datalist>
