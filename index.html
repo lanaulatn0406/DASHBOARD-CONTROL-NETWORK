@@ -225,6 +225,9 @@ body{background:#1F2229;color:#E2E8F0;font-family:'Segoe UI',system-ui,sans-seri
 .gq-save{background:#02C39A;border:0;color:#062019;border-radius:6px;padding:5px 10px;font-size:12px;font-weight:700;cursor:pointer;font-family:inherit}
 .gq-save:disabled{background:#3A4055;color:#64748B;cursor:not-allowed}
 .gq-err{grid-column:1/-1;color:#F87171;font-size:12px}
+.mvq-r{display:grid;grid-template-columns:minmax(200px,1fr) minmax(300px,3fr) auto;gap:10px;align-items:start;padding:8px 12px;border-top:1px solid #3A405588;font-size:13px}
+.mvq-n{background:#F59E0B;color:#1F2229;border-radius:9px;padding:0 6px;font-size:11px;margin-left:4px}
+@media (max-width:900px){.mvq-r{grid-template-columns:1fr}}
 @media (max-width:900px){.gq-r{grid-template-columns:1fr 1fr}.gq-r>div:nth-child(4){grid-column:1/-1}}
 .gmx-warn{background:#F59E0B1A;border:1px solid #F59E0B66;color:#FBBF24;border-radius:8px;padding:8px 12px;margin-bottom:10px;font-size:13px}
 .ops-wrap{background:#272C35;border-radius:10px;border:1px solid #3A4055;overflow:hidden;margin-top:4px}
@@ -2201,7 +2204,7 @@ function gmxQProd(t,i,k,v){
 }
 function gmxQRow(x){
   const o=x.o,t=String(o.tarea),s=gmxQState(x),mrc=+o.mrc||0,id=escA(t);
-  if(GMX_QOK.has(t))return `<div class="gq-r done">✓ <b>#${esc(t)}</b> · ${esc(o.cliente||'')} — guardada en PROYECTOS GANADOS</div>`;
+  if(GMX_QOK.has(t))return `<div class="gq-r done"><span>✓ <b>#${esc(t)}</b> · ${esc(o.cliente||'')} — guardada en PROYECTOS GANADOS</span></div>`;
   const chb=(k,opts,suf)=>opts.map(v=>`<button class="${String(s[k])===String(v)?'on':''}" onclick="gmxQSet('${id}','${k}','${escA(String(v))}',this)">${esc(String(v))}${suf||''}</button>`).join('');
   const ch=(k,opts,suf)=>`<div class="gq-ch">${chb(k,opts,suf)}</div>`;
   const regs=gmxQRegs(o);
@@ -4221,7 +4224,7 @@ const todayYmd=()=>_ymd(new Date());
 
 /* v9.14 — varios productos por tarea: se guardan en la misma celda como "Prod A, Prod B" */
 const RG_ESTADO_INICIAL='PENDIENTE DE REVISION PREVENTA TN';
-const RG_PROD_EXCL=['PRODUCTOS','PRODUCTO'];   // encabezado colado en el desplegable del Sheet (si una tarea ya lo tiene, se ve y se puede quitar)
+const RG_PROD_EXCL=['PRODUCTOS','PRODUCTO','NA','N/A'];   // v9.34 — NA no es un producto   // encabezado colado en el desplegable del Sheet (si una tarea ya lo tiene, se ve y se puede quitar)
 const rgProds=s=>[...new Set(String(s||'').split(/\s*[,;]\s*/).map(x=>x.trim()).filter(Boolean))];
 const rgEsCab=p=>/CABLEADO\s*ESTRUCTURADO/i.test(String(p||'').normalize('NFD').replace(/[\u0300-\u036f]/g,''));
 function rgProdAddIn(ev,el){const v=String(el.value||'').trim();if(!v)return;if((!ev||!ev.inputType||ev.inputType==='insertReplacementText')&&rgOpts('prod').includes(v))rgProdToggle(v);}
@@ -4242,7 +4245,7 @@ function rgOpen(){
   if(!RG.catTried){RG.catTried=true;fetch(ENDPOINT_URL+'&action=catalogos',{credentials:'omit',redirect:'follow'}).then(r=>r.json()).then(j=>{if(j&&j.ganados)RG.catGan=j.ganados;if(j&&j.catalogos&&Object.keys(j.catalogos).length){RG.cat=j.catalogos;rgRender();}}).catch(()=>{});}
 }
 function rgReset(silent){RG.user=null;RG.v={fechaA:todayYmd(),tipo:'SIN INSPECCION',estado:RG_ESTADO_INICIAL};RG.orig=null;RG.found=null;RG.draft=false;RG.msg=null;if(!silent){lsSet('nw_rg_draft_v9',null);rgRender();}}
-function rgMode(m){if(m==='ing'){RG.mode='ing';RG.quick=false;RG.msg=null;RG.ingEd={};rgRender();return;}RG.quick=m==='quick';if(m==='quick')m='update';RG.mode=m;RG.msg=null;if(m==='create'){rgReset(true);}else{RG.v={};RG.orig=null;RG.found=null;}rgSave();rgRender();setTimeout(()=>{const e=document.getElementById(m==='update'?'rg-find':'rg-tarea');if(e)e.focus();},30);}
+function rgMode(m){if(m==='ing'){RG.mode='ing';RG.quick=false;RG.msg=null;RG.ingEd={};rgRender();return;}if(m==='mv'){RG.mode='mv';RG.quick=false;RG.msg=null;rgRender();return;}RG.quick=m==='quick';if(m==='quick')m='update';RG.mode=m;RG.msg=null;if(m==='create'){rgReset(true);}else{RG.v={};RG.orig=null;RG.found=null;}rgSave();rgRender();setTimeout(()=>{const e=document.getElementById(m==='update'?'rg-find':'rg-tarea');if(e)e.focus();},30);}
 function rgSave(){lsSet('nw_rg_draft_v9',{mode:RG.mode,quick:!!RG.quick,v:RG.mode==='create'?RG.v:{}});}
 
 /* ── cambios de campo ── */
@@ -4346,8 +4349,9 @@ function rgRender(keepFocus){
   RG._chk=rgCheck();
   const up=RG.mode==='update';
   let h=`<div class="rg-top"><div><div class="rg-t">Registro de Tarea / Proyecto TELCOS</div><div class="rg-st">Cada registro se escribe directamente en <b>NETWORK_SEG_TAREAS_2026_TEMPLATE</b> · el Sheet queda como base en crudo</div></div>
-    <div class="rg-seg rg-modes"><button class="${up&&RG.quick?'on':''}" onclick="rgMode('quick')" title="Solo fechas, NRC, MRC y tarea de cierre">⚡ Actualización rápida</button><button class="${!up?'on':''}" onclick="rgMode('create')">➕ Nueva tarea</button><button class="${up&&!RG.quick?'on':''}" onclick="rgMode('update')">✏️ Edición completa</button><button class="${RG.mode==='ing'?'on':''}" onclick="rgMode('ing')" title="Agregar, editar o desactivar ingenieros de diseño">👥 Ingenieros</button></div></div>`;
+    <div class="rg-seg rg-modes"><button class="${up&&RG.quick?'on':''}" onclick="rgMode('quick')" title="Solo fechas, NRC, MRC y tarea de cierre">⚡ Actualización rápida</button><button class="${RG.mode==='create'?'on':''}" onclick="rgMode('create')">➕ Nueva tarea</button><button class="${up&&!RG.quick?'on':''}" onclick="rgMode('update')">✏️ Edición completa</button><button class="${RG.mode==='ing'?'on':''}" onclick="rgMode('ing')" title="Agregar, editar o desactivar ingenieros de diseño">👥 Ingenieros</button>${(()=>{const n=mvPend().filter(([o])=>!MVQ.ok.has(String(o.tarea))).length;return n||RG.mode==='mv'?`<button class="${RG.mode==='mv'?'on':''}" onclick="rgMode('mv')" title="Tareas abiertas / pendientes marcadas como Proyecto Integral Multivertical que aún no tienen productos de Network">🧩 Multivertical sin productos${n?` <b class="mvq-n">${n}</b>`:''}</button>`:'';})()}</div></div>`;
   if(RG.mode==='ing'){root.innerHTML=h+rgIngHtml();return;}   // v9.19
+  if(RG.mode==='mv'){root.innerHTML=h+rgMvHtml();return;}     // v9.34
   if(RG.draft&&!up)h+=`<div class="rg-note">Se recuperó un borrador sin guardar. <button class="vc-link" onclick="rgReset()">Descartar y empezar de cero</button></div>`;
   if(up){h+=`<div class="rg-find"><input id="rg-find" class="rg-in" inputmode="numeric" placeholder="#Tarea o cliente — se carga sola" list="dl-find" oninput="rgFindInput(this.value)" onkeydown="if(event.key==='Enter')rgLoad(this.value)"><datalist id="dl-find">${[...OPS.ab,...OPS.ga,...OPS.per,...OPS.pd].slice(0,800).map(o=>`<option value="${escA(o.tarea)}">${esc(o.cliente)}</option>`).join('')}</datalist><button class="dw-btn pri" onclick="rgLoad(document.getElementById('rg-find').value)">Cargar</button>
       ${RG.found?`<span class="rg-found">Editando <b>#${esc(RG.found.tarea)}</b> · ${esc(RG.found.hoja||'')} ${RG.found.fila?'fila '+RG.found.fila:''} · ${esc(RG.v.cliente||'')}</span>`:'<span class="rg-help">Escribe la #Tarea y presiona Enter. Solo se enviarán los campos que cambies.</span>'}</div>`;}
@@ -4448,6 +4452,50 @@ function rgIngCnt(g){const all=[...OPS.ab,...OPS.ga,...OPS.per,...OPS.pd].filter
   return {n:all.length,ab:OPS.ab.filter(o=>o.gestor===g).length,txt:Object.keys(por).sort().map(a=>a+': '+por[a]).join(' · ')};}
 function rgIngSet(g,k,v){RG.ingEd=RG.ingEd||{};RG.ingEd[g]=Object.assign({},RG.ingEd[g],{[k]:v});const b=document.getElementById('rgi-save-'+g);if(b)b.disabled=!rgIngDirty(g);}
 function rgIngDirty(g){const e=(RG.ingEd||{})[g];if(!e)return false;return (e.nombre!==undefined&&e.nombre.trim()!==GL[g])||(e.color!==undefined&&e.color.toLowerCase()!==String(GC[g]).toLowerCase())||(e.activo!==undefined&&e.activo!==(ING_ACTIVO[g]!==false));}
+/* ══ v9.34 — 🧩 MULTIVERTICAL SIN PRODUCTOS ═══════════════════════════════════════════════
+   Tareas abiertas / pendientes de despacho con PROYECTO MULTIVERTICAL = SI y sin productos de Network
+   (quedaron así al pasar el producto "Proyecto Integral Multivertical" al check). Agrupadas por Ing. de
+   Diseño; se eligen los productos con un click y se guarda solo PRODUCTOS (POST mode:'update'). */
+const MVQ={sel:{},ok:new Set(),err:{},busy:new Set(),open:new Set(lsGet('nw_mvq_open_v9',[]))};
+const mvPend=()=>[...OPS.ab.map(o=>[o,'Abierta']),...OPS.pd.map(o=>[o,'Pendiente'])]
+  .filter(([o])=>o.multiv==='SI'&&(!rgProds(o.prod).filter(p=>!esIntegral(p)).length||MVQ.ok.has(String(o.tarea))));
+function mvGrp(g){MVQ.open.has(g)?MVQ.open.delete(g):MVQ.open.add(g);lsSet('nw_mvq_open_v9',[...MVQ.open]);rgRender();}
+function mvTog(t,p){const a=MVQ.sel[t]=MVQ.sel[t]||[],i=a.indexOf(p);if(i>=0)a.splice(i,1);else a.push(p);delete MVQ.err[t];rgRender();}
+function rgMvHtml(){
+  if(RG.key==null)RG.key=lsGet('nw_rg_key_v9','')||'';
+  const L=mvPend(),G=new Map();L.forEach(([o,est])=>{const g=o.gestor||'—';if(!G.has(g))G.set(g,[]);G.get(g).push([o,est]);});
+  const opts=rgOpts('prod'),pend=L.filter(([o])=>!MVQ.ok.has(String(o.tarea))).length;
+  const top=`<div class="gq-top">${!RG.key?`<span>🔑 Clave de escritura:</span><input type="password" autocomplete="off" placeholder="Clave del Apps Script" oninput="RG.key=this.value;lsSet('nw_rg_key_v9',this.value)">`:''}
+    ${!rgUser()?`<span>Registrado por:</span><input placeholder="Tu nombre" oninput="RG.user=this.value;lsSet('nw_rg_user_v9',this.value)">`:''}
+    <span>Tareas abiertas y pendientes de despacho marcadas como <b>🧩 Proyecto Integral Multivertical</b> que todavía no tienen productos de Network. Elige los productos que considera la tarea y <b>💾 Guardar</b> (solo se escribe la columna PRODUCTOS; el check se mantiene). Con 2 o más también cuenta como Proyecto Integral Network.</span></div>`;
+  const row=([o,est])=>{const t=String(o.tarea),id=escA(t),sel=MVQ.sel[t]||[];
+    if(MVQ.ok.has(t))return `<div class="gq-r done"><span>✓ <b>#${esc(t)}</b> · ${esc(o.cliente||'')} — productos: ${esc(o.prod)}</span></div>`;
+    return `<div class="mvq-r"><div><div class="gmx-nm">#${esc(t)} · ${esc(o.cliente||'—')}</div><div class="gmx-mut">${est} · ${esc(o.estado||'')} · ${esc(o.asesor||'Sin asesor')}${amt(o)?' · '+fM(amt(o)):''}</div></div>
+      <div class="gq-ch">${opts.map(p=>`<button class="${sel.includes(p)?'on':''}" onclick="mvTog('${id}','${escA(p)}')">${sel.includes(p)?'✓ ':''}${esc(p)}</button>`).join('')}</div>
+      <div class="gq-act"><button class="gq-save" ${!sel.length||MVQ.busy.has(t)?'disabled':''} onclick="mvSave('${id}')">${MVQ.busy.has(t)?'Guardando…':`💾 Guardar${sel.length?' ('+sel.length+')':''}`}</button>
+        <button class="gmx-ed" style="margin:0" onclick="dwEditQuick('${id}')" title="Abrir en la actualización rápida">⚡ Abrir</button></div>
+      ${MVQ.err[t]?`<div class="gq-err">✕ ${esc(MVQ.err[t])}</div>`:''}</div>`;};
+  const body=[...G.entries()].map(([g,a])=>({g,a,n:a.filter(([o])=>!MVQ.ok.has(String(o.tarea))).length})).sort((x,y)=>y.n-x.n).map(({g,a,n})=>{const open=MVQ.open.has(g),ok=a.length-n;
+    return `<div class="gq-g"><button class="gq-gh" onclick="mvGrp('${escA(g)}')"><span class="gdot" style="background:${GC[g]||'#64748B'}"></span>${esc(GL[g]||g)}
+      ${n?`<span class="gq-n">${n} sin productos</span>`:''}${ok?`<span class="gq-ok">✓ ${ok} guardada${ok!==1?'s':''}</span>`:''}<span class="gq-c">${open?'▾ Ocultar':'▸ Completar'}</span></button>${open?a.map(row).join(''):''}</div>`;}).join('');
+  return `<section class="rg-sec" style="margin-top:12px"><div class="gmx-h" style="margin-bottom:10px"><span>🧩 Multivertical sin productos de Network</span><span class="gmx-mut">${pend} pendiente${pend!==1?'s':''}</span></div>
+    ${top}${body||'<div class="gmx-mut" style="padding:12px">✓ Todas las tareas multivertical tienen productos de Network.</div>'}</section>`;
+}
+async function mvSave(t){
+  const sel=MVQ.sel[t]||[];if(!sel.length||MVQ.busy.has(t))return;
+  if(RG.key==null)RG.key=lsGet('nw_rg_key_v9','')||'';
+  if(!RG.key){MVQ.err[t]='Escribe la clave de escritura arriba.';rgRender();return;}
+  const o=[...OPS.ab,...OPS.pd].find(x=>String(x.tarea)===String(t)),prod=sel.join(', ');
+  MVQ.busy.add(t);delete MVQ.err[t];rgRender();
+  try{
+    const r=await fetch(rgBase(),{method:'POST',body:JSON.stringify({token:rgTok(),writeKey:RG.key,user:rgUser()||(o&&GL[o.gestor])||'',mode:'update',data:{tarea:String(t),prod}}),headers:{'Content-Type':'text/plain;charset=utf-8'},redirect:'follow',credentials:'omit'});
+    const j=await r.json();MVQ.busy.delete(t);
+    if(j&&j.ok){[OPS.ab,OPS.ga,OPS.pd,OPS.per].forEach(a=>(a||[]).forEach(x=>{if(String(x.tarea)===String(t))x.prod=prod;}));MVQ.ok.add(String(t));delete MVQ.sel[t];
+      clearTimeout(MVQ._rf);MVQ._rf=setTimeout(()=>{try{buildD();['ab','ga','pe'].forEach(s=>renderTab(s));renderPd();renderGe();updateBadges();}catch(e){console.error('[MVQ]',e);}},400);}
+    else MVQ.err[t]=(j&&j.error)||'Error desconocido';
+  }catch(e){MVQ.busy.delete(t);MVQ.err[t]='No se pudo conectar con el Apps Script ('+e.message+')';}
+  rgRender();
+}
 function rgIngHtml(){
   if(RG.key==null)RG.key=lsGet('nw_rg_key_v9','')||'';
   const usados=GKEYS.map(g=>String(GC[g]).toLowerCase()),sug=(ING_PALETA.find(c=>!usados.includes(c.toLowerCase()))||ING_PALETA[0]);
