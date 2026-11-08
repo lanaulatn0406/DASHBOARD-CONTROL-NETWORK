@@ -2203,7 +2203,7 @@ function gmxQRow(x){
   const ch=(k,opts,suf)=>`<div class="gq-ch">${chb(k,opts,suf)}</div>`;
   const regs=gmxQRegs(o);
   if(x.falta.some(f=>f.startsWith('desagregar ')))return `<div class="gq-r"><div><div class="gmx-nm">#${esc(t)} · ${esc(o.cliente||'—')}</div><div class="gmx-mut">${esc(o.asesor||'Sin asesor')} · ${fM(amtO(o))}${mrc>0?` · MRC ${fM(mrc)}`:''}</div></div>
-    <div style="grid-column:2/5;color:#C4B5FD;font-size:13px">🧩 <b>Proyecto Integral Multivertical</b>: hay que desagregarlo en los productos que lo integran (cada uno con su fabricante y distribuidor). Se hace en el formulario completo.<div class="gmx-falta" style="max-width:none">Falta: ${x.falta.map(esc).join(' · ')}</div></div>
+    <div style="grid-column:2/5;color:#C4B5FD;font-size:13px">🧩 <b>${esc(gmxProds(o).filter(esIntegral).join(' y '))}</b>: hay que desagregarlo en los productos que lo integran (cada uno con su fabricante y distribuidor). Se hace en el formulario completo.<div class="gmx-falta" style="max-width:none">Falta: ${x.falta.map(esc).join(' · ')}</div></div>
     <div class="gq-act"><button class="gq-save" onclick="gmxEdit('${id}')">🧩 Desagregar</button></div></div>`;   // v9.32
   const fab=s.prods?s.prods.map((p,i)=>`<div class="gq-p"><span class="gq-pn" title="${escA(p.producto||'Tarea sin producto')}">${esc(p.producto||'(sin producto)')}</span>
       <input class="gq-in" list="gq-dl-fab" value="${escA(p.fabricante)}" placeholder="Fabricante" title="${p.sug?'Sugerido del registro de oportunidad':'Fabricante / vendor'}" oninput="gmxQProd('${id}',${i},'fabricante',this.value)">
@@ -2231,7 +2231,7 @@ function gmxQuickHtml(visX,vt){
   const nTot=grupos.reduce((s,g)=>s+g.n,0);
   const top=`<div class="gq-top">${!RG.key?`<span>🔑 Clave de escritura:</span><input type="password" autocomplete="off" placeholder="Clave del Apps Script" oninput="RG.key=this.value;lsSet('nw_rg_key_v9',this.value)">`:''}
     ${!rgUser()?`<span>Registrado por:</span><input placeholder="Tu nombre" oninput="RG.user=this.value;lsSet('nw_rg_user_v9',this.value)">`:''}
-    <span>Solo las ganadas por completar (sin fabricante, sin tipo de proyecto, con MRC sin meses o con un Proyecto Integral Multivertical sin desagregar). Elige, escribe y <b>💾 Guardar</b>; si no se conoce el distribuidor de una ganada vieja, escribe <b>NO DISPONIBLE</b>. Para registrar un registro de oportunidad nuevo o casos especiales usa <b>✎ Formulario</b>.${sinCierre?` <span style="color:#F59E0B">${sinCierre} sin tarea de cierre: regístrala primero en Registro.</span>`:''}</span></div>`;
+    <span>Solo las ganadas por completar (sin fabricante, sin tipo de proyecto, con MRC sin meses o con un Proyecto Integral Multivertical / Network sin desagregar). Elige, escribe y <b>💾 Guardar</b>; si no se conoce el distribuidor de una ganada vieja, escribe <b>NO DISPONIBLE</b>. Para registrar un registro de oportunidad nuevo o casos especiales usa <b>✎ Formulario</b>.${sinCierre?` <span style="color:#F59E0B">${sinCierre} sin tarea de cierre: regístrala primero en Registro.</span>`:''}</span></div>`;
   const body=grupos.map(({g,a,n})=>{const open=GMX_QOPEN.has(g),monto=a.filter(x=>!GMX_QOK.has(String(x.o.tarea))).reduce((s,x)=>s+amtO(x.o),0),ok=a.length-n;
     return `<div class="gq-g"><button class="gq-gh" onclick="gmxQGrp('${escA(g)}')"><span class="gdot" style="background:${GC[g]||'#64748B'}"></span>${esc(GL[g]||g)}
       ${n?`<span class="gq-n">${n} pendiente${n!==1?'s':''}</span><span class="gmx-mut">${fM(monto)}</span>`:''}${ok?`<span class="gq-ok">✓ ${ok} guardada${ok!==1?'s':''}</span>`:''}<span class="gq-c">${open?'▾ Ocultar':'▸ Completar'}</span></button>
@@ -4557,9 +4557,9 @@ function rggRegFab(n){const f=rggRegs().map(r=>r.fabricante).filter(Boolean);ret
 /* 'SIN' = no hubo registro · 'NO' = mismo fabricante del registro · 'SI' = cambió (pide motivo) */
 function rggCambio(fab){const f=rggRegs().map(r=>rggNorm(r.fabricante)).filter(Boolean);if(!f.length)return 'SIN';if(!String(fab||'').trim())return 'NO';return f.includes(rggNorm(fab))?'NO':'SI';}
 /* productos de la tarea con sus datos (lo ya guardado en FABRICANTES GANADOS 2026 tiene prioridad; si no, se sugiere el fabricante del registro) */
-/* v9.32 — "Proyecto Integral Multivertical" se desagrega: se eligen los productos que lo integran y cada uno
+/* v9.32 — "Proyecto Integral Multivertical" y "Proyecto Integral Network" se desagregan: se eligen los productos que lo integran y cada uno
    lleva su fabricante / distribuidor (filas {producto, integral:'<producto integral>'} en v.productos). */
-const esIntegral=p=>rggNorm(p).includes('PROYECTO INTEGRAL MULTIVERTICAL');
+const esIntegral=p=>{const n=rggNorm(p);return n.includes('PROYECTO INTEGRAL MULTIVERTICAL')||n.includes('PROYECTO INTEGRAL NETWORK');};
 const rggIntOpts=()=>[...new Set([...((RG.cat||{}).prod||[]),...RG_DEF.prod].map(x=>String(x).trim()).filter(x=>x&&!esIntegral(x)))].sort((a,b)=>a.localeCompare(b,'es'));
 function rggIntToggle(P,comp){
   comp=String(comp||'').trim();if(!RGG||!comp)return;const L=RGG.v.productos,i=L.findIndex(x=>x.integral===P&&rggNorm(x.producto)===rggNorm(comp));
