@@ -1988,13 +1988,17 @@ function gmxOpcional(x){
 const gmxNorm=s=>String(s||'').normalize('NFD').replace(/[̀-ͯ]/g,'').toUpperCase().replace(/\s+/g,' ').trim();
 const amtO=o=>(+o.nrc||0)+(+o.mrc||0);
 const GMX_VACIO=new Set(['','NA','N/A','N.A','N.A.','NO APLICA','NINGUNO','GENERICO','GENERICA','-','--','.','0','SIN FABRICANTE','SIN DATO','S/N','NO DISPONIBLE','NO REGISTRADO','DESCONOCIDO']);
-const GMX_ALIAS={DIST:{'STOCK':'STOCK TN','STOCK TELCONET':'STOCK TN','TN':'STOCK TN'}};
-/* "HUAWEI / SIEMON, Cisco" → ['HUAWEI','SIEMON','Cisco'] sin vacíos ni NA */
+const GMX_ALIAS={DIST:{'STOCK':'STOCK TN','STOCK TELCONET':'STOCK TN','TN':'STOCK TN'},
+  /* v9.28 — fabricantes escritos de varias formas. Clave = nombre sin tildes, espacios ni signos
+     ("TP-LINK" = "TP LINK" = "TPLINK"). Agregar aquí cada variante o error de tipeo nuevo. */
+  FAB:{FORTIENT:'Fortinet',FORTINET:'Fortinet',GRANSDTREAM:'Grandstream',GRANDSTREAM:'Grandstream',MERAKI:'Cisco Meraki',CISCOMERAKI:'Cisco Meraki',
+    TPLINK:'TP-Link',SMARTWIFI:'Smart WiFi',SMARTWIFITN:'Smart WiFi',HUAWEI:'Huawei',SIEMON:'Siemon',ARUBA:'Aruba',RUCKUS:'Ruckus',CISCO:'Cisco'}};
+/* "HUAWEI / SIEMON, Cisco" → ['HUAWEI','SIEMON','Cisco'] sin vacíos ni NA. "HPE - HUAWEI" = dos (guion con espacios). */
 function gmxLista(v,alias){
   const out=[],vistos=new Set();
-  String(v||'').split(/\s*(?:,|\/|;|\+|&|\sY\s)\s*/i).forEach(x=>{
+  String(v||'').split(/\s*(?:,|\/|;|\+|&|\sY\s|\s-\s)\s*/i).forEach(x=>{
     x=x.trim(); const k=gmxNorm(x); if(GMX_VACIO.has(k))return;
-    const nom=alias&&alias[k]?alias[k]:x, kk=gmxNorm(nom);
+    const kc=k.replace(/[^A-Z0-9]/g,''), nom=alias&&(alias[k]||alias[kc])||x, kk=gmxNorm(nom);
     if(!vistos.has(kk)){vistos.add(kk);out.push(nom);}
   });
   return out;
@@ -2024,10 +2028,10 @@ const gmxProds=o=>String(o.prod||'').split(/\s*,\s*/).map(s=>s.trim()).filter(Bo
    producto '' = línea a nivel propuesta (fabricante/distribuidor que no se puede atar a un producto). */
 function gmxLineas(o,idx){
   const det=idx[String(o.tarea||'').trim()]||(o.cierre?idx['c:'+String(o.cierre).trim()]:null);
-  if(det&&det.length)return {src:'det',L:det.map(d=>({producto:d.producto,fabricante:gmxLista(d.fabricante)[0]||'',distribuidor:gmxLista(d.distribuidor,GMX_ALIAS.DIST)[0]||'',cambio:d.cambio,motivo:d.motivo,src:'det'}))};
+  if(det&&det.length)return {src:'det',L:det.map(d=>({producto:d.producto,fabricante:gmxLista(d.fabricante,GMX_ALIAS.FAB)[0]||'',distribuidor:gmxLista(d.distribuidor,GMX_ALIAS.DIST)[0]||'',cambio:d.cambio,motivo:d.motivo,src:'det'}))};
   const P=gmxProds(o),pg=o.pg||{};
-  const regs=(o.registros||[]).map(r=>r.fabricante).filter(Boolean);
-  const F=gmxLista([pg.fabricante,pg.marcaCableado].filter(Boolean).join(',')),D=gmxLista(pg.distribuidor,GMX_ALIAS.DIST);
+  const regs=(o.registros||[]).map(r=>gmxLista(r.fabricante,GMX_ALIAS.FAB)[0]).filter(Boolean);
+  const F=gmxLista([pg.fabricante,pg.marcaCableado].filter(Boolean).join(','),GMX_ALIAS.FAB),D=gmxLista(pg.distribuidor,GMX_ALIAS.DIST);
   const src=F.length||D.length?'pg':'none';
   const ln=(producto,fabricante,distribuidor)=>({producto,fabricante,distribuidor,cambio:fabricante?gmxCambio(fabricante,regs):'',motivo:'',src});
   const L=[];
