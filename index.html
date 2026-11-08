@@ -3506,6 +3506,33 @@ const _origResetF=resetF;resetF=function(seg){TC[seg]=null;_origResetF.apply(thi
 const _origResetPd=resetPd;resetPd=function(){TC.pd=null;_origResetPd.apply(this,arguments);};
 const _origResetGe=resetGe;resetGe=function(){TC.ge=null;_origResetGe.apply(this,arguments);};
 restructureTabs();
+/* v9.27 — Ops Ganadas: "Productos · Fabricantes · Distribuidores" a la vista bajo las tarjetas;
+   el detalle de oportunidades va al final, plegado (se abre con click o al filtrar desde una tarjeta). */
+const GA_DET_KEY='nw_ga_det_v9';
+function gaDetOpen(){const w=document.querySelector('#tp-ga > .ops-wrap');return !!w&&w.style.display!=='none';}
+function gaDet(open){
+  const tp=document.getElementById('tp-ga');if(!tp)return;
+  const w=tp.querySelector(':scope > .ops-wrap'),h=document.getElementById('ga-det-h'),x=document.getElementById('excl-panel-ga');
+  if(w)w.style.display=open?'':'none';if(x)x.style.display=open?'':'none';
+  if(h){h.classList.toggle('closed',!open);const s=h.querySelector('.ga-det-s');if(s)s.textContent=open?'click para ocultar':'click para desplegar';}
+  lsSet(GA_DET_KEY,open);
+}
+(function gaLayout(){
+  const tp=document.getElementById('tp-ga'),mix=document.getElementById('ga-mix'),dr=document.getElementById('tcd-ga');
+  const an=tp&&tp.querySelector(':scope > .an-wrap'),w=tp&&tp.querySelector(':scope > .ops-wrap');
+  if(!tp||!mix||!dr||!an||!w)return;
+  const mt=mix.previousElementSibling;
+  if(mt&&mt.classList.contains('sttl')){mt.classList.add('no-cl');dr.after(mt);mt.after(mix);}else dr.after(mix);
+  const ht=w.previousElementSibling&&w.previousElementSibling.classList.contains('sttl')?w.previousElementSibling:null,x=document.getElementById('excl-panel-ga');
+  an.after(w);if(x)w.after(x);
+  if(ht){ht.id='ga-det-h';ht.classList.add('cl-able');ht.title='Click para desplegar / ocultar';ht.insertAdjacentHTML('beforeend','<span class="ga-det-s" style="font-size:12px;color:#64748B;font-weight:500;text-transform:none;letter-spacing:0;margin-left:8px"></span>');
+    w.before(ht);ht.addEventListener('click',()=>gaDet(!gaDetOpen()));}
+  gaDet(!!lsGet(GA_DET_KEY,false));
+})();
+const _origTcDrill=tcDrill;tcDrill=function(seg){
+  _origTcDrill.apply(this,arguments);
+  if(seg==='ga'&&TC.ga&&!gaDetOpen()){gaDet(true);const h=document.getElementById('ga-det-h');if(h)setTimeout(()=>h.scrollIntoView({behavior:'smooth',block:'start'}),30);}
+};
 const _origOnRazonPe=onRazonPe;let _rzT;onRazonPe=function(){_origOnRazonPe.apply(this,arguments);clearTimeout(_rzT);_rzT=setTimeout(()=>buildTC('pe'),600);};
 
 initCollapsibles();
