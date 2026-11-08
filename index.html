@@ -1411,6 +1411,11 @@ const NO_OFERTA_ESTADOS = [
 
 /* ── DATOS DINÁMICOS ── */
 let OPS = {ab:[], ga:[], pe:[], pd:[], per:[]};
+/* v9.29 — asesores escritos de varias formas en el Sheet (errores de tipeo): se unifican al cargar,
+   así filtros, rankings y tarjetas los ven como una sola persona. Clave = nombre sin tildes,
+   espacios ni signos, en mayúsculas. Agregar aquí cada variante nueva. */
+const asesorKey=s=>String(s||'').normalize('NFD').replace(/[̀-ͯ]/g,'').toUpperCase().replace(/[^A-Z0-9]/g,'');
+const ASESOR_ALIAS={YESENIACOYANTES:'Yessenia Collantes',YESENIACOLLANTES:'Yessenia Collantes',YESSENIACOYANTES:'Yessenia Collantes'};
 let TOTAL_REGISTROS_NETWORK = 0;   // Total filas con contenido en las hojas de gestores (todos los años)
 let D   = {GH:{ab:{sin:{ops:0,nrc:0,mrc:0},con:{ops:0,nrc:0,mrc:0}},ga:{sin:{ops:0,nrc:0,mrc:0},con:{ops:0,nrc:0,mrc:0}},pe:{sin:{ops:0,nrc:0,mrc:0},con:{ops:0,nrc:0,mrc:0}},wr:0,margen:0},
             CM:{ab:{sin:{ops:0,nrc:0,mrc:0},con:{ops:0,nrc:0,mrc:0}},ga:{sin:{ops:0,nrc:0,mrc:0},con:{ops:0,nrc:0,mrc:0}},pe:{sin:{ops:0,nrc:0,mrc:0},con:{ops:0,nrc:0,mrc:0}},wr:0,margen:0},
@@ -3148,6 +3153,7 @@ async function initDashboard(){
     OPS.pe  = [];                        // Perdidas gestionadas desde el dashboard (localStorage)
     OPS.per = (data.perdidas   || []);  // Perdidas desde Sheet (estado='PERDIDA')
     TOTAL_REGISTROS_NETWORK = data.totalRegistrosNetwork || 0;
+    [...OPS.ab,...OPS.ga,...OPS.pd,...OPS.per].forEach(o=>{const a=ASESOR_ALIAS[asesorKey(o.asesor)];if(a)o.asesor=a;});   // v9.29
     aplicarIngenieros(data.ingenieros, [...OPS.ab,...OPS.ga,...OPS.pd,...OPS.per]);   // v9.18 — lista de ingenieros (hoja INGENIEROS)
     // Diagnóstico — eliminar cuando todo funcione
     console.log('[NW] Backend response keys:', Object.keys(data));
