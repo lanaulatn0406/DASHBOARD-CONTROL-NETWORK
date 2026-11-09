@@ -1245,6 +1245,8 @@ textarea.rg-in{resize:vertical;min-height:64px}
   <div class="cg3" id="pe-charts"></div>
   <div class="sttl" style="color:#E55C6C">📐 Por Ing. de Diseño</div>
   <div class="gd4" id="pe-gestores"></div>
+  <div class="sttl" style="color:#E55C6C">🏭 Productos · Fabricantes · Motivos de pérdida</div>
+  <div id="pe-mix"></div>
   <div class="sttl" style="color:#E55C6C">📋 Detalle de Oportunidades Perdidas — con Razón</div>
   <div class="ops-wrap">
     <div class="ops-hdr">
@@ -1449,6 +1451,7 @@ function ingResumen(){
 }
 const ESTADOS_AB  = ['Propuesta enviada','En negociación','Revisión técnica','Pendiente aprobación','En riesgo','Pausada'];
 const ESTADOS_GA  = ['Ganada — Facturación pendiente','En implementación','Completada'];
+const AB_GANAR='🏆 Marcar como Ganada',AB_PERDER='❌ Marcar como Perdida';   // v9.38 — se escriben en el Sheet
 const ESTADOS_PE_ORIG = ['Pérdida por precio','Pérdida por competencia','Presupuesto cancelado','Sin respuesta del cliente','Requisitos no cumplidos'];
 const PERDIDA_KEY = '❌ Cerrar como Perdida';
 /* Estados que indican que NO se generará oferta — excluidos de Pendientes, mostrados en tab Gestión Externa */
@@ -1538,7 +1541,10 @@ function confirmarPerdida(){
   ['ab','ga','pe'].forEach(s=>{if(cBuilt.has(s))renderTab(s);});
   updateBadges();
 }
-function onEstado(id,val,seg){if(val===PERDIDA_KEY){pedirRazon(id,seg);return;}saveTkF(id,'estado',val);colorSelect(id);}
+function onEstado(id,val,seg){
+  if(val===AB_GANAR||val===AB_PERDER){const s=document.getElementById(`est-${id}`);if(s)s.value='';const o=OPS.ab.find(x=>String(x.id)===String(id));if(!o)return;
+    if(val===AB_GANAR)abGanar(o);else rgPerFetch(String(o.tarea));return;}   // v9.38
+  if(val===PERDIDA_KEY){pedirRazon(id,seg);return;}saveTkF(id,'estado',val);colorSelect(id);}
 function onComentario(id,val){saveTkF(id,'comentario',val);}
 function onRazonPe(id,val){saveTkF(id,'razon_perdida',val);}
 function colorSelect(id){
@@ -2156,6 +2162,166 @@ function gmxRank(dim,title,tip,arr,cols,base){
     <div class="gmx-sc"><table class="gmx-t"><thead><tr><th>#</th><th>Nombre</th>${cols.map(c=>`<th class="r">${c[0]}</th>`).join('')}</tr></thead>
     <tbody>${rows||'<tr><td colspan="9" class="gmx-mut" style="padding:12px">Sin datos para esta selección.</td></tr>'}</tbody></table></div></div>`;
 }
+/* ══ v9.38 — PROYECTO PERDIDO / MARCAR GANADA DESDE OPS ABIERTAS ═══════════════════════════════
+   Ops Abiertas → Estado: "🏆 Marcar como Ganada" pide la tarea de notificación de cierre (POST update {tarea, cierre})
+   y abre el formulario del proyecto ganado; "❌ Marcar como Perdida" abre el formulario del proyecto perdido. Este
+   formulario también se abre al pasar a PERDIDA desde la actualización rápida / edición completa. Escribe ESTADO =
+   PERDIDA + Día de Registro Perdida y PROYECTOS PERDIDOS (una fila por producto) vía POST mode:'perdida'. */
+let PERD_DET=null,RGP=null,RGC=null;
+const PERD_MOTIVOS=['Precio','Tiempo de entrega','Solución técnica / alcance','Ganó otro fabricante / marca','Relación del cliente con otro proveedor','Cliente sin presupuesto / desistió','Proyecto postergado / cancelado','Otro'];
+const perdDetDe=t=>(PERD_DET||[]).filter(r=>String(r.tarea)===String(t));
+function razonPe(o){const r=getTk(o.id,'razon_perdida','');if(r)return r;const d=perdDetDe(o.tarea)[0];return d?d.motivo:'';}
+function rgOvl(id){let ov=document.getElementById(id);if(!ov){ov=document.createElement('div');ov.id=id;ov.className='rgg-ov';document.body.appendChild(ov);}ov.classList.add('open');return ov;}
+const rgKeyUserHtml=()=>`${RG.key?'':`<div class="rg-f"><label>Clave de escritura</label><input class="rg-in" type="password" autocomplete="off" oninput="RG.key=this.value;lsSet('nw_rg_key_v9',this.value)" placeholder="Clave definida en el Apps Script"></div>`}
+  ${rgUser()?'':`<div class="rg-f"><label>Registrado por</label><input class="rg-in" value="${escA(RG.user||'')}" placeholder="Tu nombre" oninput="RG.user=this.value;lsSet('nw_rg_user_v9',this.value)"></div>`}`;
+/* ── marcar como ganada (Ops Abiertas) ── */
+function abGanar(o){if(RG.key==null)RG.key=lsGet('nw_rg_key_v9','')||'';RGC={o,cierre:'',busy:false,msg:null};rgcRender();setTimeout(()=>{const e=document.getElementById('rgc-in');if(e)e.focus();},60);}
+function rgcClose(){const ov=document.getElementById('rgc-ov');if(ov)ov.classList.remove('open');RGC=null;}
+function rgcRender(){
+  if(!RGC)return;const o=RGC.o,ov=rgOvl('rgc-ov'),ok=/^\d{5,12}$/.test(RGC.cierre.trim());
+  ov.innerHTML=`<div class="rgg" role="dialog" aria-modal="true" style="max-width:560px"><div class="rgg-h"><div class="rgg-ic">🏆</div><div><div class="rgg-t">Marcar como ganada</div>
+      <div class="rgg-st"><b>${esc(o.cliente||'')}</b> · tarea cotizada #${esc(o.tarea)} · ${esc(GL[o.gestor]||o.gestor||'')} · ${fM(amt(o))}</div></div><button class="dw-x" onclick="rgcClose()">✕</button></div>
+    <div class="rgg-b"><div class="rg-f"><label>#Tarea de notificación de cierre <i>*</i></label><input id="rgc-in" class="rg-in" inputmode="numeric" value="${escA(RGC.cierre)}" placeholder="Ej. 166035747" oninput="RGC.cierre=this.value;const b=document.getElementById('rgc-go');if(b)b.disabled=!/^\\d{5,12}$/.test(this.value.trim())||RGC.busy" onkeydown="if(event.key==='Enter')rgcSubmit()">
+      <div class="rg-help">Se escribe en la tarea (¿Se realizó la venta? = SI), se registra en PROYECTOS GANADOS y luego se piden los datos del proyecto ganado (tipo, meses, fabricante y distribuidor por producto…).</div></div>
+      ${rgKeyUserHtml()}${RGC.msg?`<div class="rg-res ${RGC.msg.ok?'ok':'ko'}">${RGC.msg.html}</div>`:''}</div>
+    <div class="rgg-f"><span class="rg-help"></span><button class="rg-sec-btn" onclick="rgcClose()">Cancelar</button><button class="rg-go" id="rgc-go" ${ok&&!RGC.busy?'':'disabled'} onclick="rgcSubmit()">${RGC.busy?'Guardando…':'🏆 Marcar como ganada'}</button></div></div>`;
+}
+async function rgcSubmit(){
+  if(!RGC||RGC.busy||!/^\d{5,12}$/.test(RGC.cierre.trim()))return;
+  if(!RG.key){RGC.msg={ok:false,html:'Ingresa la clave de escritura.'};rgcRender();return;}
+  const o=RGC.o;RGC.busy=true;RGC.msg=null;rgcRender();
+  try{
+    const r=await fetch(rgBase(),{method:'POST',body:JSON.stringify({token:rgTok(),writeKey:RG.key,user:rgUser()||GL[o.gestor]||'',mode:'update',data:{tarea:String(o.tarea),cierre:RGC.cierre.trim()}}),headers:{'Content-Type':'text/plain;charset=utf-8'},redirect:'follow',credentials:'omit'});
+    const j=await r.json();
+    if(j&&j.ok){rgcClose();RG.pendingReload=true;
+      if(j.ganadoInfo&&j.ganadoInfo.cierre)setTimeout(()=>rgGanOpen(j.ganadoInfo,{}),120);else{RG.pendingReload=false;initDashboard();}}
+    else{RGC.busy=false;RGC.msg={ok:false,html:'✕ '+esc((j&&j.error)||'Error desconocido')};rgcRender();}
+  }catch(e){RGC.busy=false;RGC.msg={ok:false,html:'✕ No se pudo conectar con el Apps Script ('+esc(e.message)+')'};rgcRender();}
+}
+/* ── proyecto perdido ── */
+async function rgPerFetch(t,fechaPerd){
+  if(RG.key==null)RG.key=lsGet('nw_rg_key_v9','')||'';gmxCatLoad();
+  const ov=rgOvl('rgp-ov');ov.innerHTML=`<div class="rgg" style="max-width:520px"><div class="rgg-b"><div class="rg-help">Leyendo la tarea #${esc(t)}…</div></div></div>`;
+  try{const r=await fetch(ENDPOINT_URL+'&action=perdido&tarea='+encodeURIComponent(t),{credentials:'omit',redirect:'follow'});const j=await r.json();
+    if(j&&j.ok){rgPerOpen(j.perdido,j.actual||[],fechaPerd);return;}
+    ov.innerHTML=`<div class="rgg" style="max-width:520px"><div class="rgg-b"><div class="rg-res ko">✕ ${esc((j&&j.error)||'No se pudo leer la tarea')}${!j||!j.error?' — ¿está publicado el Code.gs v9.38?':''}</div></div><div class="rgg-f"><span></span><button class="rg-sec-btn" onclick="rgPerClose()">Cerrar</button></div></div>`;
+  }catch(e){ov.innerHTML=`<div class="rgg" style="max-width:520px"><div class="rgg-b"><div class="rg-res ko">✕ No se pudo conectar con el Apps Script (${esc(e.message)})</div></div><div class="rgg-f"><span></span><button class="rg-sec-btn" onclick="rgPerClose()">Cerrar</button></div></div>`;}
+}
+function rgPerOpen(info,actual,fechaPerd){
+  const a0=actual[0]||{},reg=(info.registros||[]).map(r=>r.fabricante).filter(Boolean),motivoPrev=a0.motivo||'';
+  const motOk=PERD_MOTIVOS.includes(motivoPrev),ps=(info.productos||[]).length?info.productos:actual.map(r=>r.producto).filter(Boolean);
+  RGP={info,busy:false,msg:null,pickProd:!(info.productos||[]).length,
+    v:{fechaPerd:fechaPerd||info.fechaPerd||todayYmd(),motivo:motOk?motivoPrev:(motivoPrev?'Otro':''),motivoOtro:motOk?'':motivoPrev.replace(/^Otro:\s*/,''),competidor:a0.competidor||'',comentario:a0.comentario||'',
+      productos:ps.map((p,n)=>{const g=actual.find(r=>r.producto===p)||{};return {producto:p,fabricante:g.fabricante||reg[n]||reg[0]||'',distribuidor:g.distribuidor||'',fabCompetidor:g.fabCompetidor||''};})}};
+  rgPerRender();
+}
+function rgPerClose(){const ov=document.getElementById('rgp-ov');if(ov)ov.classList.remove('open');RGP=null;
+  if(RG.pendingReload){RG.pendingReload=false;setTimeout(()=>{try{initDashboard();}catch(e){}},200);}}
+function rgPerSet(k,v,render){RGP.v[k]=v;if(render)rgPerRender();else rgPerBtn();}
+function rgPerProd(i,k,v){RGP.v.productos[i][k]=v;rgPerBtn();}
+function rgPerToggleProd(p){const L=RGP.v.productos,i=L.findIndex(x=>x.producto===p);if(i>=0)L.splice(i,1);else{const reg=(RGP.info.registros||[]).map(r=>r.fabricante).filter(Boolean);L.push({producto:p,fabricante:reg[0]||'',distribuidor:'',fabCompetidor:''});}rgPerRender();}
+function rgPerErr(){const v=RGP.v,E=[];
+  if(!v.fechaPerd)E.push('Día de pérdida');if(!v.motivo)E.push('Motivo de la pérdida');if(v.motivo==='Otro'&&!v.motivoOtro.trim())E.push('Describe el motivo');
+  if(!v.productos.length)E.push('Elige los productos que se cotizaron');
+  v.productos.forEach(p=>{if(!String(p.fabricante||'').trim())E.push((p.producto||'Producto')+': fabricante ofertado');catNoAplica(p.fabricante,p.producto).forEach(x=>E.push(x+' no es fabricante de '+p.producto));});
+  return E;}
+function rgPerBtn(){const b=document.getElementById('rgp-go');if(!b)return;const E=rgPerErr();b.disabled=!!E.length||RGP.busy;const h=document.getElementById('rgp-need');if(h)h.textContent=E.length?'Falta: '+E.join(' · '):'Listo para guardar';}
+function rgPerRender(){
+  if(!RGP)return;const i=RGP.info,v=RGP.v,ov=rgOvl('rgp-ov');
+  const mot=(i.motivos&&i.motivos.length?i.motivos:PERD_MOTIVOS);
+  ov.innerHTML=`<div class="rgg" role="dialog" aria-modal="true"><div class="rgg-h"><div class="rgg-ic">❌</div><div><div class="rgg-t">Proyecto perdido · completa PROYECTOS PERDIDOS</div>
+      <div class="rgg-st"><b>${esc(i.cliente)}</b> · tarea #${esc(i.tarea)} · ${esc(GL[i.gestor]||i.gestor||'')}${i.estado?` · estado actual: ${esc(i.estado)}`:''}</div></div><button class="dw-x" onclick="rgPerClose()" title="Cerrar (Esc)">✕</button></div>
+    <div class="rgg-info"><span>Producto(s): <b>${esc(i.prod||'—')}</b></span><span>NRC: <b>${fM(+i.nrc||0)}</b></span><span>MRC: <b>${fM(+i.mrc||0)}</b></span>${(i.registros||[]).length?`<span>Registro: <b>${esc(i.registros.map(r=>(r.fabricante||'')+(r.deal?' · '+r.deal:'')).join('; '))}</b></span>`:''}</div>
+    <div class="rgg-b">
+      <div class="rg-f"><label>Día de registro de pérdida <i>*</i></label><div class="rgg-row"><input class="rg-in" type="date" style="max-width:190px" value="${escA(v.fechaPerd)}" onchange="rgPerSet('fechaPerd',this.value)"><button class="rg-mini" onclick="rgPerSet('fechaPerd','${todayYmd()}',1)">Hoy</button></div></div>
+      <div class="rg-f"><label>Motivo de la pérdida <i>*</i></label><div class="rgg-chips rgg-chips-s">${mot.map(m=>`<button class="${v.motivo===m?'on':''}" onclick="rgPerSet('motivo','${escA(m)}',1)">${esc(m)}</button>`).join('')}</div>
+        ${v.motivo==='Otro'?`<input class="rg-in" style="margin-top:6px" value="${escA(v.motivoOtro)}" placeholder="Describe el motivo" oninput="rgPerSet('motivoOtro',this.value)">`:''}</div>
+      <div class="rg-f"><label>Competidor que ganó <span class="rgg-why">opcional · empresa integradora / proveedor</span></label><input class="rg-in" value="${escA(v.competidor)}" placeholder="Ej. nombre de la empresa · si no se sabe, déjalo vacío" oninput="rgPerSet('competidor',this.value)"></div>
+      ${RGP.pickProd?`<div class="rg-f"><label>Productos de Network que se cotizaron <i>*</i> <span class="rgg-why">${(i.integrales||[]).length?esc(i.integrales.join(', '))+' no es un producto: elige los que incluía':'la tarea no tiene productos registrados'}</span></label>
+        <div class="pg-wrap">${prodGrupos(rgOpts('prod'),p=>`<button class="${v.productos.some(x=>x.producto===p)?'on':''}" onclick="rgPerToggleProd('${escA(p)}')">${esc(p)}</button>`,'rgg-chips rgg-chips-s')}</div></div>`:''}
+      <div class="rg-f"><label>Datos por producto <i>*</i> <span class="rgg-why">${v.productos.length} producto${v.productos.length!==1?'s':''}</span></label>
+        <div class="rgg-fab">${v.productos.map((p,n)=>`<div class="rgg-fab-c"><div class="rgg-fab-p">${esc(p.producto||'(sin producto)')}</div>
+          <div class="rgg-g3"><div class="rg-f"><label>Fabricante ofertado <i>*</i></label>${catDlFab(p.producto)}<input class="rg-in" data-cat="fab" data-prod="${escA(p.producto||'')}" list="dlf-${catKey(p.producto)||'x'}" value="${escA(p.fabricante)}" placeholder="Lo que ofertamos" oninput="rgPerProd(${n},'fabricante',this.value)"></div>
+            <div class="rg-f"><label>Distribuidor ofertado</label><input class="rg-in" data-cat="dist" list="rgg-dl-dis" value="${escA(p.distribuidor)}" placeholder="Opcional" oninput="rgPerProd(${n},'distribuidor',this.value)"></div>
+            <div class="rg-f"><label>Fabricante del competidor</label><input class="rg-in" data-cat="fab" list="rgg-dl-fab" value="${escA(p.fabCompetidor)}" placeholder="Opcional · si se conoce" oninput="rgPerProd(${n},'fabCompetidor',this.value)"></div></div></div>`).join('')||'<div class="rg-help">Elige arriba los productos que se cotizaron.</div>'}</div>
+        <datalist id="rgg-dl-fab">${catNombres('fab').map(x=>`<option value="${escA(x)}">`).join('')}</datalist><datalist id="rgg-dl-dis">${catNombres('dist').map(x=>`<option value="${escA(x)}">`).join('')}</datalist></div>
+      <div class="rg-f"><label>Comentario <span class="rgg-why">opcional</span></label><textarea class="rg-in" rows="2" placeholder="Ej. el cliente eligió una solución más económica con otra marca…" oninput="rgPerSet('comentario',this.value)">${esc(v.comentario)}</textarea></div>
+      ${rgKeyUserHtml()}${RGP.msg?`<div class="rg-res ${RGP.msg.ok?'ok':'ko'}">${RGP.msg.html}</div>`:''}
+    </div>
+    <div class="rgg-f"><span id="rgp-need" class="rg-help"></span><button class="rg-sec-btn" onclick="rgPerClose()">Completar después</button>
+      <button class="rg-go" id="rgp-go" onclick="rgPerSubmit()" style="background:#E55C6C">${RGP.busy?'Guardando…':'💾 Guardar como perdida'}</button></div></div>`;
+  rgPerBtn();
+}
+async function rgPerSubmit(){
+  if(!RGP||RGP.busy||rgPerErr().length)return;
+  if(!RG.key){RGP.msg={ok:false,html:'Ingresa la clave de escritura.'};rgPerRender();return;}
+  const i=RGP.info,v=RGP.v,data={tarea:String(i.tarea),fechaPerd:v.fechaPerd,motivo:v.motivo==='Otro'?'Otro: '+v.motivoOtro.trim():v.motivo,competidor:v.competidor.trim(),comentario:v.comentario.trim(),
+    productos:v.productos.map(p=>({producto:p.producto,fabricante:String(p.fabricante).trim(),distribuidor:String(p.distribuidor).trim(),fabCompetidor:String(p.fabCompetidor).trim()}))};
+  RGP.busy=true;RGP.msg=null;rgPerRender();
+  try{
+    const r=await fetch(rgBase(),{method:'POST',body:JSON.stringify({token:rgTok(),writeKey:RG.key,user:rgUser()||GL[i.gestor]||'',mode:'perdida',data}),headers:{'Content-Type':'text/plain;charset=utf-8'},redirect:'follow',credentials:'omit'});
+    const j=await r.json();
+    if(j&&j.ok){const o=[...OPS.ab,...OPS.pd].find(x=>String(x.tarea)===String(i.tarea));if(o&&getTk(o.id,'estado','')===PERDIDA_KEY)saveTkF(o.id,'estado','');   // ya no es una pérdida "solo del navegador"
+      if(RG.mode==='update'&&RG.found&&String(RG.found.tarea)===String(i.tarea))RG.msg={ok:true,html:`✓ Proyecto perdido <b>#${esc(i.tarea)}</b> registrado (${j.filas} producto${j.filas!==1?'s':''} en PROYECTOS PERDIDOS).<br><span style="color:#94A3B8">Actualizando métricas del dashboard…</span>`};
+      RG.pendingReload=true;rgPerClose();}
+    else{RGP.busy=false;RGP.msg={ok:false,html:'✕ '+esc((j&&j.error)||'Error desconocido')};rgPerRender();}
+  }catch(e){RGP.busy=false;RGP.msg={ok:false,html:'✕ No se pudo conectar con el Apps Script ('+esc(e.message)+')'};rgPerRender();}
+}
+document.addEventListener('keydown',e=>{if(e.key==='Escape'){if(RGP){e.stopPropagation();rgPerClose();}else if(RGC){e.stopPropagation();rgcClose();}}},true);
+
+/* ── Ops Perdidas: métricas (mismo concepto que Ops Ganadas) ── */
+const PMX={pend:false,open:new Set(lsGet('nw_pmx_open_v9',[]))};
+function pmxGrp(g){PMX.open.has(g)?PMX.open.delete(g):PMX.open.add(g);lsSet('nw_pmx_open_v9',[...PMX.open]);renderPeMix(_pmxRows);}
+let _pmxRows=[];
+function pmxRank(title,tip,arr,cols,base){
+  const mx=Math.max(1,...arr.map(g=>g.monto));
+  return `<div class="gmx-card"><div class="gmx-h"><span title="${escA(tip)}">${title} <span class="gmx-i">ⓘ</span></span><span class="gmx-mut">${arr.length}</span></div>
+    <div class="gmx-sc"><table class="gmx-t"><thead><tr><th>#</th><th>Nombre</th>${cols.map(c=>`<th class="r">${c[0]}</th>`).join('')}</tr></thead><tbody>
+    ${arr.map((g,i)=>`<tr><td class="gmx-n">${i+1}</td><td><div class="gmx-nm">${esc(g.name)}</div><div class="gmx-bar"><i style="width:${(g.monto/mx*100).toFixed(1)}%;background:#E55C6C"></i></div></td>${cols.map(c=>`<td class="r">${c[1](g,base)}</td>`).join('')}</tr>`).join('')||'<tr><td colspan="9" class="gmx-mut" style="padding:12px">Sin datos todavía.</td></tr>'}</tbody></table></div></div>`;
+}
+function renderPeMix(rows){
+  _pmxRows=rows||[];const el=document.getElementById('pe-mix');if(!el)return;
+  const X=_pmxRows.map(o=>{const d=perdDetDe(o.tarea);return {o,d,L:d.length?d.map(r=>({producto:r.producto,fabricante:gmxLista(r.fabricante,GMX_ALIAS.FAB)[0]||'',distribuidor:gmxLista(r.distribuidor,GMX_ALIAS.DIST)[0]||'',fabComp:gmxLista(r.fabCompetidor,GMX_ALIAS.FAB)[0]||'',motivo:r.motivo,competidor:r.competidor})):[]};});
+  const conD=X.filter(x=>x.d.length),pend=X.filter(x=>!x.d.length),nTot=X.length,montoT=X.reduce((s,x)=>s+amt(x.o),0);
+  const items=conD.flatMap(x=>x.L.map(l=>({o:x.o,l})));
+  const ag=(fn,src)=>gmxAgg(src||items,fn);
+  const motivos=gmxAgg(conD.map(x=>({o:x.o,l:x.L[0]})),it=>String(it.l.motivo||'').replace(/^Otro:.*$/,'Otro')),comps=gmxAgg(conD.map(x=>({o:x.o,l:x.L[0]})),it=>it.l.competidor);
+  const fabs=ag(it=>it.l.fabricante),fabC=ag(it=>it.l.fabComp),dists=ag(it=>it.l.distribuidor),prods=ag(it=>it.l.producto);
+  const ases=gmxAgg(X.map(x=>({o:x.o,l:{}})),it=>it.o.asesor),ings=gmxAgg(X.map(x=>({o:x.o,l:{}})),it=>GL[it.o.gestor]||it.o.gestor);
+  const conReg=X.filter(x=>(x.o.registros||[]).length).length;
+  const lider=(a,lbl)=>a.length?`<div class="kv" style="font-size:22px">${esc(a[0].name)}</div><div class="kl">${lbl}</div><div class="ks">${fK(a[0].monto)} · ${a[0].nOps} perdida${a[0].nOps!==1?'s':''}${a[1]?`<br>2.º ${esc(a[1].name)}`:''}</div>`
+    :`<div class="kv" style="font-size:22px">—</div><div class="kl">${lbl}</div><div class="ks">Sin perdidas con este dato</div>`;
+  const kpis=`<div class="gmx-k">
+    <div class="kc" style="border-top:2px solid #E55C6C"><div class="kv">${conD.length}<span style="font-size:16px;color:#64748B"> / ${nTot}</span></div><div class="kl">Perdidas con detalle</div>
+      <div class="ks">${fK(montoT)} perdido en total</div>${pend.length?`<button class="gmx-todo" onclick="PMX.pend=!PMX.pend;renderPeMix(_pmxRows)">${PMX.pend?'← Ocultar pendientes':`✎ Completar ${pend.length} perdida${pend.length!==1?'s':''} sin detalle`}</button>`:''}</div>
+    <div class="kc" style="border-top:2px solid #F59E0B">${lider(motivos,'Motivo principal (por monto)')}</div>
+    <div class="kc" style="border-top:2px solid #A78BFA">${lider(comps,'Competidor que más nos gana')}</div>
+    <div class="kc" style="border-top:2px solid #5B9FE8">${lider(fabs,'Fabricante ofertado en lo perdido')}</div>
+    <div class="kc" style="border-top:2px solid #F472B6">${lider(fabC,'Fabricante del competidor')}</div>
+    <div class="kc" style="border-top:2px solid #02C39A"><div class="kv">${nTot?Math.round(conReg/nTot*100):0}%</div><div class="kl">Perdidas con registro de oportunidad</div><div class="ks">${conReg} de ${nTot}</div></div></div>`;
+  const cO=['Perdidas',g=>g.nOps],cM=['Monto',(g,t)=>`${fM(g.monto)}<div class="gmx-mut">${t?(g.monto/t*100).toFixed(1):0}%</div>`];
+  const montoD=conD.reduce((s,x)=>s+amt(x.o),0);
+  const ranks=`<div class="gmx-g2">${pmxRank('Motivos de pérdida','Motivo elegido al registrar la pérdida (PROYECTOS PERDIDOS).',motivos,[cO,cM],montoD)}${pmxRank('Competidores','Empresa que ganó el proyecto (si se conoce).',comps,[cO,cM],montoD)}</div>
+    <div class="gmx-g2">${pmxRank('Fabricante ofertado','Fabricante que ofertamos en los productos perdidos.',fabs,[cO,cM],montoD)}${pmxRank('Fabricante del competidor','Fabricante con el que ganó el competidor (si se conoce).',fabC,[cO,cM],montoD)}</div>
+    <div class="gmx-g2">${pmxRank('Productos perdidos','Productos de Network de las perdidas con detalle.',prods,[cO,cM],montoD)}${pmxRank('Distribuidor ofertado','Distribuidor con el que se ofertó.',dists,[cO,cM],montoD)}</div>
+    <div class="gmx-g2">${pmxRank('Perdidas por asesor comercial','Todas las perdidas visibles (con o sin detalle).',ases,[cO,cM],montoT)}${pmxRank('Perdidas por Ing. de Diseño','Todas las perdidas visibles (con o sin detalle).',ings,[cO,cM],montoT)}</div>`;
+  /* pendientes por Ing. de Diseño */
+  const G=new Map();pend.forEach(x=>{const g=x.o.gestor||'—';if(!G.has(g))G.set(g,[]);G.get(g).push(x);});
+  const pendHtml=`<div class="gmx-card" style="margin-bottom:12px"><div class="gmx-h"><span>Perdidas sin detalle · completar por Ing. de Diseño</span><span class="gmx-mut">${pend.length}</span></div>
+    ${[...G.entries()].sort((a,b)=>b[1].length-a[1].length).map(([g,a])=>{const open=PMX.open.has(g);return `<div class="gq-g"><button class="gq-gh" onclick="pmxGrp('${escA(g)}')"><span class="gdot" style="background:${GC[g]||'#64748B'}"></span>${esc(GL[g]||g)}<span class="gq-n">${a.length} sin detalle</span><span class="gmx-mut">${fM(a.reduce((s,x)=>s+amt(x.o),0))}</span><span class="gq-c">${open?'▾ Ocultar':'▸ Completar'}</span></button>
+      ${open?a.sort((p,q)=>amt(q.o)-amt(p.o)).map(x=>`<div class="mvq-r" style="grid-template-columns:minmax(200px,2fr) minmax(200px,3fr) auto"><div><div class="gmx-nm">#${esc(x.o.tarea)} · ${esc(x.o.cliente||'—')}</div><div class="gmx-mut">${esc(x.o.asesor||'')} · ${fM(amt(x.o))}${x.o._src&&x.o._src!=='per'?' · <span style="color:#F59E0B">marcada solo en este navegador</span>':''}</div></div>
+        <div class="gmx-mut">${esc(x.o.prod||'Sin productos')}${razonPe(x.o)?`<br>Razón anotada: ${esc(razonPe(x.o))}`:''}</div>
+        <div class="gq-act"><button class="gq-save" onclick="rgPerFetch('${escA(x.o.tarea)}')">✎ Completar</button></div></div>`).join(''):''}</div>`;}).join('')||'<div class="gmx-mut" style="padding:12px">✓ Todas las perdidas tienen detalle.</div>'}</div>`;
+  /* detalle */
+  const det=conD.slice().sort((a,b)=>amt(b.o)-amt(a.o)).map(x=>x.L.map((l,j)=>`<tr>${j===0?`<td rowspan="${x.L.length}" class="gmx-tk">#${esc(x.o.tarea)}<button class="gmx-ed" onclick="rgPerFetch('${escA(x.o.tarea)}')">✎ Editar</button></td><td rowspan="${x.L.length}"><div class="gmx-nm">${esc(x.o.cliente||'—')}</div><div class="gmx-mut">${esc(x.o.asesor||'')} · ${esc(GL[x.o.gestor]||x.o.gestor||'')}</div></td>
+      <td rowspan="${x.L.length}" class="r">${fM(amt(x.o))}</td><td rowspan="${x.L.length}">${esc(l.motivo||'—')}${x.d[0].comentario?`<div class="gmx-mut">${esc(x.d[0].comentario)}</div>`:''}</td><td rowspan="${x.L.length}">${esc(l.competidor||'—')}</td>`:''}
+      <td>${esc(l.producto||'—')}</td><td>${esc(l.fabricante||'—')}</td><td>${esc(l.distribuidor||'—')}</td><td>${esc(l.fabComp||'—')}</td></tr>`).join('')).join('');
+  const detalle=`<div class="gmx-card"><div class="gmx-h"><span>Detalle por propuesta perdida</span><span class="gmx-mut">${conD.length}</span></div><div class="gmx-sc" style="max-height:480px"><table class="gmx-t"><thead><tr><th>#Tarea</th><th>Cliente · Asesor · Ing.</th><th class="r">Monto</th><th>Motivo</th><th>Competidor</th><th>Producto</th><th>Fabricante ofertado</th><th>Distribuidor</th><th>Fab. competidor</th></tr></thead>
+    <tbody>${det||'<tr><td colspan="9" class="gmx-mut" style="padding:12px">Aún no hay perdidas con detalle. Se registran al marcar una oportunidad como perdida (Ops Abiertas o Registro).</td></tr>'}</tbody></table></div></div>`;
+  const aviso=PERD_DET===null?`<div class="gmx-warn">⚠ El backend publicado aún no envía PROYECTOS PERDIDOS. Publica <b>Code.gs v9.38</b>.</div>`:'';
+  el.innerHTML=aviso+kpis+(PMX.pend?pendHtml:'')+ranks+detalle;
+}
+
 /* ══ v9.35 — BASE DE FABRICANTES Y DISTRIBUIDORES DE LA VERTICAL ═════════════════════════════
    Las listas de fabricante / distribuidor salen de la hoja FABRICANTES Y DISTRIBUIDORES (nombre + alias), sin
    duplicados de mayúsculas ni errores de tipeo. Al escribir en un campo [data-cat]: una variante conocida se
@@ -2485,6 +2651,7 @@ function renderOpsTable(seg,filt){
     }
     return true;
   });
+  if(seg==='pe')renderPeMix(rows);   // v9.38 — métricas de perdidas
   if(seg==='ga')renderGaMix(rows);   // v9.24 — productos · fabricantes · distribuidores (mismas ganadas que la tabla)
   // Para tab ab: Top 20 por gestor cuando no hay búsqueda; búsqueda muestra todo
   let displayRows = rows;
@@ -2513,7 +2680,7 @@ function renderOpsTable(seg,filt){
   document.getElementById(`${seg}-ops-cnt`).innerHTML=`<span>${displayRows.length} registro${displayRows.length!==1?'s':''}${limitMsg}</span>${_exclAllHtml}`;
   let html;
   if(seg==='ab'||seg==='ga'){
-    const ESTADOS=seg==='ab'?[PERDIDA_KEY]:ESTADOS_GA;
+    const ESTADOS=seg==='ab'?[AB_GANAR,AB_PERDER]:ESTADOS_GA;
     html=`<thead><tr>
       <th>#Tarea</th><th class="col-resizable">Cliente</th><th>Gestor</th><th>Tipo</th>
       <th class="r">NRC</th><th class="r">MRC</th><th class="r" style="color:#F59E0B">Monto Total Proyecto</th><th>Asesor</th><th>%Prob</th>
@@ -2570,7 +2737,7 @@ function renderOpsTable(seg,filt){
     </tr></thead><tbody>`;
     if(!rows.length){html+='<tr><td colspan="11" class="no-results">Sin registros de pérdidas.</td></tr>';}
     else rows.forEach(o=>{
-      const razon=getTk(o.id,'razon_perdida','');
+      const razon=razonPe(o);
       const fecha=o._src==='per'?(o.fechaPerd||getTk(o.id,'fecha_perdida','')||o.fechaE||o.fechaA||''):getTk(o.id,'fecha_perdida','');
       const nm=q?hl(o.cliente||'',q):esc(o.cliente||'');
       const tr=q?hl(o.tarea||'',q):esc(o.tarea||'');
@@ -3389,6 +3556,7 @@ async function initDashboard(){
     OPS.ga = (data.ganadas    || []);
     FAB_GAN = Array.isArray(data.fabGanados) ? data.fabGanados : null;   // v9.24 — FABRICANTES GANADOS
     FAB_GAN_INFO = data.fabGanadosInfo || null;   // v9.25 — {hoja, filas}
+    PERD_DET = Array.isArray(data.perdidosDet) ? data.perdidosDet : null;   // v9.38 — PROYECTOS PERDIDOS
     OPS.pd  = (data.pendientes || []);  // Pendientes de despachar cotización
     OPS.pe  = [];                        // Perdidas gestionadas desde el dashboard (localStorage)
     OPS.per = (data.perdidas   || []);  // Perdidas desde Sheet (estado='PERDIDA')
@@ -3594,7 +3762,7 @@ function dwRenderOp(o,T,ST2,TL,SM,B){
   ST2.innerHTML=`<span class="sg sg-${o._seg}">${SEGL[o._seg]||''}</span> &nbsp;<span class="gdot" style="background:${GC[o.gestor]||'#64748B'}"></span>${GL[o.gestor]||o.gestor||''}`;
   TL.innerHTML=`<button class="dw-btn pri" onclick="goTab('${o._seg}','ALL','${escA(String(o.tarea||''))}')">Abrir en su pestaña →</button><button class="dw-btn" onclick="dwEditQuick('${escA(String(o.tarea||''))}')" title="Editar estado, montos, productos y registros de oportunidad">⚡ Edición rápida</button>`+(['ab','ga','pe'].includes(o._seg)?`<button class="dw-btn" onclick="dwExcl('${o._seg}','${escA(String(o.id))}',0)">⊘ Excluir tarea</button><button class="dw-btn" onclick="dwExcl('${o._seg}','${escA(String(o.cliente||''))}',1)">⊘ Excluir cliente</button>`:'');TL.style.display='';
   SM.style.display='none';
-  const razon=getTk(o.id,'razon_perdida',''),coment=getTk(o.id,'comentario',''),estTk=getTk(o.id,'estado','');
+  const razon=razonPe(o),coment=getTk(o.id,'comentario',''),estTk=getTk(o.id,'estado','');
   const F=(l,v)=>`<div class="od-f"><div class="od-l">${l}</div><div class="od-v">${v==null||v===''?'—':v}</div></div>`;
   B.innerHTML=`<div class="od-grid">
     ${F('NRC',`<b style="color:#F59E0B">${fM(+o.nrc||0)}</b>`)}${F('MRC',fM(+o.mrc||0))}${F('Total',`<b>${fM(amt(o))}</b>`)}${F('% Prob. cierre',dwProbHtml(o))}
@@ -3810,6 +3978,10 @@ function gaDet(open){
   if(ht){ht.id='ga-det-h';ht.classList.add('cl-able');ht.title='Click para desplegar / ocultar';ht.insertAdjacentHTML('beforeend','<span class="ga-det-s" style="font-size:12px;color:#64748B;font-weight:500;text-transform:none;letter-spacing:0;margin-left:8px"></span>');
     w.before(ht);ht.addEventListener('click',()=>gaDet(!gaDetOpen()));}
   gaDet(!!lsGet(GA_DET_KEY,false));
+})();
+(function peLayout(){   // v9.38
+  const mix=document.getElementById('pe-mix'),dr=document.getElementById('tcd-pe');if(!mix||!dr)return;
+  const mt=mix.previousElementSibling;if(mt&&mt.classList.contains('sttl')){mt.classList.add('no-cl');dr.after(mt);mt.after(mix);}else dr.after(mix);
 })();
 const _origTcDrill=tcDrill;tcDrill=function(seg){
   _origTcDrill.apply(this,arguments);
@@ -4105,11 +4277,11 @@ function buildTC(seg){
     const fp=o=>o.fechaPerd||getTk(o.id,'fecha_perdida','');
     {const m=M(1);H+=card('#E55C6C',pHead('Perdido',fNote+' % del valor cerrado = perdido / (perdido + ganado) con los mismos filtros y el mismo tipo de inspección.',ctl(1))+
       tcHero2(seg,m,ops,AGG.amt,fAmt,(a,t)=>{const gA=AGG.amt(fG.filter(tOk(t))),pA=AGG.amt(a);return `${a.length} ops · ${gA+pA?(pA/(gA+pA)*100).toFixed(0):0}% del valor cerrado`;})+
-      `<div class="vt-grid" style="margin-top:10px">${tcTile2(seg,m,'nofp','Sin fecha de pérdida',o=>!fp(o),ops,AGG.n,fCnt,'completar en el Sheet',true)}${tcTile2(seg,m,'norz','Sin razón registrada',o=>!getTk(o.id,'razon_perdida',''),ops,AGG.n,fCnt,'razón en el dashboard')}</div>`);}
+      `<div class="vt-grid" style="margin-top:10px">${tcTile2(seg,m,'nofp','Sin fecha de pérdida',o=>!fp(o),ops,AGG.n,fCnt,'completar en el Sheet',true)}${tcTile2(seg,m,'norz','Sin razón registrada',o=>!razonPe(o),ops,AGG.n,fCnt,'razón en el dashboard')}</div>`);}
     {const m=M(2);H+=card('#5B9FE8',pHead('Por Ing. de Diseño','Monto perdido por ingeniero.',ctl(2))+tcRows(seg,m,gDefs(),ops,AGG.amt,fAmt));}
-    const rz={};ops.forEach(o=>{const r=(getTk(o.id,'razon_perdida','')||'').trim();if(r&&r!=='(sin razón indicada)'){const k=r.toLowerCase();rz[k]=rz[k]||{label:r,n:0};rz[k].n++;}});
+    const rz={};ops.forEach(o=>{const r=(razonPe(o)||'').trim();if(r&&r!=='(sin razón indicada)'){const k=r.toLowerCase();rz[k]=rz[k]||{label:r,n:0};rz[k].n++;}});
     const top=Object.entries(rz).sort((a,b)=>b[1].n-a[1].n).slice(0,4);
-    {const m=M(3);H+=card('#E55C6C',pHead('Razones de pérdida','Razones escritas en el dashboard (modal de pérdida o columna Razón). Las perdidas del Sheet traen el motivo en el Seguimiento.',ctl(3))+(top.length?tcRows(seg,m,top.map(([k,v],i)=>({key:'rz'+i,label:v.label,color:'#E55C6C',fn:o=>(getTk(o.id,'razon_perdida','')||'').trim().toLowerCase()===k})),ops,AGG.n,fCnt):'<div class="vc-sub">Aún no hay razones registradas.<br>Se cargan en la tabla (columna Razón de Pérdida).</div>'));}
+    {const m=M(3);H+=card('#E55C6C',pHead('Razones de pérdida','Razones escritas en el dashboard (modal de pérdida o columna Razón). Las perdidas del Sheet traen el motivo en el Seguimiento.',ctl(3))+(top.length?tcRows(seg,m,top.map(([k,v],i)=>({key:'rz'+i,label:v.label,color:'#E55C6C',fn:o=>(razonPe(o)||'').trim().toLowerCase()===k})),ops,AGG.n,fCnt):'<div class="vc-sub">Aún no hay razones registradas.<br>Se cargan en la tabla (columna Razón de Pérdida).</div>'));}
     const perIds=new Set(OPS.per.map(o=>String(o.id))),movIds=new Set(getPeMovidas().map(o=>String(o.id)));
     {const m=M(4);H+=card('#94A3B8',pHead('Origen','Sheet = estado PERDIDA en la hoja. Dashboard = cerradas como perdida desde Abiertas/Ganadas (solo en este navegador).',ctl(4))+tcRows(seg,m,[
       {key:'osh',label:'Sheet (estado PERDIDA)',color:'#E55C6C',fn:o=>perIds.has(String(o.id))},
@@ -4520,6 +4692,7 @@ async function rgSubmit(){
       if(RG.mode==='create'){rgReset(true);}else{RG.orig=Object.assign({},RG.v);}
       if(j.avisos&&j.avisos.length)last.html+='<br>⚠ '+j.avisos.map(esc).join('<br>⚠ ');
       if(j.ganadoInfo&&j.ganadoInfo.cierre){RG.pendingReload=true;setTimeout(()=>rgGanOpen(j.ganadoInfo,{}),150);}   // pedir datos del proyecto ganado; recarga al cerrar
+      else if(body.mode==='update'&&/PERDIDA/i.test(body.data.estado||'')){RG.pendingReload=true;setTimeout(()=>rgPerFetch(body.data.tarea,body.data.fechaPerd),150);}   // v9.38 — datos del proyecto perdido
       else setTimeout(()=>{try{initDashboard();}catch(e){}},500);   // las métricas se recalculan con el Sheet actualizado
       RG.msg=last;rgRender();
     } else {RG.msg={ok:false,html:'✕ '+esc((j&&j.error)||'Error desconocido')+(j&&j.existe?' <button class="vc-link" onclick="rgMode(\'update\');rgLoad(\''+escA(body.data.tarea)+'\')">Abrir para actualizar</button>':'')};rgRefreshSide();}
