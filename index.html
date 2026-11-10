@@ -3728,7 +3728,7 @@ function dwRender(){
   const segs=[...new Set(L.rows.map(gk2))];
   let tools=`<input class="dw-q" id="dw-q" placeholder="🔍 Filtrar por cliente, #tarea, asesor, producto…" value="${escA(v.q)}" oninput="dwQ(this.value)">`;
   if(segs.length>1)tools+=['ALL',...segs].map(sg=>`<button class="vchip${v.seg===sg?' on':''}" onclick="dwSeg('${sg}')">${sg==='ALL'?'Todos':segL(sg)} ${sg==='ALL'?L.rows.length:L.rows.filter(o=>gk2(o)===sg).length}</button>`).join('');
-  tools+=`<button class="dw-btn" onclick="dwCsv()">⬇ CSV</button>`;
+  tools+=`<button class="dw-btn" onclick="dwCopy(this)" title="Copia la lista (con el filtro y el orden actuales) en texto listo para WhatsApp, correo o Teams">📋 Copiar</button><button class="dw-btn" onclick="dwCsv()">⬇ CSV</button>`;
   if(L.tab)tools+=`<button class="dw-btn pri" onclick="goTab('${L.tab}','${v.g||VG.g}','','${v.t||''}')">Abrir pestaña completa →</button>`;
   TL.innerHTML=tools;TL.style.display='';
   const nrc=rows.reduce((a,o)=>a+(+o.nrc||0),0),mrc=rows.reduce((a,o)=>a+(+o.mrc||0),0);
@@ -3757,10 +3757,48 @@ function dwCsv(){
   const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([csv],{type:'text/csv;charset=utf-8'}));
   a.download=L.title.replace(/[^\wáéíóúñ ·-]/gi,'').replace(/\s+/g,'_')+'.csv';document.body.appendChild(a);a.click();setTimeout(()=>{URL.revokeObjectURL(a.href);a.remove();},500);
 }
+/* v9.39 — Copiar al portapapeles en texto para WhatsApp / correo / Teams.
+   *negrita* y _cursiva_ son el formato de WhatsApp; en otros medios se leen igual. Respeta el filtro, el chip y el orden del drawer. */
+function cpTxt(txt,btn){
+  const ok=()=>{if(!btn)return;const l=btn.innerHTML;btn.innerHTML='✓ Copiado';btn.disabled=true;setTimeout(()=>{btn.innerHTML=l;btn.disabled=false;},1800);};
+  const fb=()=>{const ta=document.createElement('textarea');ta.value=txt;ta.setAttribute('readonly','');ta.style.cssText='position:fixed;top:-1000px;opacity:0';document.body.appendChild(ta);ta.select();let r=false;try{r=document.execCommand('copy');}catch{}ta.remove();r?ok():alert('No se pudo copiar automáticamente. Copia este texto a mano:\n\n'+txt);};
+  if(navigator.clipboard&&window.isSecureContext)navigator.clipboard.writeText(txt).then(ok,fb);else fb();
+}
+const cpHoy=()=>new Date().toLocaleDateString('es-EC',{day:'2-digit',month:'2-digit',year:'numeric'});
+const cpV=v=>v!=null&&String(v).trim()!==''&&String(v).trim()!=='—';
+function cpOpLines(o,i){
+  const d=diasOf(o),L=[],nm=GL[o.gestor]||o.gestor||'';
+  L.push(`${i!=null?(i+1)+'. ':''}*#${o.tarea||'—'}* · ${o.cliente||'—'}`);
+  const a=[];if(cpV(o.prod))a.push(o.prod);if(nm)a.push('Ing. '+nm);if(cpV(o.asesor))a.push('Asesor: '+o.asesor);if(L.length&&a.length)L.push('   '+a.join(' · '));
+  const b=[];if(o._seg)b.push(SEGL[o._seg]);if(cpV(o.estado))b.push(o.estado);if(b.length)L.push('   Estado: '+b.join(' — '));
+  const c=[];if(cpV(o.fechaA))c.push('Asignada '+o.fechaA);if(cpV(o.fechaE))c.push('Entregada '+o.fechaE);
+  if(d!=null&&d!=='')c.push(`*${d} días* ${o._seg==='pd'||o._seg==='ge'?'en preventa':'en total'}`);
+  if(o._seg==='pe'){const fp=o.fechaPerd||getTk(o.id,'fecha_perdida','');if(cpV(fp))c.push('Perdida '+fp);}
+  if(c.length)L.push('   '+c.join(' · '));
+  const m=[];if(+o.nrc)m.push('NRC '+fM(+o.nrc));if(+o.mrc)m.push('MRC '+fM(+o.mrc));if(cpV(o.prob))m.push('Prob. '+o.prob);if(m.length)L.push('   '+m.join(' · '));
+  if(o._chg)L.push(`   Cambio: ${WKT[o._chg.type][2]} ${o._chg.date||''}`);
+  return L;
+}
+function dwCopy(btn){
+  const v=dwCur(),{L,rows}=dwRows(v);
+  const nrc=rows.reduce((a,o)=>a+(+o.nrc||0),0),mrc=rows.reduce((a,o)=>a+(+o.mrc||0),0);
+  const fl=[PERL[VG.per]];if(v.seg!=='ALL')fl.push(SEGL[v.seg]||(WKT[v.seg]&&WKT[v.seg][2])||v.seg);if(v.q)fl.push('búsqueda "'+v.q+'"');
+  let t=`*${L.title}*\n_${fl.join(' · ')} · corte ${cpHoy()}_\n${rows.length} registro${rows.length!==1?'s':''}`+(nrc||mrc?` · NRC ${fM(nrc)} · MRC ${fM(mrc)}`:'')+'\n';
+  t+=rows.length?'\n'+rows.map((o,i)=>cpOpLines(o,i).join('\n')).join('\n\n'):'\nSin registros.';
+  cpTxt(t,btn);
+}
+function dwCopyOp(btn){
+  const o=dwCur().op;if(!o)return;
+  const L=cpOpLines(o,null);
+  if(cpV(o.cierre))L.push('   Tarea de cierre: '+o.cierre);
+  if(cpV(o.seg))L.push('','_Seguimiento:_ '+String(o.seg).trim());
+  const r=razonPe(o);if(cpV(r))L.push('_Razón de pérdida:_ '+r);
+  cpTxt(L.join('\n')+`\n\n_Dashboard Eficiencia Preventa · NETWORK · ${cpHoy()}_`,btn);
+}
 function dwRenderOp(o,T,ST2,TL,SM,B){
   T.innerHTML=`<span class="tarea-tag" style="font-size:14px">#${esc(o.tarea||'—')}</span> ${esc(o.cliente||'—')}`;
   ST2.innerHTML=`<span class="sg sg-${o._seg}">${SEGL[o._seg]||''}</span> &nbsp;<span class="gdot" style="background:${GC[o.gestor]||'#64748B'}"></span>${GL[o.gestor]||o.gestor||''}`;
-  TL.innerHTML=`<button class="dw-btn pri" onclick="goTab('${o._seg}','ALL','${escA(String(o.tarea||''))}')">Abrir en su pestaña →</button><button class="dw-btn" onclick="dwEditQuick('${escA(String(o.tarea||''))}')" title="Editar estado, montos, productos y registros de oportunidad">⚡ Edición rápida</button>`+(['ab','ga','pe'].includes(o._seg)?`<button class="dw-btn" onclick="dwExcl('${o._seg}','${escA(String(o.id))}',0)">⊘ Excluir tarea</button><button class="dw-btn" onclick="dwExcl('${o._seg}','${escA(String(o.cliente||''))}',1)">⊘ Excluir cliente</button>`:'');TL.style.display='';
+  TL.innerHTML=`<button class="dw-btn pri" onclick="goTab('${o._seg}','ALL','${escA(String(o.tarea||''))}')">Abrir en su pestaña →</button><button class="dw-btn" onclick="dwCopyOp(this)" title="Copia la ficha de la tarea en texto listo para WhatsApp, correo o Teams">📋 Copiar ficha</button><button class="dw-btn" onclick="dwEditQuick('${escA(String(o.tarea||''))}')" title="Editar estado, montos, productos y registros de oportunidad">⚡ Edición rápida</button>`+(['ab','ga','pe'].includes(o._seg)?`<button class="dw-btn" onclick="dwExcl('${o._seg}','${escA(String(o.id))}',0)">⊘ Excluir tarea</button><button class="dw-btn" onclick="dwExcl('${o._seg}','${escA(String(o.cliente||''))}',1)">⊘ Excluir cliente</button>`:'');TL.style.display='';
   SM.style.display='none';
   const razon=razonPe(o),coment=getTk(o.id,'comentario',''),estTk=getTk(o.id,'estado','');
   const F=(l,v)=>`<div class="od-f"><div class="od-l">${l}</div><div class="od-v">${v==null||v===''?'—':v}</div></div>`;
