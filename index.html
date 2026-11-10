@@ -4599,7 +4599,7 @@ function rgCheck(){
   if(v.fechaPerd&&!/PERDIDA/i.test(v.estado||''))W.push(['estado','Hay fecha de pérdida pero el estado no es PERDIDA']);
   if(v.cierre&&/PERDIDA/i.test(v.estado||''))E.push(['cierre','No puede tener tarea de cierre (venta) y estado PERDIDA a la vez']);
   if(v.margen!==undefined&&v.margen!==''&&(+v.margen<0||+v.margen>100))E.push(['margen','Margen entre 0 y 100 %']);
-  ['asesor','estado'].forEach(k=>{if(v[k]&&RG.cat&&RG.cat[k]&&!RG.cat[k].includes(v[k]))W.push([k,`"${v[k]}" no está en la lista del Sheet`]);});
+  ['asesor','estado'].forEach(k=>{if(v[k]&&RG.cat&&RG.cat[k]&&!RG.cat[k].includes(v[k]))W.push([k,k==='asesor'?`"${v[k]}" no está en la lista del Sheet: revisa que el nombre esté bien escrito; al guardar se agrega como asesor nuevo`:`"${v[k]}" no está en la lista del Sheet`]);});   // v9.40
   {const ps=rgProds(v.prod),dura=!up||RG.prodTouched,net=ps.filter(x=>!esIntegral(x));   // v9.33
    if(ps.some(x=>rggNorm(x).includes('PROYECTO INTEGRAL NETWORK')))(dura?E:W).push(['prod','"Proyecto Integral Network" ya no es un producto: quítalo y elige los productos de Network que integran la tarea (con 2 o más se considera integral automáticamente)']);
    if(v.multiv==='SI'&&!net.length)(dura?E:W).push(['prod','Proyecto multivertical: elige los productos de Network que considera']);}
@@ -4748,6 +4748,7 @@ async function rgSubmit(){
     const r=await fetch(rgBase(),{method:'POST',body:JSON.stringify(body),headers:{'Content-Type':'text/plain;charset=utf-8'},redirect:'follow',credentials:'omit'});
     const j=await r.json();RG.busy=false;
     if(j&&j.ok){
+      {const as=body.data.asesor;if(as&&RG.cat&&RG.cat.asesor&&!RG.cat.asesor.includes(as))RG.cat.asesor.push(as);}   // v9.40 — asesor nuevo ya quedó en la lista del Sheet
       RG.msg={ok:true,html:`✓ ${j.action==='create'?'Registrada':'Actualizada'} la tarea <b>#${esc(j.tarea)}</b> en <b>${esc(j.hoja)}</b> fila ${j.fila}.${j.ganados?' Se registró también en PROYECTOS GANADOS.':''}<br><span style="color:#94A3B8">Actualizando métricas del dashboard…</span>`};
       const last=RG.msg;lsSet('nw_rg_draft_v9',null);
       if(RG.mode==='create'){rgReset(true);}else{RG.orig=Object.assign({},RG.v);}
