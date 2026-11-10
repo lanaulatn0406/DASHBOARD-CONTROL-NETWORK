@@ -2196,7 +2196,7 @@ async function rgcSubmit(){
   if(!RG.key){RGC.msg={ok:false,html:'Ingresa la clave de escritura.'};rgcRender();return;}
   const o=RGC.o;RGC.busy=true;RGC.msg=null;rgcRender();
   try{
-    const r=await fetch(rgBase(),{method:'POST',body:JSON.stringify({token:rgTok(),writeKey:RG.key,user:rgUser()||GL[o.gestor]||'',mode:'update',data:{tarea:String(o.tarea),cierre:RGC.cierre.trim()}}),headers:{'Content-Type':'text/plain;charset=utf-8'},redirect:'follow',credentials:'omit'});
+    const r=await rgPost(rgBase(),{method:'POST',body:JSON.stringify({token:rgTok(),writeKey:RG.key,user:rgUser()||GL[o.gestor]||'',mode:'update',data:{tarea:String(o.tarea),cierre:RGC.cierre.trim()}}),headers:{'Content-Type':'text/plain;charset=utf-8'},redirect:'follow',credentials:'omit'});
     const j=await r.json();
     if(j&&j.ok){rgcClose();RG.pendingReload=true;
       if(j.ganadoInfo&&j.ganadoInfo.cierre)setTimeout(()=>rgGanOpen(j.ganadoInfo,{}),120);else{RG.pendingReload=false;initDashboard();}}
@@ -2264,7 +2264,7 @@ async function rgPerSubmit(){
     productos:v.productos.map(p=>({producto:p.producto,fabricante:String(p.fabricante).trim(),distribuidor:String(p.distribuidor).trim(),fabCompetidor:String(p.fabCompetidor).trim()}))};
   RGP.busy=true;RGP.msg=null;rgPerRender();
   try{
-    const r=await fetch(rgBase(),{method:'POST',body:JSON.stringify({token:rgTok(),writeKey:RG.key,user:rgUser()||GL[i.gestor]||'',mode:'perdida',data}),headers:{'Content-Type':'text/plain;charset=utf-8'},redirect:'follow',credentials:'omit'});
+    const r=await rgPost(rgBase(),{method:'POST',body:JSON.stringify({token:rgTok(),writeKey:RG.key,user:rgUser()||GL[i.gestor]||'',mode:'perdida',data}),headers:{'Content-Type':'text/plain;charset=utf-8'},redirect:'follow',credentials:'omit'});
     const j=await r.json();
     if(j&&j.ok){const o=[...OPS.ab,...OPS.pd].find(x=>String(x.tarea)===String(i.tarea));if(o&&getTk(o.id,'estado','')===PERDIDA_KEY)saveTkF(o.id,'estado','');   // ya no es una pérdida "solo del navegador"
       if(RG.mode==='update'&&RG.found&&String(RG.found.tarea)===String(i.tarea))RG.msg={ok:true,html:`✓ Proyecto perdido <b>#${esc(i.tarea)}</b> registrado (${j.filas} producto${j.filas!==1?'s':''} en PROYECTOS PERDIDOS).<br><span style="color:#94A3B8">Actualizando métricas del dashboard…</span>`};
@@ -2378,7 +2378,7 @@ async function catAlta(cid,p){
   if(!RG.key){if(hint)hint.insertAdjacentHTML('beforeend','<div style="color:#F87171">Ingresa la clave de escritura para agregar a la base.</div>');return;}
   if(hint)hint.innerHTML=`<div>Agregando «${esc(p)}»…</div>`;
   try{
-    const r=await fetch(rgBase(),{method:'POST',body:JSON.stringify({token:rgTok(),writeKey:RG.key,user:rgUser(),mode:'catalogo',data:{accion:'alta',tipo:t==='fab'?'FABRICANTE':'DISTRIBUIDOR',nombre:p}}),headers:{'Content-Type':'text/plain;charset=utf-8'},redirect:'follow',credentials:'omit'});
+    const r=await rgPost(rgBase(),{method:'POST',body:JSON.stringify({token:rgTok(),writeKey:RG.key,user:rgUser(),mode:'catalogo',data:{accion:'alta',tipo:t==='fab'?'FABRICANTE':'DISTRIBUIDOR',nombre:p}}),headers:{'Content-Type':'text/plain;charset=utf-8'},redirect:'follow',credentials:'omit'});
     const j=await r.json();
     if(j&&j.ok){if(j.base)catSetBase(j.base);if(!catCanon(t,j.nombre)){CAT[t].push({nombre:j.nombre,alias:[]});catRefreshLists();}
       const e2=catEl(cid)||el;catCheck(e2);const h2=e2.nextElementSibling&&e2.nextElementSibling.classList.contains('cat-hint')?e2.nextElementSibling:null;
@@ -2497,7 +2497,7 @@ async function gmxQSave(t){
   if(s.prods)data.productos=s.prods.map(p=>({producto:p.producto,fabricante:p.fabricante.trim(),distribuidor:p.distribuidor.trim(),marca:p.fabricante.trim(),motivo:gmxQCambio(o,p.fabricante)?p.motivo.trim():''}));
   GMX_QBUSY.add(t);delete GMX_QERR[t];const b=document.getElementById('gq-go-'+t);if(b){b.disabled=true;b.textContent='Guardando…';}
   try{
-    const r=await fetch(rgBase(),{method:'POST',body:JSON.stringify({token:rgTok(),writeKey:RG.key,user:rgUser()||GL[o.gestor]||'',mode:'ganado',data}),headers:{'Content-Type':'text/plain;charset=utf-8'},redirect:'follow',credentials:'omit'});
+    const r=await rgPost(rgBase(),{method:'POST',body:JSON.stringify({token:rgTok(),writeKey:RG.key,user:rgUser()||GL[o.gestor]||'',mode:'ganado',data}),headers:{'Content-Type':'text/plain;charset=utf-8'},redirect:'follow',credentials:'omit'});
     const j=await r.json();GMX_QBUSY.delete(t);
     if(j&&j.ok){
       const pg=o.pg=o.pg||{};pg.tipoProyecto=data.tipoProyecto;if(data.tiempoContrato)pg.tiempoContrato=data.tiempoContrato;
@@ -3856,7 +3856,7 @@ async function dwProbSet(t,x){
   if(!RG.key){DWP.msg={ok:false,html:'Escribe la clave de escritura.'};dwRender();return;}
   DWP={busy:true,msg:null};dwRender();
   try{
-    const r=await fetch(rgBase(),{method:'POST',body:JSON.stringify({token:rgTok(),writeKey:RG.key,user:rgUser()||GL[cur.gestor]||'',mode:'update',data:{tarea:t,prob:x}}),headers:{'Content-Type':'text/plain;charset=utf-8'},redirect:'follow',credentials:'omit'});
+    const r=await rgPost(rgBase(),{method:'POST',body:JSON.stringify({token:rgTok(),writeKey:RG.key,user:rgUser()||GL[cur.gestor]||'',mode:'update',data:{tarea:t,prob:x}}),headers:{'Content-Type':'text/plain;charset=utf-8'},redirect:'follow',credentials:'omit'});
     const j=await r.json();
     if(j&&j.ok){
       const antes=cur.prob||'sin %';
@@ -4745,7 +4745,7 @@ async function rgSubmit(){
   const body={token:rgTok(),writeKey:key,user,mode:RG.mode,data:rgPayloadData()};
   RG.busy=true;rgRefreshSide();
   try{
-    const r=await fetch(rgBase(),{method:'POST',body:JSON.stringify(body),headers:{'Content-Type':'text/plain;charset=utf-8'},redirect:'follow',credentials:'omit'});
+    const r=await rgPost(rgBase(),{method:'POST',body:JSON.stringify(body),headers:{'Content-Type':'text/plain;charset=utf-8'},redirect:'follow',credentials:'omit'});
     const j=await r.json();RG.busy=false;
     if(j&&j.ok){
       {const as=body.data.asesor;if(as&&RG.cat&&RG.cat.asesor&&!RG.cat.asesor.includes(as))RG.cat.asesor.push(as);}   // v9.40 — asesor nuevo ya quedó en la lista del Sheet
@@ -4804,7 +4804,7 @@ async function mvSave(t){
   const o=[...OPS.ab,...OPS.pd].find(x=>String(x.tarea)===String(t)),prod=sel.join(', ');
   MVQ.busy.add(t);delete MVQ.err[t];rgRender();
   try{
-    const r=await fetch(rgBase(),{method:'POST',body:JSON.stringify({token:rgTok(),writeKey:RG.key,user:rgUser()||(o&&GL[o.gestor])||'',mode:'update',data:{tarea:String(t),prod}}),headers:{'Content-Type':'text/plain;charset=utf-8'},redirect:'follow',credentials:'omit'});
+    const r=await rgPost(rgBase(),{method:'POST',body:JSON.stringify({token:rgTok(),writeKey:RG.key,user:rgUser()||(o&&GL[o.gestor])||'',mode:'update',data:{tarea:String(t),prod}}),headers:{'Content-Type':'text/plain;charset=utf-8'},redirect:'follow',credentials:'omit'});
     const j=await r.json();MVQ.busy.delete(t);
     if(j&&j.ok){[OPS.ab,OPS.ga,OPS.pd,OPS.per].forEach(a=>(a||[]).forEach(x=>{if(String(x.tarea)===String(t))x.prod=prod;}));MVQ.ok.add(String(t));delete MVQ.sel[t];
       clearTimeout(MVQ._rf);MVQ._rf=setTimeout(()=>{try{buildD();['ab','ga','pe'].forEach(s=>renderTab(s));renderPd();renderGe();updateBadges();}catch(e){console.error('[MVQ]',e);}},400);}
@@ -4841,7 +4841,7 @@ function rgIngHtml(){
 async function rgIngPost(data){
   if(!RG.key){RG.msg={ok:false,html:'Ingresa la clave de escritura.'};rgRender();return null;}
   RG.msg={ok:true,html:'Guardando…'};rgRender();
-  try{const r=await fetch(rgBase(),{method:'POST',body:JSON.stringify({token:rgTok(),writeKey:RG.key,user:rgUser(),mode:'ingeniero',data}),headers:{'Content-Type':'text/plain;charset=utf-8'},redirect:'follow',credentials:'omit'});
+  try{const r=await rgPost(rgBase(),{method:'POST',body:JSON.stringify({token:rgTok(),writeKey:RG.key,user:rgUser(),mode:'ingeniero',data}),headers:{'Content-Type':'text/plain;charset=utf-8'},redirect:'follow',credentials:'omit'});
     const j=await r.json();if(!j||!j.ok){RG.msg={ok:false,html:'✕ '+esc((j&&j.error)||'Error desconocido')+(j&&/Acci[oó]n inv|mode/i.test(j.error||'')?'':'')};rgRender();return null;}
     lsSet('nw_rg_key_v9',RG.key);if(j.ingenieros)aplicarIngenieros(j.ingenieros,[...OPS.ab,...OPS.ga,...OPS.pd,...OPS.per]);return j;
   }catch(e){RG.msg={ok:false,html:'✕ No se pudo conectar con el Apps Script ('+esc(e.message)+'). ¿Está publicada la v9.19 del backend?'};rgRender();return null;}
@@ -5067,7 +5067,7 @@ function rgGanRender(){
   rgGanBtn();
 }
 async function rgGanSubmit(){
-  if(!RGG||rgGanErr().length)return;
+  if(!RGG||RGG.busy||rgGanErr().length)return;   // v9.41 — Ctrl+Enter repetido no vuelve a enviar
   if(!RG.key){RGG.msg={ok:false,html:'Ingresa la clave de escritura.'};rgGanRender();return;}
   const i=RGG.info,v=RGG.v,data={tarea:i.tarea,cierre:i.cierre,tipoProyecto:String(v.tipoProyecto).trim()};
   if(i.pideContrato)data.tiempoContrato=+v.tiempoContrato;
@@ -5077,7 +5077,7 @@ async function rgGanSubmit(){
   if(rggSinReg()){const n=v.reg||{};data.registro=n.op==='si'?{opcion:'si',fabricante:String(n.fabricante||'').trim(),deal:String(n.deal||'').trim()}:{opcion:'no'};}   // v9.22
   RGG.busy=true;RGG.msg=null;rgGanRender();
   try{
-    const r=await fetch(rgBase(),{method:'POST',body:JSON.stringify({token:rgTok(),writeKey:RG.key,user:rgUser(),mode:'ganado',data}),headers:{'Content-Type':'text/plain;charset=utf-8'},redirect:'follow',credentials:'omit'});
+    const r=await rgPost(rgBase(),{method:'POST',body:JSON.stringify({token:rgTok(),writeKey:RG.key,user:rgUser(),mode:'ganado',data}),headers:{'Content-Type':'text/plain;charset=utf-8'},redirect:'follow',credentials:'omit'});
     const j=await r.json();RGG.busy=false;
     if(j&&j.ok){const nf=(j.columnasNoEncontradas||[]).length?`<br>⚠ No encontré estas columnas en la hoja: ${j.columnasNoEncontradas.map(esc).join(', ')}`:'';
       RG.msg={ok:true,html:`✓ Proyecto ganado <b>#${esc(j.cierre)}</b> completado en ${esc(j.hoja||'PROYECTOS GANADOS')} fila ${j.fila}.${nf}<br><span style="color:#94A3B8">Actualizando métricas del dashboard…</span>`};
@@ -5093,6 +5093,26 @@ document.addEventListener('keydown',e=>{if(!RGG)return;
 /* ══════════ v9.11 ══════════ */
 /* "Registrado por" = Ing. de Diseño de la tarea cotizada (editable) */
 function rgUser(){return RG.user||lsGet('nw_rg_user_v9','')||'';}
+/* v9.41 — todas las escrituras (POST) pasan por aquí: van de a una (cola) para que el mismo navegador no compita
+   consigo mismo por el candado del Sheet, y si el backend responde "ocupado" (todavía no escribió nada) se
+   reintenta solo hasta 3 veces con espera creciente. Devuelve un objeto con .json() como fetch. */
+let _rgCola=Promise.resolve();
+function rgPost(url,opts){
+  const run=async()=>{let j=null;
+    for(let i=0;i<4;i++){
+      if(i){rgAvisoOcupado(i);await new Promise(r=>setTimeout(r,4000*i));}
+      const r=await fetch(url,opts);j=await r.json().catch(()=>({ok:false,error:'Respuesta inválida del Apps Script'}));
+      if(!(j&&!j.ok&&(j.ocupado||/ocupado/i.test(j.error||''))))break;
+    }
+    rgAvisoOcupado(0);
+    if(j&&!j.ok&&/ocupado/i.test(j.error||''))j.error='El Sheet sigue ocupado con otra escritura (otra persona o un guardado anterior). Espera un minuto y vuelve a guardar; no se escribió nada.';
+    return {ok:true,json:async()=>j};};
+  const p=_rgCola.then(run,run);_rgCola=p.catch(()=>{});return p;
+}
+function rgAvisoOcupado(n){let d=document.getElementById('rg-ocupado');
+  if(!n){if(d)d.remove();return;}
+  if(!d){d=document.createElement('div');d.id='rg-ocupado';d.style.cssText='position:fixed;bottom:18px;left:50%;transform:translateX(-50%);z-index:99999;background:#1E293B;color:#FDE68A;border:1px solid #F59E0B88;padding:8px 14px;border-radius:8px;font-size:13px;box-shadow:0 4px 16px #0006';document.body.appendChild(d);}
+  d.textContent='⏳ El Sheet está ocupado con otra escritura · reintentando ('+n+'/3)…';}
 
 /* Menú lateral que responde al mouse: se abre al pasar sobre ☰ o al llevar el puntero al borde izquierdo;
    si se abrió por hover, se cierra solo al salir del menú. Abierto con click, se queda hasta elegir / Esc / click fuera. */
