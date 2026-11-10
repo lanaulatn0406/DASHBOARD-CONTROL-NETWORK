@@ -681,7 +681,7 @@ body.compact .hdr-st{font-size:13px}
 .sb-bd{min-width:22px;height:20px;padding:0 6px;border-radius:10px;font-size:11px;font-weight:800;display:inline-flex;align-items:center;justify-content:center;background:#ffffff26;color:#fff}
 .sb-it.ac .sb-bd{background:#12236B;color:#fff}
 .sb-bd:empty{display:none!important}
-.sb-bd-pe{background:#E55C6C}.sb-bd-pd{background:#A78BFA}
+.sb-bd-pe{background:#E55C6C}.sb-bd-pd{background:#A78BFA}.sb-bd-ga{background:#02C39A}
 .sb-foot{padding:14px 16px 16px;border-top:1px solid #ffffff22;font-size:13px;color:#C7D2FE;position:relative;z-index:1}
 .sb-who{color:#fff;font-weight:800;font-size:14px}
 .sb-role{margin-bottom:8px}
@@ -2818,6 +2818,7 @@ function updateBadges(){
     let n=0;
     if(seg==='ab')n=OPS.ab.filter(o=>isPerdida(o.id)&&!isExcluido('ab',o)).length;
     if(seg==='pe')n=[...getPeMovidas(),...OPS.per].filter(o=>!isExcluido('pe',o)).length;
+    if(seg==='ga')n=OPS.ga.filter(o=>!isExcluido('ga',o)).length;   // v9.41 — número de ganadas en el menú
     el.textContent=n;el.style.display=n>0?'flex':'none';
   });
   // Badge pendientes
