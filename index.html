@@ -1129,6 +1129,7 @@ textarea.rg-in{resize:vertical;min-height:64px}
     <div class="ops-hdr">
       <span class="ops-ttl">Ops Abiertas / Pipeline</span>
       <span class="ops-cnt" id="ab-ops-cnt"></span>
+      <button class="dw-btn" onclick="tabCopy('ab',this)" title="Copia el detalle (con los filtros actuales) en texto listo para WhatsApp, correo o Teams">📋 Copiar</button>
     </div>
     <div class="ops-scroll"><table class="ops-tbl" id="ab-ops-tbl"></table></div>
   </div>
@@ -1180,6 +1181,7 @@ textarea.rg-in{resize:vertical;min-height:64px}
     <div class="ops-hdr">
       <span class="ops-ttl">Ops Ganadas</span>
       <span class="ops-cnt" id="ga-ops-cnt"></span>
+      <button class="dw-btn" onclick="tabCopy('ga',this)" title="Copia el detalle (con los filtros actuales) en texto listo para WhatsApp, correo o Teams">📋 Copiar</button>
     </div>
     <div class="ops-scroll"><table class="ops-tbl" id="ga-ops-tbl"></table></div>
   </div>
@@ -1252,6 +1254,7 @@ textarea.rg-in{resize:vertical;min-height:64px}
     <div class="ops-hdr">
       <span class="ops-ttl">Ops Perdidas</span>
       <span class="ops-cnt" id="pe-ops-cnt"></span>
+      <button class="dw-btn" onclick="tabCopy('pe',this)" title="Copia el detalle (con los filtros actuales) en texto listo para WhatsApp, correo o Teams">📋 Copiar</button>
     </div>
     <div class="ops-scroll"><table class="ops-tbl" id="pe-ops-tbl"></table></div>
   </div>
@@ -1312,6 +1315,7 @@ textarea.rg-in{resize:vertical;min-height:64px}
     <div class="ops-hdr">
       <span class="ops-ttl" style="color:#A78BFA">Pendientes de despacho</span>
       <span class="ops-cnt" id="pd-ops-cnt"></span>
+      <button class="dw-btn" onclick="tabCopy('pd',this)" title="Copia el detalle (con los filtros actuales) en texto listo para WhatsApp, correo o Teams">📋 Copiar</button>
     </div>
     <div class="ops-scroll">
       <table class="pd-tbl" id="pd-ops-tbl"></table>
@@ -1378,6 +1382,7 @@ textarea.rg-in{resize:vertical;min-height:64px}
     <div class="ops-hdr">
       <span class="ops-ttl" style="color:#94A3B8">Sin Oferta Preventa</span>
       <span class="ops-cnt" id="ge-ops-cnt"></span>
+      <button class="dw-btn" onclick="tabCopy('ge',this)" title="Copia el detalle (con los filtros actuales) en texto listo para WhatsApp, correo o Teams">📋 Copiar</button>
     </div>
     <div class="ops-scroll">
       <table class="ge-tbl" id="ge-ops-tbl"></table>
@@ -2675,6 +2680,7 @@ function renderOpsTable(seg,filt){
     });
   }
   _exclAllBuf[seg]=displayRows.map(o=>String(o.id));
+  TABCP[seg]={rows:displayRows,g:filt.g,f:(filt.t!=='ALL'||q!==''||filt.asesor!=='ALL'||filt.anio!=='ALL'||filt.mes_f!=='ALL'||filt.desde!==''||filt.hasta!==''),lim:limitMsg};   // v9.39 — 📋 Copiar
   const _hasFilter=(filt.g!=='ALL'||filt.t!=='ALL'||q!==''||filt.asesor!=='ALL'||filt.anio!=='ALL'||filt.mes_f!=='ALL'||filt.desde!==''||filt.hasta!=='');
   const _exclAllHtml=(_hasFilter&&displayRows.length>0)?`<button class="excl-all-btn" onclick="onExclAll('${seg}')">⊘ Excluir todos (${displayRows.length})</button>`:'';
   document.getElementById(`${seg}-ops-cnt`).innerHTML=`<span>${displayRows.length} registro${displayRows.length!==1?'s':''}${limitMsg}</span>${_exclAllHtml}`;
@@ -3298,6 +3304,7 @@ function renderPd(){
   }
 
   // ── Table: per gestor, sorted by tpPre desc ──
+  TABCP.pd={rows:GKEYS.flatMap(gk=>ops.filter(o=>o.gestor===gk&&tcPass('pd',o)).sort((a,b)=>(b.tpPre??-1)-(a.tpPre??-1))),g,f:!!(q||asesor!=='ALL'||anio!=='ALL'||mes_f!=='ALL'||desde||hasta)};   // v9.39 — 📋 Copiar
   const cnt = document.getElementById('pd-ops-cnt');
   const tbl = document.getElementById('pd-ops-tbl');
   { const nT=ops.filter(o=>tcPass('pd',o)).length; cnt.textContent = nT===total?`${total} registros`:`${nT} de ${total} registros`; }
@@ -3487,6 +3494,7 @@ function renderGe(){
   }catch(e){console.warn('Ge donut err:',e);}
 
   // ── Tabla de detalle ──
+  TABCP.ge={rows:GKEYS.flatMap(gk=>ops.filter(o=>o.gestor===gk&&tcPass('ge',o)).sort((a,b)=>(b.tpTot??-1)-(a.tpTot??-1))),g,f:!!(q||asesor!=='ALL'||anio!=='ALL'||mes_f!=='ALL'||fest!=='ALL')};   // v9.39 — 📋 Copiar
   const cnt = document.getElementById('ge-ops-cnt');
   const tbl = document.getElementById('ge-ops-tbl');
   { const nT=ops.filter(o=>tcPass('ge',o)).length; cnt.textContent = nT===total?`${total} registros`:`${nT} de ${total} registros`; }
@@ -3781,11 +3789,26 @@ function cpOpLines(o,i){
 }
 function dwCopy(btn){
   const v=dwCur(),{L,rows}=dwRows(v);
-  const nrc=rows.reduce((a,o)=>a+(+o.nrc||0),0),mrc=rows.reduce((a,o)=>a+(+o.mrc||0),0);
   const fl=[PERL[VG.per]];if(v.seg!=='ALL')fl.push(SEGL[v.seg]||(WKT[v.seg]&&WKT[v.seg][2])||v.seg);if(v.q)fl.push('búsqueda "'+v.q+'"');
-  let t=`*${L.title}*\n_${fl.join(' · ')} · corte ${cpHoy()}_\n${rows.length} registro${rows.length!==1?'s':''}`+(nrc||mrc?` · NRC ${fM(nrc)} · MRC ${fM(mrc)}`:'')+'\n';
-  t+=rows.length?'\n'+rows.map((o,i)=>cpOpLines(o,i).join('\n')).join('\n\n'):'\nSin registros.';
-  cpTxt(t,btn);
+  cpTxt(cpListTxt(L.title,fl.join(' · '),rows,false),btn);
+}
+/* Texto de una lista; group=true → subtítulos por Ing. de Diseño (si hay más de uno) */
+function cpListTxt(title,sub,rows,group){
+  const nrc=rows.reduce((a,o)=>a+(+o.nrc||0),0),mrc=rows.reduce((a,o)=>a+(+o.mrc||0),0);
+  let t=`*${title}*\n_${sub?sub+' · ':''}corte ${cpHoy()}_\n${rows.length} registro${rows.length!==1?'s':''}`+(nrc||mrc?` · NRC ${fM(nrc)} · MRC ${fM(mrc)}`:'')+'\n';
+  if(!rows.length)return t+'\nSin registros.';
+  const gs=[...new Set(rows.map(o=>o.gestor))];
+  if(!group||gs.length<2)return t+'\n'+rows.map((o,i)=>cpOpLines(o,i).join('\n')).join('\n\n');
+  return t+gs.map(g=>{const r=rows.filter(o=>o.gestor===g);return `\n*● ${GL[g]||g||'Sin Ing.'}* — ${r.length}\n\n`+r.map((o,i)=>cpOpLines(o,i).join('\n')).join('\n\n');}).join('\n');
+}
+/* v9.39 — 📋 Copiar en las pestañas: las mismas filas que muestra la tabla (TABCP se llena al renderizarla) */
+const TABCP={};
+const TABN={ab:'Ops Abiertas · Pipeline',ga:'Ops Ganadas',pe:'Ops Perdidas',pd:'Pendientes de despacho',ge:'Gestión Externa · Sin Oferta'};
+function tabCopy(seg,btn){
+  const c=TABCP[seg];if(!c)return;
+  const rows=c.rows.map(o=>Object.assign({},o,{_seg:seg}));
+  const sub=[c.g&&c.g!=='ALL'?'':'Todos los Ing.',c.f?'con filtros aplicados':'',c.lim?'Top 20 por Ing. (lo visible en la tabla)':''].filter(Boolean).join(' · ');
+  cpTxt(cpListTxt(TABN[seg]+(c.g&&c.g!=='ALL'?' · '+(GL[c.g]||c.g):''),sub,rows,true),btn);
 }
 function dwCopyOp(btn){
   const o=dwCur().op;if(!o)return;
