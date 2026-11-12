@@ -2467,7 +2467,7 @@ function gmxQRow(x){
       <input class="gq-in gq-mot" id="gq-mot-${id}-${i}" ${gmxQCambio(o,p.fabricante)?'':'style="display:none"'} value="${escA(p.motivo)}" placeholder="Motivo del cambio (registro: ${escA(regs.join(', '))})" oninput="gmxQProd('${id}',${i},'motivo',this.value)"></div>`).join('')
     :`<div class="gmx-mut">✓ Ya tiene fabricante: <b style="color:#CBD5E1">${esc([...new Set(x.L.map(l=>l.fabricante).filter(Boolean))].join(', '))}</b></div>`;
   return `<div class="gq-r">
-    <div><div class="gmx-nm">#${esc(t)} · ${esc(o.cliente||'—')}</div><div class="gmx-mut">${esc(o.asesor||'Sin asesor')} · ${fM(amtO(o))}${mrc>0?` · MRC ${fM(mrc)}`:''}</div>
+    <div><div class="gmx-nm">#${esc(t)} · ${esc(o.cliente||'—')}</div><div class="gmx-mut">${esc(o.asesor||'Sin asesor')} · ${fM(amtO(o))}${mrc>0?` · MRC ${fM(mrc)}`:''} · margen ${margHtml(o.margen)}</div>
       ${regs.length?`<div class="gmx-mut">Registro: ${esc(regs.join(', '))}</div>`:s.prods?`<div class="gq-l" style="margin-top:6px">Registro de oportunidad</div><div class="gq-ch"><button class="${s.reg==='no'?'on':''}" title="No se necesitó registro de oportunidad para ganar el negocio (queda NO REQUERIDO)" onclick="gmxQSet('${id}','reg',GMX_Q['${id}'].reg==='no'?'':'no');this.classList.toggle('on',GMX_Q['${id}'].reg==='no')">No se necesitó</button><button onclick="gmxEdit('${id}')" title="Abrir el formulario completo para registrar el fabricante y el #Reg OPE / Deal">📋 Registrar uno</button></div>`:''}</div>
     <div><div class="gq-l">Tipo de proyecto</div>${ch('tipo',RGG_DEF.tipoProyecto)}</div>
     <div><div class="gq-l">Meses de contrato</div>${mrc>0?`<div class="gq-ch">${chb('meses',RGG_DEF.meses,' m')}<input class="gq-in n" id="gq-m-${id}" type="number" min="1" placeholder="Otro" value="${RGG_DEF.meses.map(String).includes(String(s.meses))?'':escA(s.meses)}" oninput="this.parentNode.querySelectorAll('button').forEach(b=>b.classList.remove('on'));gmxQSet('${id}','meses',this.value)"></div>`:'<span class="gmx-mut">No aplica (sin MRC)</span>'}</div>
@@ -2623,7 +2623,7 @@ function renderGaMix(rows){
     const regTxt=(o.registros||[]).map(r=>(r.fabricante||'')+(r.deal?' · '+r.deal:'')).filter(Boolean).join('; ');
     const tcv=gmxTCV(o),tp=gmxTipo(o);
     return L.map((l,j)=>`<tr>${j===0?`<td rowspan="${rs}" class="gmx-tk">#${esc(o.tarea)}<div>${gmxBadge(S[0],S[1],S[2])}</div>${o.cierre?`<button class="gmx-ed${x.falta.length?' todo':''}" onclick="gmxEdit('${escA(o.tarea)}')" title="Abrir el formulario del proyecto ganado de esta tarea">✎ ${x.falta.length?'Completar':'Editar'}</button>`:'<div class="gmx-mut" title="Sin tarea de notificación de cierre">sin tarea de cierre</div>'}${x.falta.length?`<div class="gmx-falta">Falta: ${x.falta.map(esc).join(' · ')}</div>`:''}${(()=>{const op=gmxOpcional(x);return op.length?`<div class="gmx-opc" title="No la deja pendiente: mejora el detalle de las métricas">Opcional: ${op.map(esc).join(' · ')}</div>`:'';})()}</td><td rowspan="${rs}"><div class="gmx-nm">${esc(o.cliente||'—')}</div><div class="gmx-mut">${esc(o.asesor||'Sin asesor')} · ${esc(GL[o.gestor]||o.gestor||'')}${tp?' · '+esc(tp):''}</div></td>
-        <td rowspan="${rs}" class="r">${fM(amtO(o))}${tcv!=null&&tcv!==amtO(o)?`<div class="gmx-mut">TCV ${fK(tcv)}</div>`:''}</td><td rowspan="${rs}">${gmxBadge(R[0],R[1])}${regTxt?`<div class="gmx-mut">${esc(regTxt)}</div>`:''}</td>`:''}
+        <td rowspan="${rs}" class="r">${fM(amtO(o))}${tcv!=null&&tcv!==amtO(o)?`<div class="gmx-mut">TCV ${fK(tcv)}</div>`:''}<div class="gmx-mut">Margen ${margHtml(o.margen)}</div></td><td rowspan="${rs}">${gmxBadge(R[0],R[1])}${regTxt?`<div class="gmx-mut">${esc(regTxt)}</div>`:''}</td>`:''}
       <td>${l.producto?esc(l.producto):`<span class="gmx-mut">${L.some(z=>z.producto)?'(propuesta)':'(sin producto)'}</span>`}${l.integral?`<div class="gmx-mut">🧩 de ${esc(l.integral)}</div>`:''}</td>
       <td>${esc(l.fabricante)||'<span class="gmx-mut">—</span>'}</td>
       <td>${esc(l.distribuidor)||'<span class="gmx-mut">—</span>'}</td>
@@ -2666,7 +2666,7 @@ function renderOpsTable(seg,filt){
     if(dDesde2||dHasta2){const fa=parseFechaA(o.fechaA);if(!fa)return false;if(dDesde2&&fa<dDesde2)return false;if(dHasta2&&fa>dHasta2)return false;}
     if(!matchExtra(o,filt))return false;
     if(q){
-      const s=(o.cliente||'').toLowerCase()+' '+(o.tarea||'').toLowerCase()+' '+(o.asesor||'').toLowerCase();
+      const s=(o.cliente||'').toLowerCase()+' '+(o.tarea||'').toLowerCase()+' '+(o.asesor||'').toLowerCase()+' '+String(o.cierre||'').toLowerCase();   // v9.43 — también por tarea de cierre
       if(!s.includes(q))return false;
     }
     return true;
@@ -2704,7 +2704,7 @@ function renderOpsTable(seg,filt){
     const ESTADOS=seg==='ab'?[AB_GANAR,AB_PERDER]:ESTADOS_GA;
     html=`<thead><tr>
       <th>#Tarea</th><th class="col-resizable">Cliente</th><th>Gestor</th><th>Tipo</th>
-      <th class="r">NRC</th><th class="r">MRC</th><th class="r" style="color:#F59E0B">Monto Total Proyecto</th><th>Asesor</th><th>%Prob</th>
+      <th class="r">NRC</th><th class="r">MRC</th><th class="r" style="color:#F59E0B">Monto Total Proyecto</th><th>Asesor</th><th>${seg==='ga'?'Margen':'%Prob'}</th>
       <th class="col-resizable" style="width:180px">Seguimiento (Hoja)</th>
       <th style="width:120px">Estado</th><th style="width:36px"></th>
     </tr></thead><tbody>`;
@@ -2742,7 +2742,7 @@ function renderOpsTable(seg,filt){
         <td class="r mrc-val">${fM(o.mrc)}</td>
         <td class="r" style="font-weight:700;color:#F59E0B">${fM(tot)}</td>
         <td style="font-size:15px;color:#CBD5E1">${as}</td>
-        <td><span class="prob-pill">${o.prob||'—'}</span></td>
+        <td>${seg==='ga'?margHtml(o.margen):`<span class="prob-pill">${o.prob||'—'}</span>`}</td>
         <td><span class="seg-note" title="${esc(o.seg||'')}">${esc(o.seg||'—')}</span></td>
         <td>${perdida?`<span style="color:#E55C6C;font-size:15px;font-weight:600">❌ Cerrada — Perdida<br><span style="color:#64748B;font-size:14px">Ver en Ops Perdidas</span></span>`
           :`<select id="est-${o.id}" onchange="onEstado('${o.id}',this.value,'${seg}')">${opts}</select>`}</td>
@@ -3634,6 +3634,15 @@ const _dm=d=>String(d.getDate()).padStart(2,'0')+'/'+String(d.getMonth()+1).padS
 const escA=s=>esc(s).replace(/"/g,'&quot;').replace(/'/g,'&#39;');
 function probN(p){if(p==null||p==='')return null;let v=parseFloat(String(p).replace('%','').replace(',','.'));if(isNaN(v))return null;if(!String(p).includes('%')&&v<=1)v*=100;return v;}
 function margN(m){if(m==null||m==='')return null;const s=String(m);const raw=parseFloat(s.replace('%','').replace(',','.'));if(isNaN(raw))return null;return s.includes('%')?raw:raw*100;}
+/* v9.43 — margen con que se ganó la oferta (columna MARGEN de la tarea cotizada). Colores = tarjeta "Rango de margen". */
+const margCol=v=>v==null?'#64748B':v>=30?'#02C39A':v>=20?'#F59E0B':'#E55C6C';
+const margTxt=m=>{const v=margN(m);return v==null?'':v.toFixed(1)+'%';};
+const margHtml=m=>{const v=margN(m);return v==null?'<span style="color:#64748B">sin margen</span>':`<b style="color:${margCol(v)}">${v.toFixed(1)}%</b>`;};
+/* tarea cotizada cuya TAREA DE NOTIFICACION DE CIERRE es t (la celda puede traer varias: "A; B") */
+function opPorCierre(t){t=String(t||'').trim();if(!t)return null;for(const s of ['ga','ab','per','pd']){const o=(OPS[s]||[]).find(x=>x.cierre&&String(x.cierre).split(/[\s;,/]+/).includes(t));if(o)return Object.assign({},o,{_s:s});}return null;}
+/* margen (en %) de una tarea: dato del dashboard o, si recién se registró, lo cargado en Registro */
+function margenDe(tarea){const o=rgExisting(tarea);if(o&&margN(o.margen)!=null)return margN(o.margen);
+  if(RG.found&&String(RG.found.tarea)===String(tarea)&&RG.orig&&RG.orig.margen!==''&&RG.orig.margen!=null)return +RG.orig.margen;return null;}
 function diasOf(o){return o._seg==='pd'?o.tpPre:o.tpTot;}
 function lsGet(k,d){try{const v=localStorage.getItem(k);return v==null?d:JSON.parse(v);}catch{return d;}}
 function lsSet(k,v){try{localStorage.setItem(k,JSON.stringify(v));}catch{}}
@@ -3799,7 +3808,7 @@ function cpOpLines(o,i){
   if(d!=null&&d!=='')c.push(`*${d} días* ${o._seg==='pd'||o._seg==='ge'?'en preventa':'en total'}`);
   if(o._seg==='pe'){const fp=o.fechaPerd||getTk(o.id,'fecha_perdida','');if(cpV(fp))c.push('Perdida '+fp);}
   if(c.length)L.push('   '+c.join(' · '));
-  const m=[];if(+o.nrc)m.push('NRC '+fM(+o.nrc));if(+o.mrc)m.push('MRC '+fM(+o.mrc));if(cpV(o.prob))m.push('Prob. '+o.prob);if(m.length)L.push('   '+m.join(' · '));
+  const m=[];if(+o.nrc)m.push('NRC '+fM(+o.nrc));if(+o.mrc)m.push('MRC '+fM(+o.mrc));if(cpV(o.prob)&&o._seg!=='ga')m.push('Prob. '+o.prob);if(margTxt(o.margen))m.push(o._seg==='ga'?'*Margen '+margTxt(o.margen)+'*':'Margen '+margTxt(o.margen));if(m.length)L.push('   '+m.join(' · '));
   if(o._chg)L.push(`   Cambio: ${WKT[o._chg.type][2]} ${o._chg.date||''}`);
   return L;
 }
@@ -3845,7 +3854,7 @@ function dwRenderOp(o,T,ST2,TL,SM,B){
     ${F('NRC',`<b style="color:#F59E0B">${fM(+o.nrc||0)}</b>`)}${F('MRC',fM(+o.mrc||0))}${F('Total',`<b>${fM(amt(o))}</b>`)}${F('% Prob. cierre',dwProbHtml(o))}
     ${F('Estado (Sheet)',esc(o.estado))}${F('Tipo',esc(o.tipo)+' inspección')}${F('Asesor comercial',esc(o.asesor))}${F('Producto',esc(o.prod))}${F('Registro(s) de oportunidad',(o.registros||[]).length?o.registros.map(r=>`<span class="od-reg">${esc(r.fabricante||'(sin fabricante)')}${r.deal?` · Deal <b>${esc(r.deal)}</b>`:''}</span>`).join(''):'<span style="color:#64748B">Sin registro</span>')}
     ${F('Día asignado',esc(o.fechaA))}${F('Día entregado',esc(o.fechaE))}${F('Tiempo en preventa',o.tpPre!=null&&o.tpPre!==''?o.tpPre+' d':'')}${F('Tiempo total cotización',o.tpTot!=null&&o.tpTot!==''?o.tpTot+' d':'')}
-    ${F('Mes',esc(o.mes))}${F('Margen',esc(o.margen))}${F('Tarea notificación cierre',esc(o.cierre))}${o._seg==='pe'?F('Fecha pérdida',esc(o.fechaPerd||getTk(o.id,'fecha_perdida',''))):''}
+    ${F('Mes',esc(o.mes))}${F(o._seg==='ga'?'Margen con que se ganó':'Margen',margN(o.margen)==null?'':margHtml(o.margen))}${F('Tarea notificación cierre',esc(o.cierre))}${o._seg==='pe'?F('Fecha pérdida',esc(o.fechaPerd||getTk(o.id,'fecha_perdida',''))):''}
     ${estTk?F('Estado seguimiento (dashboard)',esc(estTk)):''}
   </div>
   <div class="od-l" style="margin-top:14px">Seguimiento / comentario (Sheet)</div><div class="od-seg">${esc(o.seg||'—')}</div>
@@ -4683,13 +4692,13 @@ function rgRender(keepFocus){
   if(RG.mode==='ing'){root.innerHTML=h+rgIngHtml();return;}   // v9.19
   if(RG.mode==='mv'){root.innerHTML=h+rgMvHtml();return;}     // v9.34
   if(RG.draft&&!up)h+=`<div class="rg-note">Se recuperó un borrador sin guardar. <button class="vc-link" onclick="rgReset()">Descartar y empezar de cero</button></div>`;
-  if(up){h+=`<div class="rg-find"><input id="rg-find" class="rg-in" inputmode="numeric" placeholder="#Tarea o cliente — se carga sola" list="dl-find" oninput="rgFindInput(this.value)" onkeydown="if(event.key==='Enter')rgLoad(this.value)"><datalist id="dl-find">${[...OPS.ab,...OPS.ga,...OPS.per,...OPS.pd].slice(0,800).map(o=>`<option value="${escA(o.tarea)}">${esc(o.cliente)}</option>`).join('')}</datalist><button class="dw-btn pri" onclick="rgLoad(document.getElementById('rg-find').value)">Cargar</button>
+  if(up){h+=`<div class="rg-find"><input id="rg-find" class="rg-in" inputmode="numeric" placeholder="#Tarea, tarea de cierre o cliente — se carga sola" list="dl-find" oninput="rgFindInput(this.value)" onkeydown="if(event.key==='Enter')rgLoad(this.value)"><datalist id="dl-find">${[...OPS.ab,...OPS.ga,...OPS.per,...OPS.pd].slice(0,800).map(o=>`<option value="${escA(o.tarea)}">${esc(o.cliente)}</option>`).join('')}${OPS.ga.filter(o=>o.cierre).map(o=>`<option value="${escA(String(o.cierre).split(/[\s;,/]+/)[0])}">Cierre de #${esc(o.tarea)} · ${esc(o.cliente)}</option>`).join('')}</datalist><button class="dw-btn pri" onclick="rgLoad(document.getElementById('rg-find').value)">Cargar</button>
       ${RG.found?`<span class="rg-found">Editando <b>#${esc(RG.found.tarea)}</b> · ${esc(RG.found.hoja||'')} ${RG.found.fila?'fila '+RG.found.fila:''} · ${esc(RG.v.cliente||'')}</span>`:'<span class="rg-help">Escribe la #Tarea y presiona Enter. Solo se enviarán los campos que cambies.</span>'}</div>`;}
   if(up&&RG.quick&&RG.found){
     h+=`<div class="rg-grid"><div class="rg-form">${rgQuickHtml()}</div><aside class="rg-side" id="rg-side">${rgSideHtml()}</aside></div>`;
   } else if(!up||RG.found){
     h+=`<div class="rg-grid"><div class="rg-form">`;
-    RG_SECS.filter(([n])=>!(n===5&&!up)).forEach(([n,t,d])=>{const fs=RG_F.filter(f=>f.s===n).map(rgField).join('')+(n===5&&up&&RG.orig&&RG.orig.cierre?`<div class="rg-f w2"><button class="rgg-open" onclick="rgGanFetch('${escA(RG.found.tarea)}')">🏆 Datos del proyecto ganado (PROYECTOS GANADOS)</button></div>`:'');h+=`<section class="rg-sec"><div class="rg-sh"><span class="rg-n">${n}</span><div><div class="rg-sht">${t}</div><div class="rg-shd">${d}</div></div></div><div class="rg-fs">${fs}</div></section>`;});
+    RG_SECS.filter(([n])=>!(n===5&&!up)).forEach(([n,t,d])=>{const fs=RG_F.filter(f=>f.s===n).map(rgField).join('')+(n===5&&up&&RG.orig&&RG.orig.cierre?`<div class="rg-f w2"><button class="rgg-open" onclick="rgGanFetch('${escA(RG.found.tarea)}')">🏆 Datos del proyecto ganado (PROYECTOS GANADOS)</button><div class="rg-help">Margen con que se ganó: ${margHtml(RG.orig.margen===''||RG.orig.margen==null?'':RG.orig.margen+'%')}</div></div>`:'');h+=`<section class="rg-sec"><div class="rg-sh"><span class="rg-n">${n}</span><div><div class="rg-sht">${t}</div><div class="rg-shd">${d}</div></div></div><div class="rg-fs">${fs}</div></section>`;});
     h+=`</div><aside class="rg-side" id="rg-side">${rgSideHtml()}</aside></div>`;
   }
   root.innerHTML=h;
@@ -4731,6 +4740,7 @@ function rgSideHtml(){
 /* ── cargar una tarea para actualizar ── */
 async function rgLoad(t){
   t=String(t||'').trim();if(!t)return;RG.msg=null;
+  let porCierre=null;if(!rgExisting(t)){const c=opPorCierre(t);if(c){porCierre=t;t=String(c.tarea);}}   // v9.43 — también por tarea de notificación de cierre
   const ex=rgExisting(t);
   let d=null,hoja='',fila='';
   try{const r=await fetch(ENDPOINT_URL+'&action=registro&tarea='+encodeURIComponent(t),{credentials:'omit',redirect:'follow'});const j=await r.json();if(j&&j.ok){d=j.data;hoja=j.hoja;fila=j.fila;}}catch(e){}
@@ -4746,7 +4756,9 @@ async function rgLoad(t){
   if(!n.multiv&&ex&&ex.multiv)n.multiv=ex.multiv;
   RG.prodTouched=false;RG.user=GL[n.gestor]||n.gestor||null;RG.v=Object.assign({},n);RG.orig=Object.assign({},n);
   {const ps=rgProds(n.prod);if(ps.some(x=>rggNorm(x).includes('PROYECTO INTEGRAL MULTIVERTICAL'))){RG.v.multiv='SI';RG.v.prod=ps.filter(x=>!rggNorm(x).includes('PROYECTO INTEGRAL MULTIVERTICAL')).join(', ');}}   // v9.33 — el producto pasa al check al guardar
-  RG.found={tarea:t,hoja,fila,gestor:n.gestor};rgSave();rgRender();
+  RG.found={tarea:t,hoja,fila,gestor:n.gestor};rgSave();
+  if(porCierre)RG.msg={ok:true,html:`🔎 <b>#${esc(porCierre)}</b> es la tarea de notificación de cierre de la tarea cotizada <b>#${esc(t)}</b>: se cargó esa.`};
+  rgRender();
 }
 const abrevG=s=>{const nn=x=>String(x).toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g,'').trim(),k=nn(s);if(GKEYS.includes(String(s).toUpperCase()))return String(s).toUpperCase();
   return GKEYS.find(g=>nn(GL[g])===k||nn(RG_GFULL[g]||'')===k)||String(s).slice(0,2).toUpperCase();};   // v9.18 — según la lista de ingenieros
@@ -4884,7 +4896,7 @@ const RG_QREG=['fab1','deal1','fab2','deal2'];   // v9.23 — registro(s) de opo
 function rgFmtV(k,x){if(x===undefined||x===null||x==='')return 'vacío';if(k==='nrc'||k==='mrc')return fM(+x);if(/^fecha/.test(k)&&String(x).includes('-'))return String(x).split('-').reverse().join('/');if(k==='margen')return x+'%';return String(x);}
 function rgClsOf(v){const e=String(v.estado||'').toUpperCase().trim();if(String(v.cierre||'').trim())return ['Ganada','ga'];if(e==='PERDIDA')return ['Perdida','pe'];if(NO_OFERTA_ESTADOS.includes(e))return ['Sin oferta','ge'];if(e==='OFERTA ENTREGADA A COMERCIAL')return ['Abierta','ab'];return ['Pendiente','pd'];}
 let _rgFindT;
-function rgFindInput(val){clearTimeout(_rgFindT);const t=String(val||'').trim();if(/^\d{5,12}$/.test(t)&&rgExisting(t))_rgFindT=setTimeout(()=>rgLoad(t),250);}
+function rgFindInput(val){clearTimeout(_rgFindT);const t=String(val||'').trim();if(/^\d{5,12}$/.test(t)&&(rgExisting(t)||opPorCierre(t)))_rgFindT=setTimeout(()=>rgLoad(t),250);}
 function rgImpact(){
   const o=RG.orig||{},v=RG.v,a=rgClsOf(o),b=rgClsOf(v),L=[];
   const wk=d=>{const x=ymdLocal(d);x.setDate(x.getDate()-((x.getDay()+6)%7));return _dm(x);};
@@ -4916,7 +4928,8 @@ function rgQuickHtml(){
   return `<section class="rg-sec rq">
     <div class="rq-h"><div><div class="rq-cli">${esc(v.cliente||'—')}</div>
       <div class="rq-sub"><span class="tarea-tag" style="font-size:12px">#${esc(RG.found.tarea)}</span> <span class="gdot" style="background:${GC[g]||'#64748B'}"></span>${esc(GL[g]||g||'')} · ${esc(RG.found.hoja||'')}${RG.found.fila?' fila '+RG.found.fila:''} · ${esc((v.tipo||'').replace(' INSPECCION',''))} · ${esc(v.asesor||'')}</div>
-      <div class="rq-sub">Estado: <b>${esc(v.estado||'—')}</b>${RG.auto==='estado'&&v.estado!==o.estado?' <span class="rg-chg">auto</span>':''}</div></div>
+      <div class="rq-sub">Estado: <b>${esc(v.estado||'—')}</b>${RG.auto==='estado'&&v.estado!==o.estado?' <span class="rg-chg">auto</span>':''}</div>
+      ${o.cierre?`<div class="rq-sub">🏆 Ganada · cierre <b>#${esc(o.cierre)}</b> · Margen con que se ganó: ${margHtml(o.margen===''||o.margen==null?'':o.margen+'%')}</div>`:''}</div>
       <div class="rq-cls" id="rq-cls"><span class="sg sg-${a[1]}">${a[0]}</span>${a[0]!==b[0]?` <span class="rq-arr">→</span> <span class="sg sg-${b[1]}">${b[0]}</span>`:''}</div></div>
     <div class="rq-grid">${rgQKeys().filter(k=>k!=='prod'&&k!=='multiv').map(k=>rgField(F(k))).join('')}</div>
     <div class="rq-prod">${rgField(F('prod'))}${rgField(F('multiv'))}</div>
@@ -5038,6 +5051,7 @@ function rgGanRender(){
       <div class="rgg-st"><b>${esc(i.cliente)}</b> · tarea cotizada #${esc(i.tarea)} · tarea de cierre <b>#${esc(i.cierre)}</b>${i.filaGanados>0?` · fila ${i.filaGanados}`:''}</div></div>
       <button class="dw-x" onclick="rgGanClose()" title="Completar después (Esc)">✕</button></div>
     <div class="rgg-info"><span>Producto(s): <b>${esc(i.prod||'—')}</b></span><span>NRC: <b>${fM(+i.nrc||0)}</b></span><span>MRC: <b>${fM(+i.mrc||0)}</b></span>
+      <span>Margen con que se ganó: ${(m=>m==null?'<b style="color:#64748B">sin margen</b>':margHtml(m+'%'))(margenDe(i.tarea))}</span>
       <span>PROYECTO CLIENTE → <b>${esc(i.cliente)}</b> <i>(automático)</i></span></div>
     <div class="rgg-b">
       <div class="rg-f"><label>Tipo de Proyecto <i>*</i></label>${chips('tipoProyecto',tp)}
