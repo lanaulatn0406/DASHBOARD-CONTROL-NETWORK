@@ -2039,6 +2039,7 @@ function gmxFalta(x){
   const o=x.o,pg=o.pg||{},F=[];
   prodsGanado(gmxProds(o),o.multiv).filter(esIntegral).forEach(P=>{if(!x.L.some(l=>l.integral===P))F.push('desagregar '+P);});   // v9.32
   if(!x.L.some(l=>l.fabricante||l.na))F.push('fabricante');   // v9.42 — NA (sin fabricante) cuenta como completo
+  else if(x.src!=='det'&&!F.some(f=>f.startsWith('desagregar ')))F.push('detalle por producto');   // v9.42 — fabricante solo en el resumen: falta distribuidor y registro por producto
   if(!String(pg.tipoProyecto||'').trim()&&x.src!=='det')F.push('tipo de proyecto');
   if((+o.mrc||0)>0&&!(parseFloat(String(pg.tiempoContrato||'').replace(',','.'))>0)&&x.src!=='det')F.push('meses de contrato');
   return F;
@@ -2419,13 +2420,15 @@ const gmxQRegs=o=>(o.registros||[]).map(r=>String(r.fabricante||'').trim()).filt
 const gmxQCambio=(o,f)=>{const R=gmxQRegs(o).map(rggNorm);return R.length&&String(f||'').trim()&&!R.includes(rggNorm(f));};
 function gmxQState(x){
   const o=x.o,t=String(o.tarea);if(GMX_Q[t])return GMX_Q[t];
-  const pg=o.pg||{},needFab=x.falta.includes('fabricante');
-  const dist=gmxLista(pg.distribuidor,GMX_ALIAS.DIST)[0]||'',reg=gmxQRegs(o)[0]||'';
+  const pg=o.pg||{},needFab=x.falta.includes('fabricante')||x.falta.includes('detalle por producto');   // v9.42
+  const dist=gmxLista(pg.distribuidor,GMX_ALIAS.DIST)[0]||'',reg=gmxQRegs(o)[0]||'',P0=gmxProds(o);
+  const fabRes=p=>[...new Set(x.L.filter(l=>l.fabricante&&(l.producto===p||!l.producto||P0.length<=1)).map(l=>l.fabricante))].join(' / ');   // v9.42 — fabricante ya escrito en el resumen
   return GMX_Q[t]={tipo:gmxQTipo(pg.tipoProyecto),meses:parseFloat(String(pg.tiempoContrato||'').replace(',','.'))>0?String(pg.tiempoContrato):'',
-    prods:needFab?prodsGanado(gmxProds(o),o.multiv).map(p=>({producto:p,fabricante:reg,distribuidor:dist,motivo:'',sug:!!reg})):null};
+    prods:needFab?prodsGanado(gmxProds(o),o.multiv).map(p=>{const fr=fabRes(p);return {producto:p,fabricante:fr||reg,distribuidor:dist,motivo:'',sug:!fr&&!!reg};}):null,reg:''};
 }
 function gmxQErr(o,s){
   const E=[];if(!s.tipo)E.push('tipo de proyecto');
+  if(s.prods&&!gmxQRegs(o).length&&!s.reg)E.push('registro de oportunidad (No se necesitó, o ✎ Formulario para registrarlo)');   // v9.42
   if((+o.mrc||0)>0&&!(+s.meses>0))E.push('meses de contrato');
   (s.prods||[]).forEach(p=>{const n=p.producto||'producto';
     if(!String(p.fabricante).trim())E.push(n+': fabricante');if(!String(p.distribuidor).trim())E.push(n+': distribuidor');
@@ -2465,7 +2468,7 @@ function gmxQRow(x){
     :`<div class="gmx-mut">✓ Ya tiene fabricante: <b style="color:#CBD5E1">${esc([...new Set(x.L.map(l=>l.fabricante).filter(Boolean))].join(', '))}</b></div>`;
   return `<div class="gq-r">
     <div><div class="gmx-nm">#${esc(t)} · ${esc(o.cliente||'—')}</div><div class="gmx-mut">${esc(o.asesor||'Sin asesor')} · ${fM(amtO(o))}${mrc>0?` · MRC ${fM(mrc)}`:''}</div>
-      ${regs.length?`<div class="gmx-mut">Registro: ${esc(regs.join(', '))}</div>`:''}</div>
+      ${regs.length?`<div class="gmx-mut">Registro: ${esc(regs.join(', '))}</div>`:s.prods?`<div class="gq-l" style="margin-top:6px">Registro de oportunidad</div><div class="gq-ch"><button class="${s.reg==='no'?'on':''}" title="No se necesitó registro de oportunidad para ganar el negocio (queda NO REQUERIDO)" onclick="gmxQSet('${id}','reg',GMX_Q['${id}'].reg==='no'?'':'no');this.classList.toggle('on',GMX_Q['${id}'].reg==='no')">No se necesitó</button><button onclick="gmxEdit('${id}')" title="Abrir el formulario completo para registrar el fabricante y el #Reg OPE / Deal">📋 Registrar uno</button></div>`:''}</div>
     <div><div class="gq-l">Tipo de proyecto</div>${ch('tipo',RGG_DEF.tipoProyecto)}</div>
     <div><div class="gq-l">Meses de contrato</div>${mrc>0?`<div class="gq-ch">${chb('meses',RGG_DEF.meses,' m')}<input class="gq-in n" id="gq-m-${id}" type="number" min="1" placeholder="Otro" value="${RGG_DEF.meses.map(String).includes(String(s.meses))?'':escA(s.meses)}" oninput="this.parentNode.querySelectorAll('button').forEach(b=>b.classList.remove('on'));gmxQSet('${id}','meses',this.value)"></div>`:'<span class="gmx-mut">No aplica (sin MRC)</span>'}</div>
     <div><div class="gq-l">Fabricante / vendor · distribuidor</div>${fab}</div>
@@ -2484,7 +2487,7 @@ function gmxQuickHtml(visX,vt){
   const nTot=grupos.reduce((s,g)=>s+g.n,0);
   const top=`<div class="gq-top">${!RG.key?`<span>🔑 Clave de escritura:</span><input type="password" autocomplete="off" placeholder="Clave del Apps Script" oninput="RG.key=this.value;lsSet('nw_rg_key_v9',this.value)">`:''}
     ${!rgUser()?`<span>Registrado por:</span><input placeholder="Tu nombre" oninput="RG.user=this.value;lsSet('nw_rg_user_v9',this.value)">`:''}
-    <span>Solo las ganadas por completar (sin fabricante, sin tipo de proyecto, con MRC sin meses o con un Proyecto Integral Network / Multivertical sin desagregar en sus productos). Elige, escribe y <b>💾 Guardar</b>; si no se conoce el distribuidor de una ganada vieja, escribe <b>NO DISPONIBLE</b>. Para registrar un registro de oportunidad nuevo o casos especiales usa <b>✎ Formulario</b>.${sinCierre?` <span style="color:#F59E0B">${sinCierre} sin tarea de cierre: regístrala primero en Registro.</span>`:''}</span></div>`;
+    <span>Solo las ganadas por completar (sin detalle por producto, sin fabricante, sin tipo de proyecto, con MRC sin meses o con un Proyecto Integral Network / Multivertical sin desagregar en sus productos). Elige, escribe y <b>💾 Guardar</b>; si no se conoce el distribuidor de una ganada vieja, escribe <b>NO DISPONIBLE</b> (o <b>NA</b> si no aplica). En las ganadas viejas el fabricante ya escrito viene prellenado. Para registrar un registro de oportunidad nuevo o casos especiales usa <b>✎ Formulario</b>.${sinCierre?` <span style="color:#F59E0B">${sinCierre} sin tarea de cierre: regístrala primero en Registro.</span>`:''}</span></div>`;
   const body=grupos.map(({g,a,n})=>{const open=GMX_QOPEN.has(g),monto=a.filter(x=>!GMX_QOK.has(String(x.o.tarea))).reduce((s,x)=>s+amtO(x.o),0),ok=a.length-n;
     return `<div class="gq-g"><button class="gq-gh" onclick="gmxQGrp('${escA(g)}')"><span class="gdot" style="background:${GC[g]||'#64748B'}"></span>${esc(GL[g]||g)}
       ${n?`<span class="gq-n">${n} pendiente${n!==1?'s':''}</span><span class="gmx-mut">${fM(monto)}</span>`:''}${ok?`<span class="gq-ok">✓ ${ok} guardada${ok!==1?'s':''}</span>`:''}<span class="gq-c">${open?'▾ Ocultar':'▸ Completar'}</span></button>
@@ -2499,6 +2502,7 @@ async function gmxQSave(t){
   if(!RG.key){GMX_QERR[t]='Escribe la clave de escritura arriba.';renderGaMix(_gmxRows);return;}
   const data={tarea:t,cierre:o.cierre,tipoProyecto:s.tipo};
   if((+o.mrc||0)>0)data.tiempoContrato=+s.meses;
+  if(s.prods&&s.reg==='no'&&!gmxQRegs(o).length)data.registro={opcion:'no'};   // v9.42 — NO REQUERIDO
   if(s.prods)data.productos=s.prods.map(p=>({producto:p.producto,fabricante:p.fabricante.trim(),distribuidor:p.distribuidor.trim(),marca:p.fabricante.trim(),motivo:gmxQCambio(o,p.fabricante)?p.motivo.trim():''}));
   GMX_QBUSY.add(t);delete GMX_QERR[t];const b=document.getElementById('gq-go-'+t);if(b){b.disabled=true;b.textContent='Guardando…';}
   try{
@@ -2509,7 +2513,7 @@ async function gmxQSave(t){
       if(data.productos){const u=a=>[...new Set(a.filter(Boolean))].join(', ');pg.fabricante=u(data.productos.map(p=>p.fabricante));pg.distribuidor=u(data.productos.map(p=>p.distribuidor));
         const R=gmxQRegs(o).map(rggNorm);FAB_GAN=(FAB_GAN||[]).filter(x=>String(x.cierre)!==String(o.cierre));
         data.productos.forEach(p=>FAB_GAN.push({cierre:String(o.cierre),tarea:t,producto:p.producto,fabricante:p.fabricante,distribuidor:p.distribuidor,motivo:p.motivo,
-          cambio:!R.length?'SIN REGISTRO':R.includes(rggNorm(p.fabricante))?'NO':'SI'}));}
+          cambio:data.registro?'NO REQUERIDO':!R.length?'SIN REGISTRO':R.includes(rggNorm(p.fabricante))?'NO':'SI'}));}
       GMX_QOK.add(t);delete GMX_Q[t];
     }else GMX_QERR[t]=(j&&j.error)||'Error desconocido';
   }catch(e){GMX_QBUSY.delete(t);GMX_QERR[t]='No se pudo conectar con el Apps Script ('+e.message+')';}
