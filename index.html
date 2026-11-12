@@ -2038,7 +2038,7 @@ async function gmxEdit(tarea){
 function gmxFalta(x){
   const o=x.o,pg=o.pg||{},F=[];
   prodsGanado(gmxProds(o),o.multiv).filter(esIntegral).forEach(P=>{if(!x.L.some(l=>l.integral===P))F.push('desagregar '+P);});   // v9.32
-  if(!x.L.some(l=>l.fabricante))F.push('fabricante');
+  if(!x.L.some(l=>l.fabricante||l.na))F.push('fabricante');   // v9.42 — NA (sin fabricante) cuenta como completo
   if(!String(pg.tipoProyecto||'').trim()&&x.src!=='det')F.push('tipo de proyecto');
   if((+o.mrc||0)>0&&!(parseFloat(String(pg.tiempoContrato||'').replace(',','.'))>0)&&x.src!=='det')F.push('meses de contrato');
   return F;
@@ -2094,12 +2094,13 @@ const gmxProds=o=>String(o.prod||'').split(/\s*,\s*/).map(s=>s.trim()).filter(Bo
    producto '' = línea a nivel propuesta (fabricante/distribuidor que no se puede atar a un producto). */
 function gmxLineas(o,idx){
   const det=idx[String(o.tarea||'').trim()]||(o.cierre?idx['c:'+String(o.cierre).trim()]:null);
-  if(det&&det.length)return {src:'det',L:det.map(d=>({producto:d.producto,integral:d.integral||'',fabricante:gmxLista(d.fabricante,GMX_ALIAS.FAB).filter(f=>!catNoAplica(f,d.producto).length)[0]||'',distribuidor:gmxLista(d.distribuidor,GMX_ALIAS.DIST)[0]||'',cambio:d.cambio,motivo:d.motivo,src:'det'}))};
+  if(det&&det.length)return {src:'det',L:det.map(d=>({producto:d.producto,integral:d.integral||'',fabricante:gmxLista(d.fabricante,GMX_ALIAS.FAB).filter(f=>!catNoAplica(f,d.producto).length)[0]||'',distribuidor:gmxLista(d.distribuidor,GMX_ALIAS.DIST)[0]||'',cambio:d.cambio,motivo:d.motivo,src:'det',na:CAT_NA.has(catKey(d.fabricante))}))};   // v9.42 — na: fabricante NA (válido, no entra en rankings)
   const P=gmxProds(o),pg=o.pg||{};
   const regs=(o.registros||[]).map(r=>gmxLista(r.fabricante,GMX_ALIAS.FAB)[0]).filter(Boolean);
   const F=gmxLista([pg.fabricante,pg.marcaCableado].filter(Boolean).join(','),GMX_ALIAS.FAB),D=gmxLista(pg.distribuidor,GMX_ALIAS.DIST);
   const src=F.length||D.length?'pg':'none';
-  const ln=(producto,fabricante,distribuidor)=>({producto,fabricante,distribuidor,cambio:fabricante?gmxCambio(fabricante,regs):'',motivo:'',src});
+  const naPg=!F.length&&CAT_NA.has(catKey(pg.fabricante));   // v9.42
+  const ln=(producto,fabricante,distribuidor)=>({producto,fabricante,distribuidor,cambio:fabricante?gmxCambio(fabricante,regs):'',motivo:'',src,na:naPg});
   const L=[];
   if(P.length<=1){
     const p=P[0]||'',Fp=F.filter(f=>!catNoAplica(f,p).length);   // v9.36 — p. ej. Huawei no cuenta como fabricante de Cableado Estructurado
