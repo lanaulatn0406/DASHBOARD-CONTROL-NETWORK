@@ -2339,12 +2339,13 @@ let CAT={fab:CAT_SEMILLA.fab.map(([n,...a])=>({nombre:n,alias:a,noProd:CAT_NO_AP
 const catKey=x=>String(x||'').normalize('NFD').replace(/[̀-ͯ]/g,'').toUpperCase().replace(/[^A-Z0-9]/g,'');
 const catPartes=v=>String(v||'').split(/\s*(?:,|\/|;|\+|&|\sY\s|\s-\s)\s*/i).map(x=>x.trim()).filter(Boolean);
 const CAT_VACIO=new Set(['','NA','NOAPLICA','NINGUNO','GENERICO','GENERICA','SINDATO','NODISPONIBLE','DESCONOCIDO']);
+const CAT_NA=new Set(['NA','NOAPLICA']);   // v9.42 — "NA", "N/A", "N.A", "No aplica" → NA (fabricante válido: producto sin fabricante)
 function catSetBase(b){if(!b)return;if(b.fabricantes&&b.fabricantes.length)CAT.fab=b.fabricantes.map(x=>Object.assign({},x,{noProd:x.noProd!==undefined?x.noProd:(CAT_NO_APLICA_SEM[x.nombre]||[])}));   // v9.36 — backend v9.35 aún sin la columna
   if(b.distribuidores&&b.distribuidores.length)CAT.dist=b.distribuidores;catRefreshLists();}
 const catNombres=(t,prod)=>[...new Set(CAT[t].filter(x=>!prod||!(x.noProd||[]).some(np=>catKey(np)===catKey(prod))).map(x=>x.nombre))].sort((a,b)=>a.localeCompare(b,'es'));
 /* v9.36 — fabricantes de v que no aplican a ese producto (columna "No aplica a productos" de la base) */
 function catNoAplica(v,prod){const kp=catKey(prod);if(!kp)return [];return catPartes(v).filter(p=>{const k=catKey(p);return CAT.fab.some(x=>(catKey(x.nombre)===k||(x.alias||[]).some(a=>catKey(a)===k))&&(x.noProd||[]).some(np=>catKey(np)===kp));});}
-const catDlFab=prod=>`<datalist id="dlf-${catKey(prod)||'x'}" data-prod="${escA(prod||'')}">${catNombres('fab',prod).map(x=>`<option value="${escA(x)}">`).join('')}</datalist>`;
+const catDlFab=(prod,na)=>`<datalist id="dlf-${catKey(prod)||'x'}${na?'-na':''}" data-prod="${escA(prod||'')}"${na?' data-na="1"':''}>${[...catNombres('fab',prod),...(na?['NA']:[])].map(x=>`<option value="${escA(x)}">`).join('')}</datalist>`;   // v9.42 — na: ofrece "NA" (sin fabricante)
 function catCanon(t,v){const k=catKey(v);if(!k)return '';for(const x of CAT[t]){if(catKey(x.nombre)===k||(x.alias||[]).some(a=>catKey(a)===k))return x.nombre;}return '';}
 function catLev(a,b){if(Math.abs(a.length-b.length)>2)return 9;const d=Array.from({length:a.length+1},(_,i)=>[i]);for(let j=1;j<=b.length;j++)d[0][j]=j;
   for(let i=1;i<=a.length;i++)for(let j=1;j<=b.length;j++)d[i][j]=Math.min(d[i-1][j]+1,d[i][j-1]+1,d[i-1][j-1]+(a[i-1]===b[j-1]?0:1));return d[a.length][b.length];}
@@ -2354,22 +2355,26 @@ function catParecido(t,v){const k=catKey(v);if(k.length<3)return '';let best='',
 function catRefreshLists(){
   const f=catNombres('fab').map(x=>`<option value="${escA(x)}">`).join(''),d=[...catNombres('dist'),'NO DISPONIBLE'].map(x=>`<option value="${escA(x)}">`).join('');
   ['rgg-dl-fab','gq-dl-fab','dl-fab1','dl-fab2'].forEach(id=>{const e=document.getElementById(id);if(e)e.innerHTML=f;});
-  document.querySelectorAll('datalist[data-prod]').forEach(e=>{e.innerHTML=catNombres('fab',e.dataset.prod).map(x=>`<option value="${escA(x)}">`).join('');});   // v9.36
+  document.querySelectorAll('datalist[data-prod]').forEach(e=>{e.innerHTML=[...catNombres('fab',e.dataset.prod),...(e.dataset.na?['NA']:[])].map(x=>`<option value="${escA(x)}">`).join('');});   // v9.36 (v9.42: NA)
   ['rgg-dl-dis','gq-dl-dis'].forEach(id=>{const e=document.getElementById(id);if(e)e.innerHTML=d;});
 }
 let _catN=0;
 function catEl(cid){return document.querySelector(`[data-cid="${cid}"]`);}
-function catCheck(el){
-  const t=el.dataset.cat;if(!el.dataset.cid)el.dataset.cid='c'+(++_catN);const cid=el.dataset.cid,parts=catPartes(el.value);
+function catCheck(el,soloAviso){   // v9.42 — soloAviso: muestra el aviso sin reescribir el valor
+  const t=el.dataset.cat;if(!el.dataset.cid)el.dataset.cid='c'+(++_catN);const cid=el.dataset.cid;
+  if(CAT_NA.has(catKey(el.value))){if(el.value!=='NA'&&!soloAviso){el.value='NA';el.dispatchEvent(new Event('input',{bubbles:true}));}   // v9.42 — NA aceptado
+    const h0=el.nextElementSibling;if(h0&&h0.classList.contains('cat-hint'))h0.remove();return;}
+  const parts=catPartes(el.value);
   const canon=parts.map(p=>catCanon(t,p)||p),txt=canon.join(' / ');
-  if(parts.length&&txt!==el.value.trim()){el.value=txt;el.dispatchEvent(new Event('input',{bubbles:true}));}
+  if(parts.length&&txt!==el.value.trim()&&!soloAviso){el.value=txt;el.dispatchEvent(new Event('input',{bubbles:true}));}
   const tgt=(el.id&&document.getElementById(el.id))||el;if(!tgt.dataset.cid)tgt.dataset.cid=cid;tgt.dataset.cat=t;
   const nuevos=canon.filter(p=>!CAT_VACIO.has(catKey(p))&&!catCanon(t,p)),lbl=t==='fab'?'fabricantes':'distribuidores';
   const noAp=t==='fab'&&el.dataset.prod?catNoAplica(el.value,el.dataset.prod):[];   // v9.36
   let hint=tgt.nextElementSibling&&tgt.nextElementSibling.classList.contains('cat-hint')?tgt.nextElementSibling:null;
   if(!nuevos.length&&!noAp.length){if(hint)hint.remove();return;}
   if(!hint){hint=document.createElement('div');hint.className='cat-hint';tgt.after(hint);}
-  hint.innerHTML=noAp.map(p=>`<div style="color:#F87171">✕ ${esc(p)} no es fabricante de ${esc(el.dataset.prod)}.</div>`).join('')+nuevos.map(p=>{const s=catParecido(t,p);return `<div>«${esc(p)}» no está en la base de ${lbl}. ${s?`<button onclick="catUsar('${cid}','${escA(p)}','${escA(s)}')">¿Quisiste decir <b>${esc(s)}</b>?</button>`:''}<button class="add" onclick="catAlta('${cid}','${escA(p)}')">➕ Agregar a la base</button></div>`;}).join('');
+  const alGuardar=el.closest('#rgg-ov')?` Es nuevo: se agrega a la base al guardar, o agrégalo ya.`:'';   // v9.42
+  hint.innerHTML=noAp.map(p=>`<div style="color:#F87171">✕ ${esc(p)} no es fabricante de ${esc(el.dataset.prod)}.</div>`).join('')+nuevos.map(p=>{const s=catParecido(t,p);return `<div>«${esc(p)}» no está en la base de ${lbl}.${alGuardar} ${s?`<button onclick="catUsar('${cid}','${escA(p)}','${escA(s)}')">¿Quisiste decir <b>${esc(s)}</b>?</button>`:''}<button class="add" onclick="catAlta('${cid}','${escA(p)}')">➕ Agregar a la base</button></div>`;}).join('');
 }
 function catUsar(cid,p,s){const el=catEl(cid);if(!el)return;el.value=catPartes(el.value).map(x=>catKey(x)===catKey(p)?s:x).join(' / ');el.dispatchEvent(new Event('input',{bubbles:true}));catCheck(catEl(cid)||el);}
 async function catAlta(cid,p){
@@ -5043,7 +5048,7 @@ function rgGanRender(){
       <div class="rg-f"><label>Datos por producto <i>*</i> <span class="rgg-why">${v.productos.length} producto${v.productos.length!==1?'s':''}</span></label>
         <div class="rgg-fab">${(()=>{const card=(p,n)=>`<div class="rgg-fab-c">
           <div class="rgg-fab-p">${p.producto?esc(p.producto):'<i>Tarea sin producto registrado</i>'} <span id="rgg-tag-${n}">${rggTag(n)}</span></div>
-          <div class="rgg-g3"><div class="rg-f"><label>Fabricante / vendor <i>*</i>${p.auto?` <span class="rg-auto-tag" id="rgg-auto-${n}">del registro</span>`:''}</label>${catDlFab(p.producto)}<input class="rg-in" data-cat="fab" data-prod="${escA(p.producto||'')}" list="dlf-${catKey(p.producto)||'x'}" value="${escA(p.fabricante||'')}" placeholder="Ej. CISCO / PANDUIT" title="Fabricante / vendor = marca" oninput="rgGanFab(${n},'fabricante',this.value)"></div>
+          <div class="rgg-g3"><div class="rg-f"><label>Fabricante / vendor <i>*</i>${p.auto?` <span class="rg-auto-tag" id="rgg-auto-${n}">del registro</span>`:''}</label>${catDlFab(p.producto,1)}<input class="rg-in" data-cat="fab" data-prod="${escA(p.producto||'')}" list="dlf-${catKey(p.producto)||'x'}-na" value="${escA(p.fabricante||'')}" placeholder="Ej. CISCO / PANDUIT · NA si no aplica" title="Fabricante / vendor = marca · NA si el producto no tiene fabricante" oninput="rgGanFab(${n},'fabricante',this.value)"></div>
             <div class="rg-f"><label>Distribuidor <i>*</i></label><input class="rg-in" data-cat="dist" list="rgg-dl-dis" value="${escA(p.distribuidor||'')}" placeholder="Ej. STOCK TN" oninput="rgGanFab(${n},'distribuidor',this.value)"></div></div>
           <div class="rg-f" id="rgg-mot-${n}" ${rggCambio(p.fabricante)==='SI'?'':'style="display:none"'}><label>Motivo del cambio de fabricante <i>*</i> <span class="rgg-why" style="color:#F59E0B">registro: ${esc(rggRegTxt())}</span></label>
             <textarea class="rg-in" rows="2" placeholder="Ej. El cliente pidió cambiar a otra marca por precio / disponibilidad…" oninput="rgGanFab(${n},'motivo',this.value)">${esc(p.motivo||'')}</textarea></div>
@@ -5065,6 +5070,7 @@ function rgGanRender(){
       <button class="rg-go" id="rgg-go" onclick="rgGanSubmit()">${RGG.busy?'Guardando…':'💾 Guardar en PROYECTOS GANADOS'}</button></div>
     <div class="rq-keys" style="padding:0 18px 12px">Registrado por: <b>${esc(user||'—')}</b> · Ctrl + Enter guarda · Esc cierra</div>
   </div>`;
+  ov.querySelectorAll('input[data-cat]').forEach(el=>{if(el.value.trim())catCheck(el,1);});   // v9.42 — el aviso «no está en la base / ➕ Agregar» no se pierde al redibujar
   rgGanBtn();
 }
 async function rgGanSubmit(){
