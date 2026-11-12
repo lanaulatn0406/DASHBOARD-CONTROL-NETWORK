@@ -2573,10 +2573,16 @@ function renderGaMix(rows){
       <div class="ks">NRC + MRC × meses · ${tcvOk.length} de ${nTot} ganadas${tcvOk.length<nTot?` <span class="gmx-mut">(${nTot-tcvOk.length} con MRC sin tiempo de contrato)</span>`:''}</div></div>
     ${(()=>{/* v9.33 — Proyecto Integral Network implícito: 2 o más productos de Network (o el producto heredado); Multivertical = check */
       const nNet=x=>new Set([...x.L.map(l=>l.producto),...gmxProds(x.o)].filter(p=>p&&!esIntegral(p)).map(gmxNorm)).size;
-      const iN=visX.filter(x=>nNet(x)>=2||gmxProds(x.o).some(p=>rggNorm(p).includes('PROYECTO INTEGRAL NETWORK'))),mV=visX.filter(x=>x.o.multiv==='SI');
+      const esMV=o=>rggNorm(o.multiv)==='SI'||gmxProds(o).some(esMultivP);   // v9.42 — check PROYECTO MULTIVERTICAL (o el producto heredado)
+      const iN=visX.filter(x=>nNet(x)>=2||gmxProds(x.o).some(p=>rggNorm(p).includes('PROYECTO INTEGRAL NETWORK'))),mV=visX.filter(x=>esMV(x.o));
       const m=a=>a.reduce((s,x)=>s+amtO(x.o),0);
+      /* v9.42 — tarjeta propia de Multivertical: monto, productos de Network que incluye y cuántos falta desagregar */
+      const pMV=new Map();mV.forEach(x=>new Set([...x.L.map(l=>l.producto),...gmxProds(x.o)].filter(p=>p&&!esIntegral(p))).forEach(p=>pMV.set(p,(pMV.get(p)||0)+1)));
+      const topMV=[...pMV].sort((a,b)=>b[1]-a[1]).slice(0,3),sinDes=mV.filter(x=>(x.falta||[]).some(f=>f.startsWith('desagregar '))).length;
       return `<div class="kc" style="border-top:2px solid #A78BFA"><div class="kv">${iN.length}<span style="font-size:16px;color:#64748B"> / ${nTot}</span></div><div class="kl">Proyectos integrales Network</div>
-        <div class="ks" title="Ganadas con 2 o más productos de Network (incluye las que se registraron con el producto Proyecto Integral Network)">${fK(m(iN))} · ${pct(m(iN),montoVis).toFixed(0)}% del monto · 2 o más productos<br>🧩 Multivertical: <b>${mV.length}</b> · ${fK(m(mV))}</div></div>`;})()}
+        <div class="ks" title="Ganadas con 2 o más productos de Network (incluye las que se registraron con el producto Proyecto Integral Network)">${fK(m(iN))} · ${pct(m(iN),montoVis).toFixed(0)}% del monto · 2 o más productos</div></div>
+      <div class="kc" style="border-top:2px solid #C4B5FD"><div class="kv">${mV.length}<span style="font-size:16px;color:#64748B"> / ${nTot}</span></div><div class="kl">🧩 Proyectos Multivertical</div>
+        <div class="ks" title="Ganadas marcadas como PROYECTO MULTIVERTICAL = SI en la hoja del ingeniero. Se cuentan los productos de Network que incluyen (los elegidos en la tarea o al desagregar).">${fK(m(mV))} · ${pct(m(mV),montoVis).toFixed(0)}% del monto${topMV.length?`<br>Network: ${topMV.map(([p,n])=>`${esc(p)} (${n})`).join(', ')}${pMV.size>3?'…':''}`:''}${sinDes?`<br><span style="color:#F59E0B">${sinDes} por desagregar en productos de Network</span>`:''}</div></div>`;})()}
   </div>`;
   /* Matriz producto × fabricante / distribuidor (todas las líneas de las propuestas con ese producto) */
   GAMX.keys.prod=prods.map(g=>g.k);
