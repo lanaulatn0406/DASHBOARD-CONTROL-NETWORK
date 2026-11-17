@@ -1125,6 +1125,8 @@ textarea.rg-in{resize:vertical;min-height:64px}
   <div class="cg3" id="ab-charts"></div>
   <div class="sttl" style="color:#F59E0B">📐 Por Ing. de Diseño</div>
   <div class="gd2" id="ab-gestores"></div>
+  <div class="sttl" style="color:#F59E0B">🏭 Productos · Fabricantes (registro de oportunidad) · Forecast</div>
+  <div id="ab-mix"></div>
   <div class="sttl" style="color:#F59E0B">📋 Detalle de Oportunidades — con Seguimiento</div>
   <div class="ops-wrap">
     <div class="ops-hdr">
@@ -2278,26 +2280,100 @@ async function rgPerSubmit(){
 }
 document.addEventListener('keydown',e=>{if(e.key==='Escape'){if(RGP){e.stopPropagation();rgPerClose();}else if(RGC){e.stopPropagation();rgcClose();}}},true);
 
+
+/* ══ v9.46 — Productos · fabricantes · distribuidores también en Ops Abiertas y Ops Perdidas ═════════════════
+   Mismo concepto que Ops Ganadas: matriz por producto + rankings; clic en una fila filtra toda la sección y el
+   Detalle de Oportunidades de la pestaña (renderOpsTable usa XSEL). Abiertas: fabricante = registro de oportunidad
+   (FABRICANTE 1/2) y forecast = monto × % probabilidad. Perdidas: datos de PROYECTOS PERDIDOS por producto.
+   XDIM[seg][dim] = [etiqueta, valor, ¿dimensión de línea?] */
+const XMX={ab:{},pe:{}},XKEYS={ab:{},pe:{}},XSEL={ab:null,pe:null},XSELTXT={ab:'',pe:''};
+const probBk=o=>{const p=probN(o.prob);return p==null?'Sin %':p>=75?'75 – 100 %':p>=50?'50 – 74 %':p>=25?'25 – 49 %':'0 – 24 %';};
+const xMot=s=>String(s||'').replace(/^Otro:.*$/,'Otro');
+const xIng=it=>GL[it.o.gestor]||it.o.gestor;
+const XDIM={
+  ab:{prod:['Producto',it=>it.l.producto,1],fab:['Fabricante (registro)',it=>it.l.fabricante,1],ase:['Asesor',it=>it.o.asesor],prob:['% Prob.',it=>probBk(it.o)],ing:['Ing. de Diseño',xIng]},
+  pe:{prod:['Producto',it=>it.l.producto,1],fab:['Fabricante ofertado',it=>it.l.fabricante,1],dist:['Distribuidor',it=>it.l.distribuidor,1],fabC:['Fab. del competidor',it=>it.l.fabComp,1],
+      mot:['Motivo',it=>xMot(it.l.motivo)],comp:['Competidor',it=>it.l.competidor],ase:['Asesor',it=>it.o.asesor],ing:['Ing. de Diseño',xIng]}
+};
+const xKey=(seg,d,o,l)=>gmxNorm(XDIM[seg][d][1]({o,l}));
+function xPass(seg,x,ex){return Object.keys(XDIM[seg]).every(d=>d===ex||!XMX[seg][d]||x.L.some(l=>xKey(seg,d,x.o,l)===XMX[seg][d]));}
+function xLineOk(seg,x,l,ex){return Object.keys(XDIM[seg]).every(d=>d===ex||!XDIM[seg][d][2]||!XMX[seg][d]||xKey(seg,d,x.o,l)===XMX[seg][d]);}
+function xItems(seg,X,ex){const a=[];X.forEach(x=>{if(xPass(seg,x,ex))x.L.forEach(l=>{if(xLineOk(seg,x,l,ex))a.push({o:x.o,l});});});return a;}
+/* Abiertas: producto × fabricante del registro de oportunidad (el registro es de la propuesta) */
+function abLineas(o){
+  const P=gmxProds(o),Fb=[...new Set((o.registros||[]).flatMap(r=>gmxLista(r.fabricante,GMX_ALIAS.FAB)))],L=[];
+  (P.length?P:['']).forEach(p=>(Fb.length?Fb:['']).forEach(f=>L.push({producto:p,fabricante:f})));
+  return L;
+}
+const xPendL=o=>(gmxProds(o).length?gmxProds(o):['']).map(p=>({producto:p}));   // perdida sin detalle: solo sus productos
+/* Selección activa → ids visibles (para la tabla de detalle) y texto */
+function xmxSync(seg,X){
+  const S=XMX[seg],sels=Object.keys(XDIM[seg]).filter(d=>S[d]);
+  const nm=d=>{for(const x of X)for(const l of x.L){const v=XDIM[seg][d][1]({o:x.o,l});if(v&&gmxNorm(v)===S[d])return v;}return S[d];};
+  XSEL[seg]=sels.length?new Set(X.filter(x=>xPass(seg,x,'')).map(x=>String(x.o.id))):null;
+  XSELTXT[seg]=sels.map(d=>XDIM[seg][d][0]+': '+nm(d)).join(' · ');
+  return sels.map(d=>[d,nm(d)]);
+}
+const xRe=seg=>{if(typeof F!=='undefined'&&F[seg])renderOpsTable(seg,F[seg]);};
+function xmxSet(seg,dim,i){const k=(XKEYS[seg][dim]||[])[i];if(k==null)return;XMX[seg][dim]=XMX[seg][dim]===k?'':k;xRe(seg);}
+function xmxClr(seg,dim){if(dim)XMX[seg][dim]='';else XMX[seg]={};xRe(seg);}
+function xSelBar(seg,sels){
+  if(!sels.length)return `<div class="gmx-sel"><span class="gmx-mut">Haz clic en un producto, fabricante, ${seg==='pe'?'distribuidor, motivo, competidor, ':''}asesor${seg==='ab'?', % de probabilidad':''} o Ing. de Diseño para filtrar toda la sección y el detalle de oportunidades.</span></div>`;
+  return `<div class="gmx-sel"><span class="gmx-mut">Selección:</span>${sels.map(([d,n])=>`<button class="gmx-chip" onclick="xmxClr('${seg}','${d}')">${XDIM[seg][d][0]}: <b>${esc(n)}</b> ✕</button>`).join('')}${sels.length>1?`<button class="gmx-x" onclick="xmxClr('${seg}')">Quitar todo</button>`:''}<button class="gmx-x" onclick="document.getElementById('${seg}-ops-tbl').scrollIntoView({behavior:'smooth',block:'start'})">↓ Ver en el detalle (${XSEL[seg]?XSEL[seg].size:0})</button></div>`;
+}
+function xRank(seg,dim,title,tip,arr,cols,base,col){
+  XKEYS[seg][dim]=arr.map(g=>g.k);
+  const mx=Math.max(1,...arr.map(g=>g.monto)),sel=XMX[seg][dim];
+  return `<div class="gmx-card"><div class="gmx-h"><span title="${escA(tip)}">${title} <span class="gmx-i">ⓘ</span></span>${sel?`<button class="gmx-x" onclick="xmxClr('${seg}','${dim}')">✕ quitar selección</button>`:`<span class="gmx-mut">${arr.length}</span>`}</div>
+    <div class="gmx-sc"><table class="gmx-t"><thead><tr><th>#</th><th>Nombre</th>${cols.map(c=>`<th class="r">${c[0]}</th>`).join('')}</tr></thead><tbody>
+    ${arr.map((g,i)=>`<tr class="ck${sel===g.k?' on':''}" onclick="xmxSet('${seg}','${dim}',${i})"><td class="gmx-n">${i+1}</td><td><div class="gmx-nm">${esc(g.name)}</div><div class="gmx-bar"><i style="width:${(g.monto/mx*100).toFixed(1)}%${col?';background:'+col:''}"></i></div></td>${cols.map(c=>`<td class="r">${c[1](g,base)}</td>`).join('')}</tr>`).join('')||'<tr><td colspan="9" class="gmx-mut" style="padding:12px">Sin datos para esta selección.</td></tr>'}
+    </tbody></table></div></div>`;
+}
+const xFc=o=>amtO(o)*((probN(o.prob)||0)/100);
+const xConReg=o=>(o.registros||[]).some(r=>r.fabricante||r.deal);
+function renderAbMix(rows){
+  const el=document.getElementById('ab-mix');if(!el)return;
+  const X=(rows||[]).map(o=>({o,L:abLineas(o)}));
+  const sels=xmxSync('ab',X),Xv=X.filter(x=>xPass('ab',x,'')),it=ex=>xItems('ab',X,ex),D=XDIM.ab;
+  const prods=gmxAgg(it('prod'),D.prod[1]),fabs=gmxAgg(it('fab'),D.fab[1]),ases=gmxAgg(it('ase'),D.ase[1]),probs=gmxAgg(it('prob'),D.prob[1]),ings=gmxAgg(it('ing'),D.ing[1]);
+  const montoV=Xv.reduce((s,x)=>s+amtO(x.o),0),fcV=Xv.reduce((s,x)=>s+xFc(x.o),0),sinP=Xv.filter(x=>probN(x.o.prob)==null).length,conR=Xv.filter(x=>xConReg(x.o)).length;
+  const lider=(a,lbl)=>a.length?`<div class="kv" style="font-size:22px">${esc(a[0].name)}</div><div class="kl">${lbl}</div><div class="ks">${fK(a[0].monto)} · ${pct(a[0].monto,montoV).toFixed(0)}% del pipeline · ${a[0].nOps} abierta${a[0].nOps!==1?'s':''}${a[1]?`<br>2.º ${esc(a[1].name)}`:''}</div>`
+    :`<div class="kv" style="font-size:22px">—</div><div class="kl">${lbl}</div><div class="ks">Sin datos en esta selección</div>`;
+  const kpis=`<div class="gmx-k">
+    <div class="kc" style="border-top:2px solid #F59E0B"><div class="kv">${Xv.length}</div><div class="kl">Abiertas en la selección</div><div class="ks">${fM(montoV)} en pipeline</div></div>
+    <div class="kc" style="border-top:2px solid #02C39A"><div class="kv">${fK(fcV)}</div><div class="kl">Forecast ponderado</div><div class="ks" title="Σ (NRC + MRC) × % probabilidad de cierre">${pct(fcV,montoV).toFixed(0)}% del pipeline${sinP?`<br><span style="color:#F59E0B">${sinP} sin % de probabilidad (cuentan 0)</span>`:''}</div></div>
+    <div class="kc" style="border-top:2px solid #5B9FE8">${lider(prods,'Producto líder (por monto)')}</div>
+    <div class="kc" style="border-top:2px solid #A78BFA">${lider(fabs,'Fabricante líder (registro de oportunidad)')}</div>
+    <div class="kc" style="border-top:2px solid #F472B6"><div class="kv">${Xv.length?Math.round(conR/Xv.length*100):0}%</div><div class="kl">Con registro de oportunidad</div><div class="ks">${conR} de ${Xv.length}</div></div></div>`;
+  XKEYS.ab.prod=prods.map(g=>g.k);
+  const mxP=Math.max(1,...prods.map(g=>g.monto));
+  const matriz=`<div class="gmx-card" style="margin-bottom:12px"><div class="gmx-h"><span title="Por cada producto de las oportunidades abiertas: monto, forecast ponderado (monto × % probabilidad) y fabricantes del registro de oportunidad (FABRICANTE 1/2 + REG OPE / DEAL de la tarea; el registro es de la propuesta, así que en propuestas con varios productos cuenta para cada uno). Clic en una fila para filtrar.">Producto · fabricantes más representativos (registro de oportunidad) <span class="gmx-i">ⓘ</span></span>${XMX.ab.prod?`<button class="gmx-x" onclick="xmxClr('ab','prod')">✕ quitar selección</button>`:''}</div>
+    <div class="gmx-sc"><table class="gmx-t"><thead><tr><th>Producto</th><th class="r">Abiertas</th><th class="r">Monto propuestas</th><th class="r">Forecast</th><th>Fabricantes (registro)</th><th class="r">Con registro</th></tr></thead><tbody>
+    ${prods.map((g,i)=>{const its=g.items.filter(x=>x.l.fabricante),fa=gmxAgg(its,D.fab[1]),ops=[...g.ops],nR=ops.filter(xConReg).length;
+      return `<tr class="ck${XMX.ab.prod===g.k?' on':''}" onclick="xmxSet('ab','prod',${i})"><td><div class="gmx-nm">${esc(g.name)}</div><div class="gmx-bar"><i style="width:${(g.monto/mxP*100).toFixed(1)}%;background:#F59E0B"></i></div></td>
+        <td class="r">${g.nOps}</td><td class="r">${fM(g.monto)}</td><td class="r">${fK(ops.reduce((s,o)=>s+xFc(o),0))}<div class="gmx-mut">${pct(ops.reduce((s,o)=>s+xFc(o),0),g.monto).toFixed(0)}%</div></td>
+        <td>${its.length?gmxTop(fa,its.length,3):'<span class="gmx-mut">sin registro</span>'}</td><td class="r">${pct(nR,g.nOps).toFixed(0)}%</td></tr>`;}).join('')||'<tr><td colspan="6" class="gmx-mut" style="padding:12px">Sin abiertas para estos filtros.</td></tr>'}
+    </tbody></table></div></div>`;
+  const cO=['Abiertas',g=>g.nOps],cM=['Monto',(g,t)=>`${fM(g.monto)}<div class="gmx-mut">${pct(g.monto,t).toFixed(1)}%</div>`],cF=['Forecast',g=>fK([...g.ops].reduce((s,o)=>s+xFc(o),0))];
+  const montoF=Xv.filter(x=>x.L.some(l=>l.fabricante)).reduce((s,x)=>s+amtO(x.o),0);
+  const ranks=`<div class="gmx-g2">${xRank('ab','fab','Fabricante (registro de oportunidad)','FABRICANTE 1/2 de la tarea. % sobre el monto de las abiertas con registro.',fabs,[cO,cM,cF],montoF,'#A78BFA')}${xRank('ab','prob','% de probabilidad de cierre','Rangos del % de probabilidad de la tarea. Forecast = monto × %.',probs,[cO,cM,cF],montoV,'#02C39A')}</div>
+    <div class="gmx-g2">${xRank('ab','ase','Asesores comerciales','Pipeline por asesor comercial.',ases,[cO,cM,cF],montoV,'#5B9FE8')}${xRank('ab','ing','Ing. de Diseño','Pipeline por Ing. de Diseño.',ings,[cO,cM,cF],montoV,'#F472B6')}</div>`;
+  el.innerHTML=xSelBar('ab',sels)+kpis+matriz+ranks;
+}
+
 /* ── Ops Perdidas: métricas (mismo concepto que Ops Ganadas) ── */
 const PMX={pend:false,open:new Set(lsGet('nw_pmx_open_v9',[]))};
 function pmxGrp(g){PMX.open.has(g)?PMX.open.delete(g):PMX.open.add(g);lsSet('nw_pmx_open_v9',[...PMX.open]);renderPeMix(_pmxRows);}
 let _pmxRows=[];
-function pmxRank(title,tip,arr,cols,base){
-  const mx=Math.max(1,...arr.map(g=>g.monto));
-  return `<div class="gmx-card"><div class="gmx-h"><span title="${escA(tip)}">${title} <span class="gmx-i">ⓘ</span></span><span class="gmx-mut">${arr.length}</span></div>
-    <div class="gmx-sc"><table class="gmx-t"><thead><tr><th>#</th><th>Nombre</th>${cols.map(c=>`<th class="r">${c[0]}</th>`).join('')}</tr></thead><tbody>
-    ${arr.map((g,i)=>`<tr><td class="gmx-n">${i+1}</td><td><div class="gmx-nm">${esc(g.name)}</div><div class="gmx-bar"><i style="width:${(g.monto/mx*100).toFixed(1)}%;background:#E55C6C"></i></div></td>${cols.map(c=>`<td class="r">${c[1](g,base)}</td>`).join('')}</tr>`).join('')||'<tr><td colspan="9" class="gmx-mut" style="padding:12px">Sin datos todavía.</td></tr>'}</tbody></table></div></div>`;
-}
 function renderPeMix(rows){
   _pmxRows=rows||[];const el=document.getElementById('pe-mix');if(!el)return;
-  const X=_pmxRows.map(o=>{const d=perdDetDe(o.tarea);return {o,d,L:d.length?d.map(r=>({producto:r.producto,fabricante:gmxLista(r.fabricante,GMX_ALIAS.FAB)[0]||'',distribuidor:gmxLista(r.distribuidor,GMX_ALIAS.DIST)[0]||'',fabComp:gmxLista(r.fabCompetidor,GMX_ALIAS.FAB)[0]||'',motivo:r.motivo,competidor:r.competidor})):[]};});
-  const conD=X.filter(x=>x.d.length),pend=X.filter(x=>!x.d.length),nTot=X.length,montoT=X.reduce((s,x)=>s+amt(x.o),0);
-  const items=conD.flatMap(x=>x.L.map(l=>({o:x.o,l})));
-  const ag=(fn,src)=>gmxAgg(src||items,fn);
-  const motivos=gmxAgg(conD.map(x=>({o:x.o,l:x.L[0]})),it=>String(it.l.motivo||'').replace(/^Otro:.*$/,'Otro')),comps=gmxAgg(conD.map(x=>({o:x.o,l:x.L[0]})),it=>it.l.competidor);
-  const fabs=ag(it=>it.l.fabricante),fabC=ag(it=>it.l.fabComp),dists=ag(it=>it.l.distribuidor),prods=ag(it=>it.l.producto);
-  const ases=gmxAgg(X.map(x=>({o:x.o,l:{}})),it=>it.o.asesor),ings=gmxAgg(X.map(x=>({o:x.o,l:{}})),it=>GL[it.o.gestor]||it.o.gestor);
-  const conReg=X.filter(x=>(x.o.registros||[]).length).length;
+  const X=_pmxRows.map(o=>{const d=perdDetDe(o.tarea);return {o,d,L:d.length?d.map(r=>({producto:r.producto,fabricante:gmxLista(r.fabricante,GMX_ALIAS.FAB)[0]||'',distribuidor:gmxLista(r.distribuidor,GMX_ALIAS.DIST)[0]||'',fabComp:gmxLista(r.fabCompetidor,GMX_ALIAS.FAB)[0]||'',motivo:r.motivo,competidor:r.competidor})):xPendL(o)};});
+  const sels=xmxSync('pe',X),Xv=X.filter(x=>xPass('pe',x,'')),itE=ex=>xItems('pe',X,ex),D=XDIM.pe;   // v9.46 — selección
+  const conD=Xv.filter(x=>x.d.length),pend=Xv.filter(x=>!x.d.length),nTot=Xv.length,montoT=Xv.reduce((s,x)=>s+amt(x.o),0);
+  const motivos=gmxAgg(itE('mot'),D.mot[1]),comps=gmxAgg(itE('comp'),D.comp[1]);
+  const fabs=gmxAgg(itE('fab'),D.fab[1]),fabC=gmxAgg(itE('fabC'),D.fabC[1]),dists=gmxAgg(itE('dist'),D.dist[1]),prods=gmxAgg(itE('prod'),D.prod[1]);
+  const ases=gmxAgg(itE('ase'),D.ase[1]),ings=gmxAgg(itE('ing'),D.ing[1]);
+  const conReg=Xv.filter(x=>(x.o.registros||[]).length).length;
   const lider=(a,lbl)=>a.length?`<div class="kv" style="font-size:22px">${esc(a[0].name)}</div><div class="kl">${lbl}</div><div class="ks">${fK(a[0].monto)} · ${a[0].nOps} perdida${a[0].nOps!==1?'s':''}${a[1]?`<br>2.º ${esc(a[1].name)}`:''}</div>`
     :`<div class="kv" style="font-size:22px">—</div><div class="kl">${lbl}</div><div class="ks">Sin perdidas con este dato</div>`;
   const kpis=`<div class="gmx-k">
@@ -2310,10 +2386,22 @@ function renderPeMix(rows){
     <div class="kc" style="border-top:2px solid #02C39A"><div class="kv">${nTot?Math.round(conReg/nTot*100):0}%</div><div class="kl">Perdidas con registro de oportunidad</div><div class="ks">${conReg} de ${nTot}</div></div></div>`;
   const cO=['Perdidas',g=>g.nOps],cM=['Monto',(g,t)=>`${fM(g.monto)}<div class="gmx-mut">${t?(g.monto/t*100).toFixed(1):0}%</div>`];
   const montoD=conD.reduce((s,x)=>s+amt(x.o),0);
-  const ranks=`<div class="gmx-g2">${pmxRank('Motivos de pérdida','Motivo elegido al registrar la pérdida (PROYECTOS PERDIDOS).',motivos,[cO,cM],montoD)}${pmxRank('Competidores','Empresa que ganó el proyecto (si se conoce).',comps,[cO,cM],montoD)}</div>
-    <div class="gmx-g2">${pmxRank('Fabricante ofertado','Fabricante que ofertamos en los productos perdidos.',fabs,[cO,cM],montoD)}${pmxRank('Fabricante del competidor','Fabricante con el que ganó el competidor (si se conoce).',fabC,[cO,cM],montoD)}</div>
-    <div class="gmx-g2">${pmxRank('Productos perdidos','Productos de Network de las perdidas con detalle.',prods,[cO,cM],montoD)}${pmxRank('Distribuidor ofertado','Distribuidor con el que se ofertó.',dists,[cO,cM],montoD)}</div>
-    <div class="gmx-g2">${pmxRank('Perdidas por asesor comercial','Todas las perdidas visibles (con o sin detalle).',ases,[cO,cM],montoT)}${pmxRank('Perdidas por Ing. de Diseño','Todas las perdidas visibles (con o sin detalle).',ings,[cO,cM],montoT)}</div>`;
+  const ranks=`<div class="gmx-g2">${xRank('pe','mot','Motivos de pérdida','Motivo elegido al registrar la pérdida (PROYECTOS PERDIDOS).',motivos,[cO,cM],montoD,'#E55C6C')}${xRank('pe','comp','Competidores','Empresa que ganó el proyecto (si se conoce).',comps,[cO,cM],montoD,'#E55C6C')}</div>
+    <div class="gmx-g2">${xRank('pe','fab','Fabricante ofertado','Fabricante que ofertamos en los productos perdidos.',fabs,[cO,cM],montoD,'#E55C6C')}${xRank('pe','fabC','Fabricante del competidor','Fabricante con el que ganó el competidor (si se conoce).',fabC,[cO,cM],montoD,'#E55C6C')}</div>
+    <div class="gmx-g2">${xRank('pe','dist','Distribuidor ofertado','Distribuidor con el que se ofertó.',dists,[cO,cM],montoD,'#E55C6C')}${xRank('pe','ase','Perdidas por asesor comercial','Todas las perdidas visibles (con o sin detalle).',ases,[cO,cM],montoT,'#E55C6C')}</div>
+    <div class="gmx-g2">${xRank('pe','ing','Perdidas por Ing. de Diseño','Todas las perdidas visibles (con o sin detalle).',ings,[cO,cM],montoT,'#E55C6C')}<div></div></div>`;
+  /* v9.46 — matriz producto × fabricante / distribuidor / competidor (como Ops Ganadas) */
+  XKEYS.pe.prod=prods.map(g=>g.k);
+  const mxP=Math.max(1,...prods.map(g=>g.monto));
+  const matriz=`<div class="gmx-card" style="margin-bottom:12px"><div class="gmx-h"><span title="Por cada producto perdido: fabricante y distribuidor que ofertamos, fabricante del competidor y motivo principal (PROYECTOS PERDIDOS). Las perdidas sin detalle cuentan por sus productos. Clic en una fila para filtrar.">Producto · fabricantes y distribuidores más representativos <span class="gmx-i">ⓘ</span></span>${XMX.pe.prod?`<button class="gmx-x" onclick="xmxClr('pe','prod')">✕ quitar selección</button>`:''}</div>
+    <div class="gmx-sc"><table class="gmx-t"><thead><tr><th>Producto</th><th class="r">Perdidas</th><th class="r">Monto propuestas</th><th>Fabricante ofertado</th><th>Distribuidor</th><th>Fab. del competidor</th><th>Motivo principal</th></tr></thead><tbody>
+    ${prods.map((g,i)=>{const its=g.items,sub=k=>its.filter(x=>x.l[k]),fa=sub('fabricante'),di=sub('distribuidor'),fc=sub('fabComp'),mo=gmxAgg(its.filter(x=>x.l.motivo),D.mot[1]);
+      const sinD=[...g.ops].filter(o=>!perdDetDe(o.tarea).length).length;
+      return `<tr class="ck${XMX.pe.prod===g.k?' on':''}" onclick="xmxSet('pe','prod',${i})"><td><div class="gmx-nm">${esc(g.name)}</div><div class="gmx-bar"><i style="width:${(g.monto/mxP*100).toFixed(1)}%;background:#E55C6C"></i></div></td>
+        <td class="r">${g.nOps}${sinD?`<div class="gmx-mut">${sinD} sin detalle</div>`:''}</td><td class="r">${fM(g.monto)}</td>
+        <td>${gmxTop(gmxAgg(fa,D.fab[1]),fa.length,3)}</td><td>${gmxTop(gmxAgg(di,D.dist[1]),di.length,3)}</td><td>${gmxTop(gmxAgg(fc,D.fabC[1]),fc.length,3)}</td>
+        <td>${mo.length?esc(mo[0].name)+(mo[1]?`<div class="gmx-mut">2.º ${esc(mo[1].name)}</div>`:''):'<span class="gmx-mut">—</span>'}</td></tr>`;}).join('')||'<tr><td colspan="7" class="gmx-mut" style="padding:12px">Sin perdidas para estos filtros.</td></tr>'}
+    </tbody></table></div></div>`;
   /* pendientes por Ing. de Diseño */
   const G=new Map();pend.forEach(x=>{const g=x.o.gestor||'—';if(!G.has(g))G.set(g,[]);G.get(g).push(x);});
   const pendHtml=`<div class="gmx-card" style="margin-bottom:12px"><div class="gmx-h"><span>Perdidas sin detalle · completar por Ing. de Diseño</span><span class="gmx-mut">${pend.length}</span></div>
@@ -2328,7 +2416,7 @@ function renderPeMix(rows){
   const detalle=`<div class="gmx-card"><div class="gmx-h"><span>Detalle por propuesta perdida</span><span class="gmx-mut">${conD.length}</span></div><div class="gmx-sc" style="max-height:480px"><table class="gmx-t"><thead><tr><th>#Tarea</th><th>Cliente · Asesor · Ing.</th><th class="r">Monto</th><th>Motivo</th><th>Competidor</th><th>Producto</th><th>Fabricante ofertado</th><th>Distribuidor</th><th>Fab. competidor</th></tr></thead>
     <tbody>${det||'<tr><td colspan="9" class="gmx-mut" style="padding:12px">Aún no hay perdidas con detalle. Se registran al marcar una oportunidad como perdida (Ops Abiertas o Registro).</td></tr>'}</tbody></table></div></div>`;
   const aviso=PERD_DET===null?`<div class="gmx-warn">⚠ El backend publicado aún no envía PROYECTOS PERDIDOS. Publica <b>Code.gs v9.38</b>.</div>`:'';
-  el.innerHTML=aviso+kpis+(PMX.pend?pendHtml:'')+ranks+detalle;
+  el.innerHTML=aviso+xSelBar('pe',sels)+kpis+(PMX.pend?pendHtml:'')+matriz+ranks+detalle;
 }
 
 /* ══ v9.35 — BASE DE FABRICANTES Y DISTRIBUIDORES DE LA VERTICAL ═════════════════════════════
@@ -2677,7 +2765,8 @@ function renderOpsTable(seg,filt){
     }
     return true;
   });
-  if(seg==='pe')renderPeMix(rows);   // v9.38 — métricas de perdidas
+  if(seg==='pe'){renderPeMix(rows);if(XSEL.pe)rows=rows.filter(o=>XSEL.pe.has(String(o.id)));}   // v9.38 — métricas de perdidas · v9.46 — selección filtra el detalle
+  if(seg==='ab'){renderAbMix(rows);if(XSEL.ab)rows=rows.filter(o=>XSEL.ab.has(String(o.id)));}   // v9.46
   if(seg==='ga'){renderGaMix(rows);if(GMX_SEL)rows=rows.filter(o=>GMX_SEL.has(String(o.id)));}   // v9.44 — selección de Producto · Fabricantes · Distribuidores   // v9.24 — productos · fabricantes · distribuidores (mismas ganadas que la tabla)
   // Para tab ab: Top 20 por gestor cuando no hay búsqueda; búsqueda muestra todo
   let displayRows = rows;
@@ -2701,10 +2790,11 @@ function renderOpsTable(seg,filt){
     });
   }
   _exclAllBuf[seg]=displayRows.map(o=>String(o.id));
-  TABCP[seg]={rows:displayRows,g:filt.g,f:(filt.t!=='ALL'||q!==''||filt.asesor!=='ALL'||filt.anio!=='ALL'||filt.mes_f!=='ALL'||filt.desde!==''||filt.hasta!==''),lim:limitMsg,sel:seg==='ga'&&GMX_SEL?GMX_SELTXT:''};   // v9.39 — 📋 Copiar
+  const _selT=seg==='ga'?(GMX_SEL?GMX_SELTXT:''):(XSEL[seg]?XSELTXT[seg]:'');   // v9.46
+  TABCP[seg]={rows:displayRows,g:filt.g,f:(filt.t!=='ALL'||q!==''||filt.asesor!=='ALL'||filt.anio!=='ALL'||filt.mes_f!=='ALL'||filt.desde!==''||filt.hasta!==''),lim:limitMsg,sel:_selT};   // v9.39 — 📋 Copiar
   const _hasFilter=(filt.g!=='ALL'||filt.t!=='ALL'||q!==''||filt.asesor!=='ALL'||filt.anio!=='ALL'||filt.mes_f!=='ALL'||filt.desde!==''||filt.hasta!=='');
   const _exclAllHtml=(_hasFilter&&displayRows.length>0)?`<button class="excl-all-btn" onclick="onExclAll('${seg}')">⊘ Excluir todos (${displayRows.length})</button>`:'';
-  const _gmxChip=seg==='ga'&&GMX_SEL?`<button class="gmx-chip" onclick="gmxClr()" title="Quitar la selección de Producto · Fabricantes · Distribuidores">${esc(GMX_SELTXT)} ✕</button>`:'';
+  const _gmxChip=_selT?`<button class="gmx-chip" onclick="${seg==='ga'?'gmxClr()':`xmxClr('${seg}')`}" title="Quitar la selección de Producto · Fabricantes · Distribuidores">${esc(_selT)} ✕</button>`:'';
   _tabOps[seg]=displayRows;
   if(seg==='ab'||seg==='ga')_grpForce[seg]=!!q;
   const _grpB=((seg==='ab'&&!q&&!TC.ab&&filt.g==='ALL')||(seg==='ga'&&filt.g==='ALL'))&&displayRows.length?grpBtns(seg):'';
