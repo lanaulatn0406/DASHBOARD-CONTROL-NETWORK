@@ -4127,7 +4127,9 @@ function restructureTabs(){
     const fbar=tp.querySelector(':scope > .fbar'),wrap=tp.querySelector(':scope > .ops-wrap');
     const title=wrap.previousElementSibling&&wrap.previousElementSibling.classList.contains('sttl')?wrap.previousElementSibling:null;
     const excl=document.getElementById('excl-panel-'+seg);
-    const keep=new Set([fbar,wrap,title,excl].filter(Boolean));
+    /* v9.47 — Productos · fabricantes (ab / ga / pe) siempre visible sobre el detalle: su selección filtra la tabla */
+    const mix=document.getElementById(seg+'-mix'),mixT=mix&&mix.previousElementSibling&&mix.previousElementSibling.classList.contains('sttl')?mix.previousElementSibling:null;
+    const keep=new Set([fbar,wrap,title,excl,mix,mixT].filter(Boolean));
     const rest=[...tp.children].filter(n=>!keep.has(n));
     const tc=document.createElement('div');tc.className='vg-grid tc-grid';tc.id='tc-'+seg;
     const dr=document.createElement('div');dr.id='tcd-'+seg;
@@ -4136,7 +4138,9 @@ function restructureTabs(){
     an.innerHTML=`<button class="an-h${open?'':' closed'}" onclick="toggleAn('${seg}',this)"><span>📈 Análisis detallado</span><span class="an-s">KPIs, gráficos, distribución y tarjetas por Ing. de Diseño</span><span class="an-c">${open?'▾ Ocultar':'▸ Mostrar'}</span></button><div class="an-body" id="an-${seg}"${open?'':' style="display:none"'}></div>`;
     const body=an.querySelector('.an-body');rest.forEach(n=>body.appendChild(n));
     fbar.after(tc);tc.after(dr);
-    if(title){dr.after(title);title.classList.add('no-cl');title.after(wrap);}else dr.after(wrap);
+    let last=dr;
+    if(mix){if(mixT){last.after(mixT);last=mixT;}last.after(mix);last=mix;}
+    if(title){last.after(title);title.classList.add('no-cl');title.after(wrap);}else last.after(wrap);
     if(excl)wrap.after(excl);
     tp.appendChild(an);
     wrap.classList.add('tc-tbl');
