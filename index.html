@@ -52,6 +52,7 @@ body{background:#1F2229;color:#E2E8F0;font-family:'Segoe UI',system-ui,sans-seri
 .pd-tbl th{background:#1E2430;color:#64748B;font-size:15px;text-transform:uppercase;letter-spacing:.4px;padding:8px 10px;text-align:left;position:sticky;top:0;z-index:2}
 .pd-tbl td{padding:7px 10px;border-bottom:1px solid #2D324022;color:#CBD5E1;vertical-align:top}
 .pd-tbl tr:hover td{background:#2D324055}
+.grp-h{cursor:pointer;user-select:none}.grp-h:hover td{filter:brightness(1.25)}.grp-ar{display:inline-block;width:14px}
 .pd-sep td{background:#A78BFA22;padding:5px 10px;font-size:15px;font-weight:700;color:#A78BFA;letter-spacing:.5px;text-transform:uppercase}
 .tp-days{display:inline-block;background:#A78BFA22;color:#A78BFA;border:1px solid #A78BFA44;border-radius:6px;padding:2px 8px;font-weight:700;font-size:17px}
 /* conflict alert section */
@@ -2705,7 +2706,9 @@ function renderOpsTable(seg,filt){
   const _exclAllHtml=(_hasFilter&&displayRows.length>0)?`<button class="excl-all-btn" onclick="onExclAll('${seg}')">⊘ Excluir todos (${displayRows.length})</button>`:'';
   const _gmxChip=seg==='ga'&&GMX_SEL?`<button class="gmx-chip" onclick="gmxClr()" title="Quitar la selección de Producto · Fabricantes · Distribuidores">${esc(GMX_SELTXT)} ✕</button>`:'';
   _tabOps[seg]=displayRows;
-  document.getElementById(`${seg}-ops-cnt`).innerHTML=`<span>${displayRows.length} registro${displayRows.length!==1?'s':''}${limitMsg}</span>${_gmxChip}${_exclAllHtml}`;
+  if(seg==='ab'||seg==='ga')_grpForce[seg]=!!q;
+  const _grpB=((seg==='ab'&&!q&&!TC.ab&&filt.g==='ALL')||(seg==='ga'&&filt.g==='ALL'))&&displayRows.length?grpBtns(seg):'';
+  document.getElementById(`${seg}-ops-cnt`).innerHTML=`<span>${displayRows.length} registro${displayRows.length!==1?'s':''}${limitMsg}</span>${_gmxChip}${_grpB}${_exclAllHtml}`;
   let html;
   if(seg==='ab'||seg==='ga'){
     const ESTADOS=seg==='ab'?[AB_GANAR,AB_PERDER]:ESTADOS_GA;
@@ -2719,17 +2722,14 @@ function renderOpsTable(seg,filt){
     else {
       let lastGestor='';
       displayRows.forEach((o,i)=>{
+        const _grp=(seg==='ab'&&!q&&!TC.ab&&filt.g==='ALL')||(seg==='ga'&&filt.g==='ALL');
         const tot=(o.nrc||0)+(o.mrc||0);
         // Separador visual entre gestores
-        if(seg==='ab' && !q && !TC.ab && filt.g==='ALL' && o.gestor!==lastGestor){
+        const _gcss=`background:${GC[o.gestor]}22;padding:6px 10px;font-size:15px;font-weight:700;color:${GC[o.gestor]};letter-spacing:.5px;text-transform:uppercase`;
+        if(_grp && o.gestor!==lastGestor){
           lastGestor=o.gestor;
-          html+=`<tr><td colspan="12" style="background:${GC[o.gestor]}22;padding:6px 10px;font-size:15px;font-weight:700;color:${GC[o.gestor]};letter-spacing:.5px;text-transform:uppercase">
-            ● ${GL[o.gestor]} — Top 20 por Total (NRC+MRC)</td></tr>`;
-        }
-        if(seg==='ga' && filt.g==='ALL' && o.gestor!==lastGestor){
-          lastGestor=o.gestor;
-          html+=`<tr><td colspan="12" style="background:${GC[o.gestor]}22;padding:6px 10px;font-size:15px;font-weight:700;color:${GC[o.gestor]};letter-spacing:.5px;text-transform:uppercase">
-            ● ${GL[o.gestor]}</td></tr>`;
+          const _gr=displayRows.filter(x=>x.gestor===o.gestor),_nAll=rows.filter(x=>x.gestor===o.gestor).length;
+          html+=grpHdr(seg,o.gestor,_gcss,`● ${GL[o.gestor]} <span style="font-weight:600;text-transform:none;color:#CBD5E1">— ${grpSum(_gr,seg==='ab'&&_nAll>_gr.length?` (Top 20 de ${_nAll} por Total NRC+MRC)`:'')}</span>`);
         }
       const est=getTk(o.id,'estado', seg==='ab'?'':ESTADOS[0]);
       const perdida=isPerdida(o.id);
@@ -2740,7 +2740,8 @@ function renderOpsTable(seg,filt){
       const as=q?hl(o.asesor||'',q):esc(o.asesor||'—');
       const safeId=String(o.id).replace(/'/g,"\\'");
       const safeCli=String(o.cliente||'').replace(/'/g,"\\'").replace(/\\/g,'\\\\');
-      html+=`<tr${perdida?' class="is-perdida"':''}>
+      const _grpA=((seg==='ab'&&!q&&!TC.ab&&filt.g==='ALL')||(seg==='ga'&&filt.g==='ALL'))?grpRow(seg,o.gestor):'';
+      html+=`<tr${perdida?' class="is-perdida"':''}${_grpA}>
         <td><span class="tarea-tag" style="cursor:pointer" title="Ver la ficha (📋 copiar, edición rápida)" onclick="tabOpenOp('${seg}',${i})">${tr}</span></td>
         <td style="font-weight:600;color:#E2E8F0">${nm}</td>
         <td><span class="gdot" style="background:${GC[o.gestor]||'#888'}"></span>${(GL[o.gestor]||o.gestor||'').split(' ')[0]}</td>
@@ -3330,7 +3331,8 @@ function renderPd(){
   TABCP.pd={rows:GKEYS.flatMap(gk=>ops.filter(o=>o.gestor===gk&&tcPass('pd',o)).sort((a,b)=>(b.tpPre??-1)-(a.tpPre??-1))),g,f:!!(q||asesor!=='ALL'||anio!=='ALL'||mes_f!=='ALL'||desde||hasta)};   // v9.39 — 📋 Copiar
   const cnt = document.getElementById('pd-ops-cnt');
   const tbl = document.getElementById('pd-ops-tbl');
-  { const nT=ops.filter(o=>tcPass('pd',o)).length; cnt.textContent = nT===total?`${total} registros`:`${nT} de ${total} registros`; }
+  _grpForce.pd=!!(q||g!=='ALL');
+  { const nT=ops.filter(o=>tcPass('pd',o)).length; cnt.innerHTML = `<span>${nT===total?`${total} registros`:`${nT} de ${total} registros`}</span>`+(nT?grpBtns('pd'):''); }
 
   let html=`<thead><tr>
     <th>#Tarea</th><th>Cliente</th><th>Estado</th><th>Tipo</th>
@@ -3340,14 +3342,14 @@ function renderPd(){
   GKEYS.forEach(gk=>{
     const go=ops.filter(o=>o.gestor===gk&&tcPass('pd',o)).sort((a,b)=>(b.tpPre??-1)-(a.tpPre??-1));
     if(!go.length) return;
-    html+=`<tr class="pd-sep"><td colspan="8">● ${GL[gk]} — ${go.length} ops</td></tr>`;
+    html+=grpHdr('pd',gk,'',`● ${GL[gk]} <span style="font-weight:600;text-transform:none;color:#CBD5E1">— ${grpSum(go)}</span>`).replace('class="grp-h"','class="grp-h pd-sep"');
     go.forEach(o=>{
       const d=o.tpPre!=null?o.tpPre:null;
       let cls='tp-days';
       if(d!=null){cls+= d>=15?' alto': d>=7?' medio':' bajo';}
       const dStr=d!=null?`<span class="${cls}">${d} d</span>`:`<span style="color:#4A5568">—</span>`;
       const est=o.estado?`<span style="font-size:15px;color:#94A3B8">${o.estado}</span>`:`<span style="color:#4A5568;font-size:15px">Sin estado</span>`;
-      html+=`<tr>
+      html+=`<tr${grpRow('pd',o.gestor)}>
         <td style="color:#A78BFA;font-weight:700;white-space:nowrap">${esc(o.tarea)}</td>
         <td style="max-width:180px">${esc(o.cliente||'—')}</td>
         <td>${est}</td>
@@ -3520,7 +3522,8 @@ function renderGe(){
   TABCP.ge={rows:GKEYS.flatMap(gk=>ops.filter(o=>o.gestor===gk&&tcPass('ge',o)).sort((a,b)=>(b.tpTot??-1)-(a.tpTot??-1))),g,f:!!(q||asesor!=='ALL'||anio!=='ALL'||mes_f!=='ALL'||fest!=='ALL')};   // v9.39 — 📋 Copiar
   const cnt = document.getElementById('ge-ops-cnt');
   const tbl = document.getElementById('ge-ops-tbl');
-  { const nT=ops.filter(o=>tcPass('ge',o)).length; cnt.textContent = nT===total?`${total} registros`:`${nT} de ${total} registros`; }
+  _grpForce.ge=!!(q||g!=='ALL');
+  { const nT=ops.filter(o=>tcPass('ge',o)).length; cnt.innerHTML = `<span>${nT===total?`${total} registros`:`${nT} de ${total} registros`}</span>`+(nT?grpBtns('ge'):''); }
 
   let html=`<thead><tr>
     <th>#Tarea</th><th>Cliente</th><th>Estado</th><th>Tipo</th>
@@ -3530,7 +3533,7 @@ function renderGe(){
   GKEYS.forEach(gk=>{
     const go=ops.filter(o=>o.gestor===gk&&tcPass('ge',o)).sort((a,b)=>(b.tpTot??-1)-(a.tpTot??-1));
     if(!go.length) return;
-    html+=`<tr class="ge-sep"><td colspan="8">● ${GL[gk]} — ${go.length} ops</td></tr>`;
+    html+=grpHdr('ge',gk,'',`● ${GL[gk]} <span style="font-weight:600;text-transform:none;color:#CBD5E1">— ${grpSum(go)}</span>`).replace('class="grp-h"','class="grp-h ge-sep"');
     go.forEach(o=>{
       const d=o.tpTot!=null?o.tpTot:null;
       let cls='tp-days';
@@ -3539,7 +3542,7 @@ function renderGe(){
       const estCol=(o.estado||'').toUpperCase().trim()==='NO OFERTADO DESCARTE PP/PRIVADO'?'#E55C6C':'#A78BFA';
       const est=o.estado?`<span style="font-size:14px;color:${estCol};background:${estCol}22;border:1px solid ${estCol}44;border-radius:5px;padding:2px 7px">${o.estado}</span>`:`<span style="color:#4A5568;font-size:15px">Sin estado</span>`;
       const gcol=GC[o.gestor]||'#94A3B8';
-      html+=`<tr>
+      html+=`<tr${grpRow('ge',o.gestor)}>
         <td style="color:#94A3B8;font-weight:700;white-space:nowrap">${esc(o.tarea)}</td>
         <td style="max-width:180px">${esc(o.cliente||'—')}</td>
         <td>${est}</td>
@@ -3834,6 +3837,21 @@ function cpListTxt(title,sub,rows,group){
   return t+gs.map(g=>{const r=rows.filter(o=>o.gestor===g);return `\n*● ${GL[g]||g||'Sin Ing.'}* — ${r.length}\n\n`+r.map((o,i)=>cpOpLines(o,i).join('\n')).join('\n\n');}).join('\n');
 }
 /* v9.39 — 📋 Copiar en las pestañas: las mismas filas que muestra la tabla (TABCP se llena al renderizarla) */
+/* v9.45 — Detalle de oportunidades por Ing. de Diseño en bloques plegables (inician contraídos).
+   GRP[seg][g]=true → abierto. Con búsqueda o un solo ingeniero filtrado se muestra todo abierto. */
+const GRP={ab:{},ga:{},pd:{},ge:{}};
+let _grpForce={};
+const grpOn=(seg,g)=>!!(_grpForce[seg]||GRP[seg][g]);
+const grpRow=(seg,g)=>` data-g="${escA(String(g||''))}"${grpOn(seg,g)?'':' style="display:none"'}`;
+function grpSum(rs,extra){const n=rs.length,m=rs.reduce((a,o)=>a+(+o.nrc||0)+(+o.mrc||0),0);return `${n} op${n!==1?'s':''}${m?' · '+fK(m):''}${extra||''}`;}
+function grpHdr(seg,g,css,txt){const on=grpOn(seg,g);
+  return `<tr class="grp-h" data-gh="${escA(String(g||''))}" onclick="grpTog('${seg}','${escA(String(g||''))}')" title="Clic para ${on?'contraer':'mostrar'} sus oportunidades"><td colspan="12" style="${css}"><span class="grp-ar">${on?'▾':'▸'}</span> ${txt}</td></tr>`;}
+function grpApply(seg){const t=document.getElementById(seg+'-ops-tbl');if(!t)return;
+  t.querySelectorAll('tr[data-g]').forEach(r=>r.style.display=grpOn(seg,r.dataset.g)?'':'none');
+  t.querySelectorAll('tr[data-gh]').forEach(r=>{const a=r.querySelector('.grp-ar');if(a)a.textContent=grpOn(seg,r.dataset.gh)?'▾':'▸';});}
+function grpTog(seg,g){GRP[seg][g]=!GRP[seg][g];grpApply(seg);}
+function grpAll(seg,on){GKEYS.forEach(g=>GRP[seg][g]=on);grpApply(seg);}
+const grpBtns=seg=>_grpForce[seg]?'':`<button class="excl-all-btn" onclick="grpAll('${seg}',true)" title="Mostrar las oportunidades de todos los ingenieros">▾ Expandir todo</button><button class="excl-all-btn" onclick="grpAll('${seg}',false)">▸ Contraer todo</button>`;
 const TABCP={};
 const _tabOps={};   // v9.44 — filas de las tablas Ops Abiertas / Ganadas para abrir su ficha
 function tabOpenOp(seg,i){const o=(_tabOps[seg]||[])[i];if(o){dwStack=[];dwPush({type:'op',op:Object.assign({},o,{_seg:seg})});}}
