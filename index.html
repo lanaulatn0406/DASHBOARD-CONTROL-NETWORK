@@ -2331,8 +2331,75 @@ function xRank(seg,dim,title,tip,arr,cols,base,col){
 }
 const xFc=o=>amtO(o)*((probN(o.prob)||0)/100);
 const xConReg=o=>(o.registros||[]).some(r=>r.fabricante||r.deal);
+
+/* ══ v9.48 — Ops Abiertas · Detalle por propuesta · completar por Ing. de Diseño ══════════════════════════
+   Abiertas por regularizar para el forecast: PRODUCTOS con "Proyecto Integral Network" heredado o sin productos de
+   Network, y/o sin % de probabilidad. Productos y % con un click y 💾 Guardar → POST mode:'update' {tarea, prod?, prob?}
+   (solo esas celdas). Respeta los filtros de la pestaña y la selección de Productos · Fabricantes. */
+const ABQ={show:false,sel:{},prob:{},ok:new Set(),err:{},busy:new Set(),open:new Set(lsGet('nw_abq_open_v9',[]))};
+let _abmxRows=[];
+const esPIN=p=>rggNorm(p).includes('PROYECTO INTEGRAL NETWORK');
+function abqFalta(o){
+  const P=rgProds(o.prod),real=P.filter(p=>!esIntegral(p)),f=[];
+  if(P.some(esPIN))f.push('prod:pin');else if(!real.length)f.push('prod:none');
+  if(probN(o.prob)==null)f.push('prob');
+  return f;
+}
+const abqRe=()=>renderAbMix(_abmxRows);
+function abqGrp(g){ABQ.open.has(g)?ABQ.open.delete(g):ABQ.open.add(g);lsSet('nw_abq_open_v9',[...ABQ.open]);abqRe();}
+function abqTog(t,p){const o=OPS.ab.find(x=>String(x.tarea)===t);const a=ABQ.sel[t]=ABQ.sel[t]||rgProds(o&&o.prod).filter(x=>!esIntegral(x)),i=a.indexOf(p);if(i>=0)a.splice(i,1);else a.push(p);delete ABQ.err[t];abqRe();}
+function abqProb(t,v){ABQ.prob[t]=ABQ.prob[t]===v?undefined:v;delete ABQ.err[t];abqRe();}
+function abqHtml(Xv){
+  if(RG.key==null)RG.key=lsGet('nw_rg_key_v9','')||'';
+  const L=Xv.filter(x=>abqFalta(x.o).length||ABQ.ok.has(String(x.o.tarea))),G=new Map();
+  L.forEach(x=>{const g=x.o.gestor||'—';if(!G.has(g))G.set(g,[]);G.get(g).push(x);});
+  const opts=rgOpts('prod'),pOpts=dwProbOpts();
+  const top=`<div class="gq-top">${!RG.key?`<span>🔑 Clave de escritura:</span><input type="password" autocomplete="off" placeholder="Clave del Apps Script" oninput="RG.key=this.value;lsSet('nw_rg_key_v9',this.value)">`:''}
+    ${!rgUser()?`<span>Registrado por:</span><input placeholder="Tu nombre" oninput="RG.user=this.value;lsSet('nw_rg_user_v9',this.value)">`:''}
+    <span>Abiertas por regularizar para el forecast: con <b>Proyecto Integral Network</b> como producto (ya no es producto: elige los productos de Network que integran la propuesta; con 2 o más cuenta como integral), <b>sin productos</b> o <b>sin % de probabilidad</b>. Elige con un click y <b>💾 Guardar</b> (solo se escriben PRODUCTOS y % de probabilidad). Para otros cambios usa <b>⚡ Abrir</b>.</span></div>`;
+  const row=x=>{const o=x.o,t=String(o.tarea),id=escA(t),f=abqFalta(o);
+    if(ABQ.ok.has(t))return `<div class="gq-r done"><span>✓ <b>#${esc(t)}</b> · ${esc(o.cliente||'')} — ${esc(o.prod||'')}${o.prob?' · '+esc(o.prob):''}</span></div>`;
+    const nP=f.some(z=>z.startsWith('prod')),nB=f.includes('prob');
+    const sel=ABQ.sel[t]||rgProds(o.prod).filter(p=>!esIntegral(p)),pb=ABQ.prob[t];
+    const can=nP?sel.length>0:pb!=null;   // con productos pendientes basta elegirlos; el % es opcional
+    const tags=[nP?(f.includes('prod:pin')?'Proyecto Integral Network → elegir productos':'Sin productos de Network'):'',nB?'Sin % de probabilidad':''].filter(Boolean);
+    return `<div class="mvq-r"><div><div class="gmx-nm">#${esc(t)} · ${esc(o.cliente||'—')}</div><div class="gmx-mut">${esc(o.estado||'')} · ${esc(o.asesor||'Sin asesor')}${amt(o)?' · '+fM(amt(o)):''}</div>
+        <div class="gmx-mut">Hoy: ${esc(o.prod||'sin productos')}</div><div class="gmx-falta">Falta: ${tags.map(esc).join(' · ')}</div></div>
+      <div>${nP?`<div class="pg-wrap">${prodGrupos(opts,p=>`<button class="${sel.includes(p)?'on':''}" onclick="abqTog('${id}','${escA(p)}')">${sel.includes(p)?'✓ ':''}${esc(p)}</button>`,'gq-ch')}</div>`:''}
+        ${nB?`<div class="gq-ch" style="margin-top:6px"><span class="gmx-mut" style="margin-right:4px">% probabilidad:</span>${pOpts.map(v=>`<button class="${pb===v?'on':''}" onclick="abqProb('${id}','${escA(v)}')">${esc(v)}</button>`).join('')}</div>`:''}</div>
+      <div class="gq-act"><button class="gq-save" ${!can||ABQ.busy.has(t)?'disabled':''} onclick="abqSave('${id}')">${ABQ.busy.has(t)?'Guardando…':'💾 Guardar'}</button>
+        <button class="gmx-ed" style="margin:0" onclick="dwEditQuick('${id}')" title="Abrir en la actualización rápida">⚡ Abrir</button></div>
+      ${ABQ.err[t]?`<div class="gq-err">✕ ${esc(ABQ.err[t])}</div>`:''}</div>`;};
+  const grupos=[...G.entries()].map(([g,a])=>({g,a:a.sort((p,q)=>amtO(q.o)-amtO(p.o)),n:a.filter(x=>!ABQ.ok.has(String(x.o.tarea))).length})).sort((p,q)=>q.n-p.n||String(p.g).localeCompare(String(q.g)));
+  const nTot=grupos.reduce((s,g)=>s+g.n,0);
+  const body=grupos.map(({g,a,n})=>{const open=ABQ.open.has(g),ok=a.length-n,monto=a.filter(x=>!ABQ.ok.has(String(x.o.tarea))).reduce((s,x)=>s+amtO(x.o),0);
+    return `<div class="gq-g"><button class="gq-gh" onclick="abqGrp('${escA(g)}')"><span class="gdot" style="background:${GC[g]||'#64748B'}"></span>${esc(GL[g]||g)}
+      ${n?`<span class="gq-n">${n} por regularizar</span><span class="gmx-mut">${fM(monto)}</span>`:''}${ok?`<span class="gq-ok">✓ ${ok} guardada${ok!==1?'s':''}</span>`:''}<span class="gq-c">${open?'▾ Ocultar':'▸ Completar'}</span></button>${open?a.map(row).join(''):''}</div>`;}).join('');
+  return `<div class="gmx-card" style="margin-bottom:12px"><div class="gmx-h"><span>Detalle por propuesta · completar por Ing. de Diseño</span><button class="gmx-x" onclick="ABQ.show=false;abqRe()">✕ cerrar</button><span class="gmx-mut">${nTot} por regularizar</span></div>
+    ${top}${body||'<div class="gmx-mut" style="padding:12px">✓ No hay abiertas por regularizar en esta selección.</div>'}</div>`;
+}
+async function abqSave(t){
+  if(ABQ.busy.has(t))return;
+  const o=OPS.ab.find(x=>String(x.tarea)===String(t));if(!o)return;
+  if(RG.key==null)RG.key=lsGet('nw_rg_key_v9','')||'';
+  if(!RG.key){ABQ.err[t]='Escribe la clave de escritura arriba.';abqRe();return;}
+  const f=abqFalta(o),data={tarea:String(t)};
+  if(f.some(z=>z.startsWith('prod'))){const s=ABQ.sel[t]||rgProds(o.prod).filter(p=>!esIntegral(p));if(!s.length){ABQ.err[t]='Elige al menos un producto.';abqRe();return;}data.prod=s.join(', ');}
+  if(ABQ.prob[t]!=null)data.prob=ABQ.prob[t];
+  if(!data.prod&&data.prob==null)return;
+  ABQ.busy.add(t);delete ABQ.err[t];abqRe();
+  try{
+    const r=await rgPost(rgBase(),{method:'POST',body:JSON.stringify({token:rgTok(),writeKey:RG.key,user:rgUser()||GL[o.gestor]||'',mode:'update',data}),headers:{'Content-Type':'text/plain;charset=utf-8'},redirect:'follow',credentials:'omit'});
+    const j=await r.json();ABQ.busy.delete(t);
+    if(j&&j.ok){[OPS.ab,OPS.ga,OPS.pd,OPS.per].forEach(a=>(a||[]).forEach(x=>{if(String(x.tarea)===String(t)){if(data.prod)x.prod=data.prod;if(data.prob!=null)x.prob=data.prob;}}));
+      ABQ.ok.add(String(t));delete ABQ.sel[t];delete ABQ.prob[t];
+      clearTimeout(ABQ._rf);ABQ._rf=setTimeout(()=>{try{buildD();['ab','ga','pe'].forEach(s=>renderTab(s));renderPd();renderGe();updateBadges();}catch(e){console.error('[ABQ]',e);}},600);}
+    else ABQ.err[t]=(j&&j.error)||'Error desconocido';
+  }catch(e){ABQ.busy.delete(t);ABQ.err[t]='No se pudo conectar con el Apps Script ('+e.message+')';}
+  abqRe();
+}
 function renderAbMix(rows){
-  const el=document.getElementById('ab-mix');if(!el)return;
+  _abmxRows=rows||[];const el=document.getElementById('ab-mix');if(!el)return;
   const X=(rows||[]).map(o=>({o,L:abLineas(o)}));
   const sels=xmxSync('ab',X),Xv=X.filter(x=>xPass('ab',x,'')),it=ex=>xItems('ab',X,ex),D=XDIM.ab;
   const prods=gmxAgg(it('prod'),D.prod[1]),fabs=gmxAgg(it('fab'),D.fab[1]),ases=gmxAgg(it('ase'),D.ase[1]),probs=gmxAgg(it('prob'),D.prob[1]),ings=gmxAgg(it('ing'),D.ing[1]);
@@ -2344,7 +2411,9 @@ function renderAbMix(rows){
     <div class="kc" style="border-top:2px solid #02C39A"><div class="kv">${fK(fcV)}</div><div class="kl">Forecast ponderado</div><div class="ks" title="Σ (NRC + MRC) × % probabilidad de cierre">${pct(fcV,montoV).toFixed(0)}% del pipeline${sinP?`<br><span style="color:#F59E0B">${sinP} sin % de probabilidad (cuentan 0)</span>`:''}</div></div>
     <div class="kc" style="border-top:2px solid #5B9FE8">${lider(prods,'Producto líder (por monto)')}</div>
     <div class="kc" style="border-top:2px solid #A78BFA">${lider(fabs,'Fabricante líder (registro de oportunidad)')}</div>
-    <div class="kc" style="border-top:2px solid #F472B6"><div class="kv">${Xv.length?Math.round(conR/Xv.length*100):0}%</div><div class="kl">Con registro de oportunidad</div><div class="ks">${conR} de ${Xv.length}</div></div></div>`;
+    <div class="kc" style="border-top:2px solid #F472B6"><div class="kv">${Xv.length?Math.round(conR/Xv.length*100):0}%</div><div class="kl">Con registro de oportunidad</div><div class="ks">${conR} de ${Xv.length}</div></div>
+    ${(()=>{const pq=Xv.filter(x=>abqFalta(x.o).length),nPin=pq.filter(x=>abqFalta(x.o).some(z=>z.startsWith('prod'))).length,nPb=pq.filter(x=>abqFalta(x.o).includes('prob')).length;
+      return `<div class="kc" style="border-top:2px solid #E55C6C"><div class="kv">${pq.length}</div><div class="kl">Abiertas por regularizar</div><div class="ks">${nPin} sin productos de Network / con Proyecto Integral · ${nPb} sin % probabilidad</div>${pq.length||ABQ.show?`<button class="gmx-todo" onclick="ABQ.show=!ABQ.show;abqRe()">${ABQ.show?'← Ocultar':`✎ Completar por Ing. de Diseño`}</button>`:''}</div>`;})()}</div>`;
   XKEYS.ab.prod=prods.map(g=>g.k);
   const mxP=Math.max(1,...prods.map(g=>g.monto));
   const matriz=`<div class="gmx-card" style="margin-bottom:12px"><div class="gmx-h"><span title="Por cada producto de las oportunidades abiertas: monto, forecast ponderado (monto × % probabilidad) y fabricantes del registro de oportunidad (FABRICANTE 1/2 + REG OPE / DEAL de la tarea; el registro es de la propuesta, así que en propuestas con varios productos cuenta para cada uno). Clic en una fila para filtrar.">Producto · fabricantes más representativos (registro de oportunidad) <span class="gmx-i">ⓘ</span></span>${XMX.ab.prod?`<button class="gmx-x" onclick="xmxClr('ab','prod')">✕ quitar selección</button>`:''}</div>
@@ -2358,7 +2427,7 @@ function renderAbMix(rows){
   const montoF=Xv.filter(x=>x.L.some(l=>l.fabricante)).reduce((s,x)=>s+amtO(x.o),0);
   const ranks=`<div class="gmx-g2">${xRank('ab','fab','Fabricante (registro de oportunidad)','FABRICANTE 1/2 de la tarea. % sobre el monto de las abiertas con registro.',fabs,[cO,cM,cF],montoF,'#A78BFA')}${xRank('ab','prob','% de probabilidad de cierre','Rangos del % de probabilidad de la tarea. Forecast = monto × %.',probs,[cO,cM,cF],montoV,'#02C39A')}</div>
     <div class="gmx-g2">${xRank('ab','ase','Asesores comerciales','Pipeline por asesor comercial.',ases,[cO,cM,cF],montoV,'#5B9FE8')}${xRank('ab','ing','Ing. de Diseño','Pipeline por Ing. de Diseño.',ings,[cO,cM,cF],montoV,'#F472B6')}</div>`;
-  el.innerHTML=xSelBar('ab',sels)+kpis+matriz+ranks;
+  el.innerHTML=xSelBar('ab',sels)+kpis+(ABQ.show?abqHtml(Xv):'')+matriz+ranks;
 }
 
 /* ── Ops Perdidas: métricas (mismo concepto que Ops Ganadas) ── */
