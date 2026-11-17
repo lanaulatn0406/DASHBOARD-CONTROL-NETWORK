@@ -2016,6 +2016,7 @@ let FAB_GAN=null;                    // null = el backend aún no envía fabGana
 let FAB_GAN_INFO=null;               // {hoja, filas} — backend v9.25
 const GAMX={prod:'',fab:'',dist:'',ase:'',tp:'',pend:false,keys:{}};
 let _gmxRows=[];
+let GMX_SEL=null,GMX_SELTXT='';   // v9.44 — ganadas visibles con la selección de la sección (filtra también el Detalle de Oportunidades Ganadas)
 let GMX_MSG=null;                    // v9.26 — aviso tras completar una ganada desde esta sección
 /* v9.26 — completar / editar una ganada vieja desde Ops Ganadas: abre el mismo formulario del
    proyecto ganado (Registro → 🏆) prellenado con lo que ya existe. Escribe PROYECTOS GANADOS y
@@ -2149,8 +2150,9 @@ function gmxOpPass(x,except){
     return x.L.some(l=>gmxNorm(GMX_DIM[d]({o:x.o,l}))===GAMX[d]);
   });
 }
-function gmxSet(dim,i){const k=(GAMX.keys[dim]||[])[i];if(k==null)return;GAMX[dim]=GAMX[dim]===k?'':k;renderGaMix(_gmxRows);}
-function gmxClr(dim){if(dim)GAMX[dim]='';else Object.keys(GMX_DIM).forEach(d=>GAMX[d]='');renderGaMix(_gmxRows);}
+const gmxRe=()=>{if(typeof F!=='undefined'&&F.ga)renderOpsTable('ga',F.ga);else renderGaMix(_gmxRows);};   // v9.44 — la tabla de detalle sigue a la selección
+function gmxSet(dim,i){const k=(GAMX.keys[dim]||[])[i];if(k==null)return;GAMX[dim]=GAMX[dim]===k?'':k;gmxRe();}
+function gmxClr(dim){if(dim)GAMX[dim]='';else Object.keys(GMX_DIM).forEach(d=>GAMX[d]='');gmxRe();}
 function gmxPend(){GAMX.pend=!GAMX.pend;renderGaMix(_gmxRows);}
 function gmxTop(arr,tot,n){
   if(!arr.length)return '<span class="gmx-mut">—</span>';
@@ -2526,6 +2528,7 @@ function renderGaMix(rows){
   let OPL=_gmxRows.map(o=>{const r=gmxLineas(o,idx);return {o,L:r.L,src:r.src,reg:gmxOpReg(o,r.L)};});
   OPL.forEach(x=>x.falta=gmxFalta(x));
   const nPend=OPL.filter(x=>x.falta.length).length;
+  const OPL0=OPL;   // v9.44 — sin la cola de pendientes: base de GMX_SEL
   if(GAMX.pend)OPL=OPL.filter(x=>x.falta.length);   // v9.26 — cola de ganadas por completar
   const opInfo=new Map(OPL.map(x=>[x.o,x]));
   /* En propuestas con detalle por producto, las selecciones de producto / fabricante / distribuidor
@@ -2559,7 +2562,9 @@ function renderGaMix(rows){
   const lists={prod:prods,fab:fabs,dist:dists,ase:ases,tp:tps};
   const nombreSel=d=>{const a=lists[d].find(g=>g.k===GAMX[d]);return a?a.name:GAMX[d];};
   const sels=Object.keys(selLbl).filter(d=>GAMX[d]);
-  const selBar=(sels.length||GAMX.pend)?`<div class="gmx-sel"><span class="gmx-mut">Selección:</span>${sels.map(d=>`<button class="gmx-chip" onclick="gmxClr('${d}')">${selLbl[d]}: <b>${esc(nombreSel(d))}</b> ✕</button>`).join('')}${GAMX.pend?`<button class="gmx-chip" onclick="gmxPend()">Solo ganadas por completar ✕</button>`:''}${sels.length>1?`<button class="gmx-x" onclick="gmxClr()">Quitar todo</button>`:''}</div>`
+  GMX_SEL=sels.length?new Set(OPL0.filter(x=>gmxOpPass(x,'')).map(x=>String(x.o.id))):null;
+  GMX_SELTXT=sels.map(d=>selLbl[d]+': '+nombreSel(d)).join(' · ');
+  const selBar=(sels.length||GAMX.pend)?`<div class="gmx-sel"><span class="gmx-mut">Selección:</span>${sels.map(d=>`<button class="gmx-chip" onclick="gmxClr('${d}')">${selLbl[d]}: <b>${esc(nombreSel(d))}</b> ✕</button>`).join('')}${GAMX.pend?`<button class="gmx-chip" onclick="gmxPend()">Solo ganadas por completar ✕</button>`:''}${sels.length>1?`<button class="gmx-x" onclick="gmxClr()">Quitar todo</button>`:''}${sels.length?`<button class="gmx-x" onclick="document.getElementById('ga-ops-tbl').scrollIntoView({behavior:'smooth',block:'start'})" title="El Detalle de Oportunidades Ganadas muestra solo las ganadas de esta selección">↓ Ver en el detalle (${GMX_SEL.size})</button>`:''}</div>`
     :`<div class="gmx-sel"><span class="gmx-mut">Haz clic en un producto, fabricante, distribuidor, asesor o tipo de proyecto para filtrar toda la sección.</span></div>`;
   /* KPIs acumulados */
   const kpis=`<div class="gmx-k">
@@ -2672,7 +2677,7 @@ function renderOpsTable(seg,filt){
     return true;
   });
   if(seg==='pe')renderPeMix(rows);   // v9.38 — métricas de perdidas
-  if(seg==='ga')renderGaMix(rows);   // v9.24 — productos · fabricantes · distribuidores (mismas ganadas que la tabla)
+  if(seg==='ga'){renderGaMix(rows);if(GMX_SEL)rows=rows.filter(o=>GMX_SEL.has(String(o.id)));}   // v9.44 — selección de Producto · Fabricantes · Distribuidores   // v9.24 — productos · fabricantes · distribuidores (mismas ganadas que la tabla)
   // Para tab ab: Top 20 por gestor cuando no hay búsqueda; búsqueda muestra todo
   let displayRows = rows;
   let limitMsg = '';
@@ -2695,10 +2700,12 @@ function renderOpsTable(seg,filt){
     });
   }
   _exclAllBuf[seg]=displayRows.map(o=>String(o.id));
-  TABCP[seg]={rows:displayRows,g:filt.g,f:(filt.t!=='ALL'||q!==''||filt.asesor!=='ALL'||filt.anio!=='ALL'||filt.mes_f!=='ALL'||filt.desde!==''||filt.hasta!==''),lim:limitMsg};   // v9.39 — 📋 Copiar
+  TABCP[seg]={rows:displayRows,g:filt.g,f:(filt.t!=='ALL'||q!==''||filt.asesor!=='ALL'||filt.anio!=='ALL'||filt.mes_f!=='ALL'||filt.desde!==''||filt.hasta!==''),lim:limitMsg,sel:seg==='ga'&&GMX_SEL?GMX_SELTXT:''};   // v9.39 — 📋 Copiar
   const _hasFilter=(filt.g!=='ALL'||filt.t!=='ALL'||q!==''||filt.asesor!=='ALL'||filt.anio!=='ALL'||filt.mes_f!=='ALL'||filt.desde!==''||filt.hasta!=='');
   const _exclAllHtml=(_hasFilter&&displayRows.length>0)?`<button class="excl-all-btn" onclick="onExclAll('${seg}')">⊘ Excluir todos (${displayRows.length})</button>`:'';
-  document.getElementById(`${seg}-ops-cnt`).innerHTML=`<span>${displayRows.length} registro${displayRows.length!==1?'s':''}${limitMsg}</span>${_exclAllHtml}`;
+  const _gmxChip=seg==='ga'&&GMX_SEL?`<button class="gmx-chip" onclick="gmxClr()" title="Quitar la selección de Producto · Fabricantes · Distribuidores">${esc(GMX_SELTXT)} ✕</button>`:'';
+  _tabOps[seg]=displayRows;
+  document.getElementById(`${seg}-ops-cnt`).innerHTML=`<span>${displayRows.length} registro${displayRows.length!==1?'s':''}${limitMsg}</span>${_gmxChip}${_exclAllHtml}`;
   let html;
   if(seg==='ab'||seg==='ga'){
     const ESTADOS=seg==='ab'?[AB_GANAR,AB_PERDER]:ESTADOS_GA;
@@ -2711,7 +2718,7 @@ function renderOpsTable(seg,filt){
     if(!displayRows.length){html+='<tr><td colspan="12" class="no-results">Sin resultados para los filtros aplicados.</td></tr>';}
     else {
       let lastGestor='';
-      displayRows.forEach(o=>{
+      displayRows.forEach((o,i)=>{
         const tot=(o.nrc||0)+(o.mrc||0);
         // Separador visual entre gestores
         if(seg==='ab' && !q && !TC.ab && filt.g==='ALL' && o.gestor!==lastGestor){
@@ -2734,7 +2741,7 @@ function renderOpsTable(seg,filt){
       const safeId=String(o.id).replace(/'/g,"\\'");
       const safeCli=String(o.cliente||'').replace(/'/g,"\\'").replace(/\\/g,'\\\\');
       html+=`<tr${perdida?' class="is-perdida"':''}>
-        <td><span class="tarea-tag">${tr}</span></td>
+        <td><span class="tarea-tag" style="cursor:pointer" title="Ver la ficha (📋 copiar, edición rápida)" onclick="tabOpenOp('${seg}',${i})">${tr}</span></td>
         <td style="font-weight:600;color:#E2E8F0">${nm}</td>
         <td><span class="gdot" style="background:${GC[o.gestor]||'#888'}"></span>${(GL[o.gestor]||o.gestor||'').split(' ')[0]}</td>
         <td><span class="tipo-b t-${(o.tipo||'sin').toLowerCase()}">${o.tipo||'SIN'}</span></td>
@@ -3828,11 +3835,13 @@ function cpListTxt(title,sub,rows,group){
 }
 /* v9.39 — 📋 Copiar en las pestañas: las mismas filas que muestra la tabla (TABCP se llena al renderizarla) */
 const TABCP={};
+const _tabOps={};   // v9.44 — filas de las tablas Ops Abiertas / Ganadas para abrir su ficha
+function tabOpenOp(seg,i){const o=(_tabOps[seg]||[])[i];if(o){dwStack=[];dwPush({type:'op',op:Object.assign({},o,{_seg:seg})});}}
 const TABN={ab:'Ops Abiertas · Pipeline',ga:'Ops Ganadas',pe:'Ops Perdidas',pd:'Pendientes de despacho',ge:'Gestión Externa · Sin Oferta'};
 function tabCopy(seg,btn){
   const c=TABCP[seg];if(!c)return;
   const rows=c.rows.map(o=>Object.assign({},o,{_seg:seg}));
-  const sub=[c.g&&c.g!=='ALL'?'':'Todos los Ing.',c.f?'con filtros aplicados':'',c.lim?'Top 20 por Ing. (lo visible en la tabla)':''].filter(Boolean).join(' · ');
+  const sub=[c.g&&c.g!=='ALL'?'':'Todos los Ing.',c.f?'con filtros aplicados':'',c.lim?'Top 20 por Ing. (lo visible en la tabla)':'',c.sel||''].filter(Boolean).join(' · ');
   cpTxt(cpListTxt(TABN[seg]+(c.g&&c.g!=='ALL'?' · '+(GL[c.g]||c.g):''),sub,rows,true),btn);
 }
 function dwCopyOp(btn){
